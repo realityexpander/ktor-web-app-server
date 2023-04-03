@@ -4,28 +4,26 @@ import com.github.slugify.Slugify
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.okhttp.*
-import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation as ContentNegotiationClient
 import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
-import io.ktor.server.application.hooks.CallSetup.install
+import io.ktor.server.auth.*
 import io.ktor.server.http.content.*
 import io.ktor.server.plugins.compression.*
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation as ContentNegotiationServer
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.netty.handler.codec.compression.StandardCompressionOptions.gzip
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
+import kotlinx.serialization.*
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.*
 import java.util.concurrent.TimeUnit
+import io.ktor.server.application.install as installServer
 
 
 //fun Application.module() {
@@ -47,10 +45,26 @@ val jsonConfig = Json {
     encodeDefaults = true
 }
 
+typealias EmailString = String
+typealias PasswordString = String
+typealias TokenString = String
+
+data class User(
+    val username: String,
+    val password: PasswordString,
+    var token: TokenString
+)
+
 fun Application.module() {
-    install(Compression) {
+
+    installServer(Compression) {
         gzip()
     }
+
+    installServer(ContentNegotiationServer) {
+        json(jsonConfig)
+    }
+
 
     // setup ktor client
     val client = HttpClient(OkHttp) {
@@ -59,7 +73,7 @@ fun Application.module() {
             level = LogLevel.ALL
         }
 
-        install(ContentNegotiation) {
+        install(ContentNegotiationClient) {
             json(
                 Json {
                     prettyPrint = true
@@ -67,7 +81,6 @@ fun Application.module() {
                 }
             )
         }
-
 
         engine {
             config {
@@ -77,25 +90,93 @@ fun Application.module() {
         }
     }
 
-    routing {
-//        singlePageApplication {
-//            react("react-app")
-//        }
+    val users = mutableMapOf<EmailString, User>()
+    users["a@b.c"] = User("jetbrains", "test", "")
+    users["user"] = User("user", "test", "")
+    users["test"] = User("test", "test", "")
 
-//        singlePageApplication {
-//            defaultPage = "index.html"
-//            filesPath = "todo-app"
-//        }
+    // setup tokenLookup
+    val tokenLookup = mutableMapOf<TokenString, EmailString>()
+    for (user in users.values) {
+        tokenLookup[user.token] = user.username
+    }
 
-        singlePageApplication {
-            defaultPage = "index.html"
-//            filesPath = "todo-app"
-            filesPath = "/Volumes/TRS-83/dev/JavascriptWebComponents"
+    installServer(Authentication) {
+        bearer("auth-bearer") {
+            realm = "Access to the '/api' path"
+            authenticate { tokenCredential ->
+
+                val user = tokenLookup[tokenCredential.token]
+                if (user != null) {
+                    UserIdPrincipal(user)
+                } else {
+                    null
+                }
+            }
         }
+    }
+
+
+    routing {
+        // setup CORS
+//        options("*") {
+//            call.response.header("Access-Control-Allow-Origin", "*")
+//            call.response.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+//            call.response.header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+//            call.response.header("Content-Type", "application/json")
+//        }
 
         // api routes
-        get("/api/hello") {
-            call.respondText("Hello World!")
+
+        // Authentication
+        post("/api/login") {
+            // read the email and password from the request
+            val body = call.receiveText()
+            val params = jsonConfig.decodeFromString<Map<String, String>>(body)
+            val username = params["email"]
+            val password = params["password"]
+
+            // hash the password
+            val passwordHash = password
+
+            if (username != null && passwordHash != null) {
+                if (users[username]?.password == passwordHash) {
+                    val token = UUID.randomUUID().toString()
+                    users[username]?.token = token
+                    tokenLookup[token] = username
+                    call.respondText(jsonConfig.encodeToString(mapOf("token" to token)))
+                } else {
+                    val error = mapOf("error" to "Invalid credentials")
+                    call.respondText(jsonConfig.encodeToString(error),
+                        status = HttpStatusCode.Unauthorized)
+                }
+            } else {
+                val error = mapOf("error" to "Invalid parameters")
+                call.respondText(jsonConfig.encodeToString(error),
+                    status = HttpStatusCode.BadRequest)
+            }
+        }
+
+        post("/api/logout") {
+            val params = call.receiveParameters()
+            val token = params["token"]
+
+            if (token != null) {
+                val user = tokenLookup[token]
+                if (user != null) {
+                    users[user]?.token = ""
+                    tokenLookup.remove(token)
+                    call.respondText(jsonConfig.encodeToString(mapOf("success" to true)))
+                } else {
+                    val error = mapOf("error" to "Invalid token")
+                    call.respondText(jsonConfig.encodeToString(error),
+                        status = HttpStatusCode.Unauthorized)
+                }
+            } else {
+                val error = mapOf("error" to "Invalid parameters")
+                call.respondText(jsonConfig.encodeToString(error),
+                    status = HttpStatusCode.BadRequest)
+            }
         }
 
         get("/api/todos") {
@@ -108,8 +189,8 @@ fun Application.module() {
 
 //                    // Simulate server edits of data
 //                    val todo = todos[0]
-//                    val user = User("John")
-//                    val updatedTodo = todo.copy(user = user)
+//                    val userInTodo = UserInTodo("John")
+//                    val updatedTodo = todo.copy(userInTodo = userInTodo)
 //                    todos[0] = updatedTodo
 
 //                    call.response.apply {
@@ -123,11 +204,10 @@ fun Application.module() {
             } else {
                 call.respondText("Error: ${response.status.value}")
             }
-
         }
 
         // https://tahaben.com.ly/2022/04/uploading-image-using-android-ktor-client-to-ktor-server/
-        post("/upload-image") {
+        post("/api/upload-image") {
             val multipart = call.receiveMultipart()
             var tempFilename: String? = null
             var name: String? = null
@@ -172,7 +252,7 @@ fun Application.module() {
                     id = "1",
                     name = name.toString(),
                     status =ToDoStatus.pending,
-                    user = User(
+                    userInTodo = UserInTodo(
                         name = name.toString(),
                         files = uploadedImageList
                     )
@@ -189,6 +269,11 @@ fun Application.module() {
             }
 
             println("name= ${name}")
+        }
+
+        singlePageApplication {
+            defaultPage = "index.html"
+            filesPath = "/Volumes/TRS-83/dev/JavascriptWebComponents"
         }
     }
 }
@@ -209,19 +294,19 @@ object Constants {
     val BASE_URL = "http://localhost:8080"
 }
 
-@kotlinx.serialization.Serializable
+@Serializable
 data class FileUploadResponse(
     val todo: Todo,
     val uploadedFiles: List<String>
 )
 
-@kotlinx.serialization.Serializable
-data class User(
+@Serializable
+data class UserInTodo(
     val name: String,
     val files: List<String>? = null
 )
 
-@kotlinx.serialization.Serializable
+@Serializable
 enum class ToDoStatus(val value: String) {
     pending("pending"),
     completed("completed"),
@@ -234,7 +319,13 @@ data class Todo(
     val id: String,
     val name: String,
     val status: ToDoStatus = ToDoStatus.pending,
-    val user: User? = null
+    @SerialName("userInTodo")
+    val userInTodo: UserInTodo? = null
+)
+
+@Serializable
+data class ErrorResponse(
+    val error: String
 )
 
 //@Serializable

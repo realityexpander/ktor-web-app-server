@@ -45,12 +45,19 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktor_version")
     implementation("io.ktor:ktor-client-content-negotiation:$ktor_version")
     implementation("io.ktor:ktor-client-logging:$ktor_version")
+    implementation("io.ktor:ktor-server-content-negotiation:$ktor_version")
 
     // Compression for text
     implementation("io.ktor:ktor-server-compression:$ktor_version")
 
-    // For creating slugs
+    // For creating file slugs
     implementation("com.github.slugify:slugify:3.0.2")
+
+    // For authentication
+    implementation("io.ktor:ktor-server-auth:$ktor_version")
+
+    // For HTML
+    implementation("io.ktor:ktor-server-html-builder:$ktor_version")
 }
 
 //tasks.test {
