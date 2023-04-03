@@ -1,4 +1,4 @@
-package com.example
+package com.realityexpander
 
 import com.github.slugify.Slugify
 import io.ktor.client.*
@@ -7,23 +7,26 @@ import io.ktor.client.engine.okhttp.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
-import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
+import io.ktor.server.application.hooks.CallSetup.install
 import io.ktor.server.http.content.*
 import io.ktor.server.plugins.compression.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import kotlinx.serialization.*
-import kotlinx.serialization.EncodeDefault.*
+import io.netty.handler.codec.compression.StandardCompressionOptions.gzip
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.*
 import java.util.concurrent.TimeUnit
-import kotlin.collections.ArrayList
+
 
 //fun Application.module() {
 //    routing {
@@ -44,9 +47,10 @@ val jsonConfig = Json {
     encodeDefaults = true
 }
 
-// ./gradlew :single-page-application:run
 fun Application.module() {
-    install(Compression)
+    install(Compression) {
+        gzip()
+    }
 
     // setup ktor client
     val client = HttpClient(OkHttp) {
@@ -122,6 +126,7 @@ fun Application.module() {
 
         }
 
+        // https://tahaben.com.ly/2022/04/uploading-image-using-android-ktor-client-to-ktor-server/
         post("/upload-image") {
             val multipart = call.receiveMultipart()
             var tempFilename: String? = null
@@ -204,19 +209,19 @@ object Constants {
     val BASE_URL = "http://localhost:8080"
 }
 
-@Serializable
+@kotlinx.serialization.Serializable
 data class FileUploadResponse(
     val todo: Todo,
     val uploadedFiles: List<String>
 )
 
-@Serializable
+@kotlinx.serialization.Serializable
 data class User(
     val name: String,
     val files: List<String>? = null
 )
 
-@Serializable
+@kotlinx.serialization.Serializable
 enum class ToDoStatus(val value: String) {
     pending("pending"),
     completed("completed"),
