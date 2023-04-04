@@ -58,6 +58,9 @@ dependencies {
 
     // For HTML
     implementation("io.ktor:ktor-server-html-builder:$ktor_version")
+
+    // For Argon2
+    implementation("de.mkammerer:argon2-jvm:2.11")
 }
 
 //tasks.test {

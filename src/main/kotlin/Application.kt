@@ -25,18 +25,6 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 import io.ktor.server.application.install as installServer
 
-
-//fun Application.module() {
-//    routing {
-//        singlePageApplication {
-//            useResources = true
-//            filesPath = "sample-web-app"
-//            defaultPage = "main.html"
-//            ignoreFiles { it.endsWith(".txt") }
-//        }
-//    }
-//}
-
 val jsonConfig = Json {
     prettyPrint = true
     isLenient = true
@@ -49,13 +37,37 @@ typealias EmailString = String
 typealias PasswordString = String
 typealias TokenString = String
 
+@Serializable
 data class User(
-    val username: String,
+    val email: String,
     val password: PasswordString,
     var token: TokenString
 )
 
+const val APPLICATION_PROPERTIES_FILE = "./application.properties"
+
+@Serializable
+data class ApplicationProperties(
+    val pepper: String = "ooga-booga"
+)
+
 fun Application.module() {
+
+    // load application.properties
+    val applicationProperties = File(APPLICATION_PROPERTIES_FILE).inputStream()
+    val applicationConfig =
+        try {
+            Properties().apply {
+                load(applicationProperties)
+            }.let {
+                ApplicationProperties(
+                    pepper = it.getProperty("pepper")
+                )
+            }
+        } catch (e: Exception) {
+            println("Error loading application properties: $e")
+            ApplicationProperties()
+        }
 
     installServer(Compression) {
         gzip()
@@ -90,15 +102,44 @@ fun Application.module() {
         }
     }
 
-    val users = mutableMapOf<EmailString, User>()
-    users["a@b.c"] = User("jetbrains", "test", "")
-    users["user"] = User("user", "test", "")
-    users["test"] = User("test", "test", "")
+    /////////////////////////////////////////
+    // SETUP AUTHENTICATION
+
+    val passwordService = ArgonPasswordService(
+        pepper = applicationConfig.pepper
+    )
+    val usersDb = mutableMapOf<EmailString, User>()
+
+    // Save the users to the resources json file
+    fun saveUsers() {
+        File("usersDB.json").writeText(
+            jsonConfig.encodeToString(
+                usersDb.values.toList()
+            )
+        )
+    }
+
+    // Load the users from the resources json file
+    fun loadUsers() {
+        if (!File("usersDB.json").exists()) {
+            File("usersDB.json").writeText("")
+        }
+
+        val userDBJson = File("usersDB.json").readText()
+        if (userDBJson.isNotEmpty()) {
+            val users = jsonConfig.decodeFromString<List<User>>(userDBJson)
+            for (user in users) {
+                usersDb[user.email] = user
+            }
+        }
+    }
+
+    loadUsers()
 
     // setup tokenLookup
     val tokenLookup = mutableMapOf<TokenString, EmailString>()
-    for (user in users.values) {
-        tokenLookup[user.token] = user.username
+    for (user in usersDb.values) {
+        tokenLookup[user.token] = user.email
     }
 
     installServer(Authentication) {
@@ -127,33 +168,99 @@ fun Application.module() {
 //        }
 
         // api routes
+        post("/api/register") {
+            try {
+                val body = call.receiveText()
+                val params = jsonConfig.decodeFromString<Map<String, String>>(body)
+                val username = params["email"]
+                val password = params["password"]
+
+                if (username != null && password != null) {
+                    usersDb[username] ?: run {
+
+                        val passwordHash = passwordService.getSaltedPepperedPasswordHash(password)
+                        usersDb[username] = User(username, passwordHash, "")
+
+                        val token = UUID.randomUUID().toString()
+                        usersDb[username]?.token = token
+
+                        saveUsers()
+
+                        call.respondText(jsonConfig.encodeToString(mapOf("token" to token)))
+                        return@post
+                    }
+
+                    val error = mapOf("error" to "User already exists")
+                    call.respondText(
+                        jsonConfig.encodeToString(error),
+                        status = HttpStatusCode.Conflict
+                    )
+                    return@post
+                }
+
+                val error = mapOf("error" to "Invalid parameters")
+                call.respondText(
+                    jsonConfig.encodeToString(error),
+                    status = HttpStatusCode.BadRequest
+                )
+            } catch (e: Exception) {
+                val error = mapOf("error" to e.message)
+                call.respondText(
+                    jsonConfig.encodeToString(error),
+                    status = HttpStatusCode.BadRequest
+                )
+            }
+        }
 
         // Authentication
         post("/api/login") {
-            // read the email and password from the request
-            val body = call.receiveText()
-            val params = jsonConfig.decodeFromString<Map<String, String>>(body)
-            val username = params["email"]
-            val password = params["password"]
+            try {
+                val body = call.receiveText()
+                val params = jsonConfig.decodeFromString<Map<String, String>>(body)
+                val email = params["email"]
+                val password = params["password"]
 
-            // hash the password
-            val passwordHash = password
+                if (email != null && password != null) {
+                    // check if the user exists
+                    if (!usersDb.containsKey(email)) {
+                        val error = mapOf("error" to "User does not exist")
+                        call.respondText(
+                            jsonConfig.encodeToString(error),
+                            status = HttpStatusCode.NotFound
+                        )
+                        return@post
+                    }
 
-            if (username != null && passwordHash != null) {
-                if (users[username]?.password == passwordHash) {
+                    // check if the password is correct
+                    val user = usersDb[email]!!
+                    val userPasswordHash = user.password
+                    if (!passwordService.validatePassword(password, userPasswordHash)) {
+                        val error = mapOf("error" to "Invalid credentials")
+                        call.respondText(
+                            jsonConfig.encodeToString(error),
+                            status = HttpStatusCode.Unauthorized
+                        )
+                        return@post
+                    }
+
                     val token = UUID.randomUUID().toString()
-                    users[username]?.token = token
-                    tokenLookup[token] = username
+                    usersDb[email]?.token = token
+                    tokenLookup[token] = email
                     call.respondText(jsonConfig.encodeToString(mapOf("token" to token)))
-                } else {
-                    val error = mapOf("error" to "Invalid credentials")
-                    call.respondText(jsonConfig.encodeToString(error),
-                        status = HttpStatusCode.Unauthorized)
+                    return@post
                 }
-            } else {
+
                 val error = mapOf("error" to "Invalid parameters")
-                call.respondText(jsonConfig.encodeToString(error),
-                    status = HttpStatusCode.BadRequest)
+                call.respondText(
+                    jsonConfig.encodeToString(error),
+                    status = HttpStatusCode.BadRequest
+                )
+            } catch (e: Exception) {
+                val error = mapOf("error" to e.message)
+                call.respondText(
+                    jsonConfig.encodeToString(error),
+                    status = HttpStatusCode.BadRequest
+                )
             }
         }
 
@@ -161,29 +268,37 @@ fun Application.module() {
             val params = call.receiveParameters()
             val token = params["token"]
 
-            if (token != null) {
+            token?.let {
                 val user = tokenLookup[token]
-                if (user != null) {
-                    users[user]?.token = ""
+                user?.let {
+                    usersDb[user]?.token = ""
                     tokenLookup.remove(token)
+                    saveUsers()
+
                     call.respondText(jsonConfig.encodeToString(mapOf("success" to true)))
-                } else {
-                    val error = mapOf("error" to "Invalid token")
-                    call.respondText(jsonConfig.encodeToString(error),
-                        status = HttpStatusCode.Unauthorized)
+                    return@post
                 }
-            } else {
-                val error = mapOf("error" to "Invalid parameters")
-                call.respondText(jsonConfig.encodeToString(error),
-                    status = HttpStatusCode.BadRequest)
+
+                val error = mapOf("error" to "Invalid token")
+                call.respondText(
+                    jsonConfig.encodeToString(error),
+                    status = HttpStatusCode.Unauthorized
+                )
+                return@post
             }
+
+            val error = mapOf("error" to "Invalid parameters")
+            call.respondText(
+                jsonConfig.encodeToString(error),
+                status = HttpStatusCode.BadRequest
+            )
         }
 
         get("/api/todos") {
 
             // make call to api
             val response = client.get("http://localhost:3000/todos")
-            if(response.status.value == 200) {
+            if (response.status.value == 200) {
                 try {
                     val todos = jsonConfig.decodeFromString<TodoResponse>(response.body())
 
@@ -197,13 +312,23 @@ fun Application.module() {
 //                        headers.append("Content-Type", "application/json")
 //                    }
                     call.respond(Json.encodeToString(todos))
+                    return@get
 
                 } catch (e: Exception) {
-                    call.respondText("Error decoding response: ${e.localizedMessage}")
+                    val error = mapOf("error" to e.localizedMessage)
+                    call.respondText(
+                        jsonConfig.encodeToString(error),
+                        status = response.status
+                    )
+                    return@get
                 }
-            } else {
-                call.respondText("Error: ${response.status.value}")
             }
+
+            val error = mapOf("error" to response.body<String>().toString())
+            call.respondText(
+                jsonConfig.encodeToString(error),
+                status = response.status
+            )
         }
 
         // https://tahaben.com.ly/2022/04/uploading-image-using-android-ktor-client-to-ktor-server/
@@ -211,18 +336,19 @@ fun Application.module() {
             val multipart = call.receiveMultipart()
             var tempFilename: String? = null
             var name: String? = null
-            var originalFileName: String? = null
+            var originalFileName: String?
             val uploadedImageList = ArrayList<String>()
-            try{
+            try {
                 multipart.forEachPart { partData ->
-                    when(partData){
+                    when (partData) {
                         is PartData.FormItem -> {
                             //to read additional parameters that we sent with the image
-                            if (partData.name == "name"){
+                            if (partData.name == "name") {
                                 name = partData.value
                             }
                         }
-                        is PartData.FileItem ->{
+
+                        is PartData.FileItem -> {
                             tempFilename = partData.save(Constants.USER_IMAGES_PATH)
                             originalFileName = partData.originalFileName
 
@@ -241,6 +367,7 @@ fun Application.module() {
 
                             uploadedImageList.add(newFilePath)
                         }
+
                         is PartData.BinaryItem -> Unit
                         else -> {
                             println("/upload-image Unknown PartData.???")
@@ -251,7 +378,7 @@ fun Application.module() {
                 val newTodo = Todo(
                     id = "1",
                     name = name.toString(),
-                    status =ToDoStatus.pending,
+                    status = ToDoStatus.pending,
                     userInTodo = UserInTodo(
                         name = name.toString(),
                         files = uploadedImageList
@@ -265,10 +392,8 @@ fun Application.module() {
                 call.respond(HttpStatusCode.OK, Json.encodeToString(fileUploadResponse))
             } catch (ex: Exception) {
                 File("${Constants.USER_IMAGES_PATH}/$tempFilename").delete()
-                call.respond(HttpStatusCode.InternalServerError,"Error")
+                call.respond(HttpStatusCode.InternalServerError, "Error")
             }
-
-            println("name= ${name}")
         }
 
         singlePageApplication {
@@ -326,6 +451,11 @@ data class Todo(
 @Serializable
 data class ErrorResponse(
     val error: String
+)
+
+@Serializable
+data class SuccessResponse(
+    val success: String,
 )
 
 //@Serializable
