@@ -265,33 +265,42 @@ fun Application.module() {
         }
 
         post("/api/logout") {
-            val params = call.receiveParameters()
-            val token = params["token"]
+            try {
+                val body = call.receiveText()
+                val params = jsonConfig.decodeFromString<Map<String, String>>(body)
+                val token = params["token"]
 
-            token?.let {
-                val user = tokenLookup[token]
-                user?.let {
-                    usersDb[user]?.token = ""
-                    tokenLookup.remove(token)
-                    saveUsers()
+                token?.let {
+                    val userEmail = tokenLookup[token]
+                    userEmail?.let {
+                        usersDb[userEmail]?.token = ""
+                        tokenLookup.remove(token)
+                        saveUsers()
 
-                    call.respondText(jsonConfig.encodeToString(mapOf("success" to true)))
+                        call.respondText(jsonConfig.encodeToString(mapOf("success" to true)))
+                        return@post
+                    }
+
+                    val error = mapOf("error" to "Invalid token")
+                    call.respondText(
+                        jsonConfig.encodeToString(error),
+                        status = HttpStatusCode.Unauthorized
+                    )
                     return@post
                 }
 
-                val error = mapOf("error" to "Invalid token")
+                val error = mapOf("error" to "Invalid parameters")
                 call.respondText(
                     jsonConfig.encodeToString(error),
-                    status = HttpStatusCode.Unauthorized
+                    status = HttpStatusCode.BadRequest
                 )
-                return@post
+            } catch (e: Exception) {
+                val error = mapOf("error" to e.message)
+                call.respondText(
+                    jsonConfig.encodeToString(error),
+                    status = HttpStatusCode.BadRequest
+                )
             }
-
-            val error = mapOf("error" to "Invalid parameters")
-            call.respondText(
-                jsonConfig.encodeToString(error),
-                status = HttpStatusCode.BadRequest
-            )
         }
 
         get("/api/todos") {
