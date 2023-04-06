@@ -13,16 +13,22 @@ import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.http.content.*
+import io.ktor.server.netty.*
+import io.ktor.server.plugins.*
 import io.ktor.server.plugins.compression.*
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation as ContentNegotiationServer
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.util.pipeline.*
 import kotlinx.serialization.*
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.net.SocketAddress
 import java.util.*
 import java.util.concurrent.TimeUnit
+import kotlin.reflect.full.memberProperties
+import kotlin.reflect.jvm.isAccessible
 import io.ktor.server.application.install as installServer
 
 val jsonConfig = Json {
@@ -38,20 +44,25 @@ typealias PasswordString = String
 typealias TokenString = String
 
 @Serializable
-data class User(
+data class UserEntity(
     val email: String,
     val password: PasswordString,
-    var token: TokenString
+    var token: TokenString,
+    var clientIpAddressWhiteList: List<String> = listOf()
 )
 
 const val APPLICATION_PROPERTIES_FILE = "./application.properties"
 
 @Serializable
 data class ApplicationProperties(
-    val pepper: String = "ooga-booga"
+    val pepper: String = "ooga-booga",
+    val databaseBaseUrl: String = "http://localhost:3000"
 )
 
 fun Application.module() {
+
+    ////////////////////////////////
+    // SETUP APPLICATION PROPERTIES
 
     // load application.properties
     val applicationProperties = File(APPLICATION_PROPERTIES_FILE).inputStream()
@@ -72,13 +83,12 @@ fun Application.module() {
     installServer(Compression) {
         gzip()
     }
-
     installServer(ContentNegotiationServer) {
         json(jsonConfig)
     }
 
-
-    // setup ktor client
+    ///////////////////////////////////////////////
+    // SETUP KTOR CLIENT
     val client = HttpClient(OkHttp) {
         install(Logging) {
             logger = Logger.DEFAULT
@@ -106,12 +116,11 @@ fun Application.module() {
     // SETUP AUTHENTICATION
 
     val passwordService = ArgonPasswordService(
-        pepper = applicationConfig.pepper
+        pepper = applicationConfig.pepper // pepper is used to make the password hash unique
     )
-    val usersDb = mutableMapOf<EmailString, User>()
+    val usersDb = mutableMapOf<EmailString, UserEntity>()
 
-    // Save the users to the resources json file
-    fun saveUsers() {
+    fun saveUsersDbToDisk() {
         File("usersDB.json").writeText(
             jsonConfig.encodeToString(
                 usersDb.values.toList()
@@ -120,36 +129,97 @@ fun Application.module() {
     }
 
     // Load the users from the resources json file
-    fun loadUsers() {
+    fun loadUsersDbFromDisk() {
         if (!File("usersDB.json").exists()) {
             File("usersDB.json").writeText("")
         }
 
         val userDBJson = File("usersDB.json").readText()
         if (userDBJson.isNotEmpty()) {
-            val users = jsonConfig.decodeFromString<List<User>>(userDBJson)
+            val users = jsonConfig.decodeFromString<List<UserEntity>>(userDBJson)
             for (user in users) {
                 usersDb[user.email] = user
             }
         }
     }
 
-    loadUsers()
+    loadUsersDbFromDisk()
 
     // setup tokenLookup
-    val tokenLookup = mutableMapOf<TokenString, EmailString>()
+    val emailToTokenMap = mutableMapOf<TokenString, EmailString>()
     for (user in usersDb.values) {
-        tokenLookup[user.token] = user.email
+        emailToTokenMap[user.token] = user.email
     }
 
     installServer(Authentication) {
+
+        // Note: tokens and client IP address can be passed in the header or in a cookie
         bearer("auth-bearer") {
             realm = "Access to the '/api' path"
             authenticate { tokenCredential ->
 
-                val user = tokenLookup[tokenCredential.token]
-                if (user != null) {
-                    UserIdPrincipal(user)
+                // Doesnt seem to work. Always returns same values. (security issue?)
+                fun getIpFromRequest(): String {
+                    val context = this.request.call
+
+                    this.request.local
+
+                    val f =  context::class.memberProperties.find { it.name == "engineCall" }
+                    f?.let {
+                        f.isAccessible = true
+                        val w = f.getter.call(context) as NettyApplicationCall
+                        val ip : SocketAddress? = w.request.context.pipeline().channel().remoteAddress()
+
+                        // seems to always be 0.0.0.0.:<random_port>
+                        return ip.toString()
+                    }
+
+                    val ip = context.request.header("X-Forwarded-For")
+                    return if (ip != null) {
+                        ip.toString()
+                    } else {
+                        context.request.local.remoteHost
+                    }
+                }
+
+                val ip1 = getIpFromRequest()
+                println("ip1: $ip1")
+
+                // Check the client IP address is in the whitelist for this user
+                val clientIpAddress = this.request.headers["X-client-ip-address"]
+                    ?: this.request.cookies["clientIpAddress"]
+                    ?: "unknown client ip address"
+
+                // Auth Token can be passed in the header or in a cookie
+                if(tokenCredential.token.isEmpty() && this.request.cookies["authenticationToken"] == null) {
+                    this.response.status(HttpStatusCode.Unauthorized)
+                    this.response.header("Location", "/login")
+                    return@authenticate null
+                }
+                val authenticationToken =
+                    if (tokenCredential.token.isNotBlank())
+                        tokenCredential.token
+                    else
+                        this.request.cookies["authenticationToken"]
+
+                val userEmail = emailToTokenMap[authenticationToken]
+                if (userEmail != null) {
+
+                    val userEntity = usersDb[userEmail]
+                    userEntity?.let { user ->
+                        if (user.clientIpAddressWhiteList.contains(clientIpAddress)) {
+                            UserIdPrincipal(userEmail)
+                        } else {
+
+                            println("User $userEmail attempted to access the API from an " +
+                                    "unauthorized IP address: $clientIpAddress")
+
+                            // attempt redirect to login page
+                            this.response.status(HttpStatusCode.Unauthorized)
+                            this.response.header("Location", "/login")
+                            null
+                        }
+                    }
                 } else {
                     null
                 }
@@ -174,23 +244,32 @@ fun Application.module() {
                 val params = jsonConfig.decodeFromString<Map<String, String>>(body)
                 val username = params["email"]
                 val password = params["password"]
+                var clientIpAddress = params["clientIpAddress"]
 
-                if (username != null && password != null) {
+                if (
+                    username != null
+                    && password != null
+                    && clientIpAddress != null
+                ) {
                     usersDb[username] ?: run {
 
                         val passwordHash = passwordService.getSaltedPepperedPasswordHash(password)
-                        usersDb[username] = User(username, passwordHash, "")
-
                         val token = UUID.randomUUID().toString()
-                        usersDb[username]?.token = token
+                        usersDb[username] = UserEntity(username, passwordHash, token)
+                        usersDb[username]?.clientIpAddressWhiteList = listOf(clientIpAddress)
 
-                        saveUsers()
+                        saveUsersDbToDisk()
 
-                        call.respondText(jsonConfig.encodeToString(mapOf("token" to token)))
+                        call.respondText(jsonConfig.encodeToString(
+                            mapOf(
+                                "token" to token,
+                                "clientIpAddress" to clientIpAddress,
+                            )
+                        ))
                         return@post
                     }
 
-                    val error = mapOf("error" to "User already exists")
+                    val error = mapOf("error" to "UserEntity already exists")
                     call.respondText(
                         jsonConfig.encodeToString(error),
                         status = HttpStatusCode.Conflict
@@ -219,8 +298,9 @@ fun Application.module() {
                 val params = jsonConfig.decodeFromString<Map<String, String>>(body)
                 val email = params["email"]
                 val password = params["password"]
+                var clientIpAddress = params["clientIpAddress"]
 
-                if (email != null && password != null) {
+                if (email != null && password != null && clientIpAddress != null) {
                     // check if the user exists
                     if (!usersDb.containsKey(email)) {
                         val error = mapOf("error" to "User does not exist")
@@ -243,10 +323,29 @@ fun Application.module() {
                         return@post
                     }
 
+                    // Add the client ip address to the user if it doesn't already exist
+                    if (!user.clientIpAddressWhiteList.contains(clientIpAddress)) {
+                        val newClientIpWhitelistAddresses = user.clientIpAddressWhiteList.toMutableList()
+                        newClientIpWhitelistAddresses.add(clientIpAddress)
+                        user.clientIpAddressWhiteList = newClientIpWhitelistAddresses
+
+                        saveUsersDbToDisk()
+                    }
+
+                    // generate a new token
                     val token = UUID.randomUUID().toString()
+                    emailToTokenMap[token] = email
+
+                    // Update the token in the userDb
                     usersDb[email]?.token = token
-                    tokenLookup[token] = email
-                    call.respondText(jsonConfig.encodeToString(mapOf("token" to token)))
+                    saveUsersDbToDisk()
+
+                    call.respondText(jsonConfig.encodeToString(
+                        mapOf(
+                            "token" to token,
+                            "clientIpAddress" to clientIpAddress,
+                        )
+                    ))
                     return@post
                 }
 
@@ -270,12 +369,18 @@ fun Application.module() {
                 val params = jsonConfig.decodeFromString<Map<String, String>>(body)
                 val token = params["token"]
 
+                println("token: $token, body: $body, params: $params")
+
                 token?.let {
-                    val userEmail = tokenLookup[token]
+                    println("token: $token")
+
+                    val userEmail = emailToTokenMap[token]
                     userEmail?.let {
                         usersDb[userEmail]?.token = ""
-                        tokenLookup.remove(token)
-                        saveUsers()
+                        emailToTokenMap.remove(token)
+                        saveUsersDbToDisk()
+
+//                        clearCookies()
 
                         call.respondText(jsonConfig.encodeToString(mapOf("success" to true)))
                         return@post
@@ -303,13 +408,17 @@ fun Application.module() {
             }
         }
 
-        get("/api/todos") {
+        // api routes are protected by authentication
+        authenticate("auth-bearer") {
 
-            // make call to api
-            val response = client.get("http://localhost:3000/todos")
-            if (response.status.value == 200) {
-                try {
-                    val todos = jsonConfig.decodeFromString<TodoResponse>(response.body())
+            get("/api/todos") {
+                // make call to local database server
+                val response = client.get(applicationConfig.databaseBaseUrl + "/todos")
+                if (response.status.value == 200) {
+                    try {
+                        val body = response.body<String>()
+                        println("body: $body")
+                        val todos = jsonConfig.decodeFromString<TodoResponse>(body)
 
 //                    // Simulate server edits of data
 //                    val todo = todos[0]
@@ -320,88 +429,89 @@ fun Application.module() {
 //                    call.response.apply {
 //                        headers.append("Content-Type", "application/json")
 //                    }
-                    call.respond(Json.encodeToString(todos))
-                    return@get
+                        call.respond(Json.encodeToString(todos))
+                        return@get
 
-                } catch (e: Exception) {
-                    val error = mapOf("error" to e.localizedMessage)
-                    call.respondText(
-                        jsonConfig.encodeToString(error),
-                        status = response.status
-                    )
-                    return@get
-                }
-            }
-
-            val error = mapOf("error" to response.body<String>().toString())
-            call.respondText(
-                jsonConfig.encodeToString(error),
-                status = response.status
-            )
-        }
-
-        // https://tahaben.com.ly/2022/04/uploading-image-using-android-ktor-client-to-ktor-server/
-        post("/api/upload-image") {
-            val multipart = call.receiveMultipart()
-            var tempFilename: String? = null
-            var name: String? = null
-            var originalFileName: String?
-            val uploadedImageList = ArrayList<String>()
-            try {
-                multipart.forEachPart { partData ->
-                    when (partData) {
-                        is PartData.FormItem -> {
-                            //to read additional parameters that we sent with the image
-                            if (partData.name == "name") {
-                                name = partData.value
-                            }
-                        }
-
-                        is PartData.FileItem -> {
-                            tempFilename = partData.save(Constants.USER_IMAGES_PATH)
-                            originalFileName = partData.originalFileName
-
-                            // Create slug for originalFileName
-                            val filename = originalFileName?.takeWhile { it != '.' }
-                            val fileExtension = originalFileName?.takeLastWhile { it != '.' }
-                            val fileNameSlug = Slugify.builder()
-                                .locale(Locale.US)
-                                .build()
-                                .slugify(filename)
-                            val newFilenameSlug = "$fileNameSlug.$fileExtension"
-
-                            // Move/Rename file
-                            val newFilePath = "${Constants.USER_IMAGES_PATH}${newFilenameSlug}"
-                            File("${Constants.USER_IMAGES_PATH}/$tempFilename").renameTo(File(newFilePath))
-
-                            uploadedImageList.add(newFilePath)
-                        }
-
-                        is PartData.BinaryItem -> Unit
-                        else -> {
-                            println("/upload-image Unknown PartData.???")
-                        }
+                    } catch (e: Exception) {
+                        val error = mapOf("error" to e.localizedMessage)
+                        call.respondText(
+                            jsonConfig.encodeToString(error),
+                            status = response.status
+                        )
+                        return@get
                     }
                 }
 
-                val newTodo = Todo(
-                    id = "1",
-                    name = name.toString(),
-                    status = ToDoStatus.pending,
-                    userInTodo = UserInTodo(
-                        name = name.toString(),
-                        files = uploadedImageList
-                    )
+                val error = mapOf("error" to response.body<String>().toString())
+                call.respondText(
+                    jsonConfig.encodeToString(error),
+                    status = response.status
                 )
-                val fileUploadResponse = FileUploadResponse(
-                    todo = newTodo,
-                    uploadedFiles = uploadedImageList
-                )
+            }
 
-                call.respond(HttpStatusCode.OK, Json.encodeToString(fileUploadResponse))
-            } catch (ex: Exception) {
-                File("${Constants.USER_IMAGES_PATH}/$tempFilename").delete()
-                call.respond(HttpStatusCode.InternalServerError, "Error")
+            // https://tahaben.com.ly/2022/04/uploading-image-using-android-ktor-client-to-ktor-server/
+            post("/api/upload-image") {
+                val multipart = call.receiveMultipart()
+                var tempFilename: String? = null
+                var name: String? = null
+                var originalFileName: String?
+                val uploadedImageList = ArrayList<String>()
+                try {
+                    multipart.forEachPart { partData ->
+                        when (partData) {
+                            is PartData.FormItem -> {
+                                //to read additional parameters that we sent with the image
+                                if (partData.name == "name") {
+                                    name = partData.value
+                                }
+                            }
+
+                            is PartData.FileItem -> {
+                                tempFilename = partData.save(Constants.USER_IMAGES_PATH)
+                                originalFileName = partData.originalFileName
+
+                                // Create slug for originalFileName
+                                val filename = originalFileName?.takeWhile { it != '.' }
+                                val fileExtension = originalFileName?.takeLastWhile { it != '.' }
+                                val fileNameSlug = Slugify.builder()
+                                    .locale(Locale.US)
+                                    .build()
+                                    .slugify(filename)
+                                val newFilenameSlug = "$fileNameSlug.$fileExtension"
+
+                                // Move/Rename file
+                                val newFilePath = "${Constants.USER_IMAGES_PATH}${newFilenameSlug}"
+                                File("${Constants.USER_IMAGES_PATH}/$tempFilename").renameTo(File(newFilePath))
+
+                                uploadedImageList.add(newFilePath)
+                            }
+
+                            is PartData.BinaryItem -> Unit
+                            else -> {
+                                println("/upload-image Unknown PartData.???")
+                            }
+                        }
+                    }
+
+                    val newTodo = Todo(
+                        id = "1",
+                        name = name.toString(),
+                        status = ToDoStatus.pending,
+                        userInTodo = UserInTodo(
+                            name = name.toString(),
+                            files = uploadedImageList
+                        )
+                    )
+                    val fileUploadResponse = FileUploadResponse(
+                        todo = newTodo,
+                        uploadedFiles = uploadedImageList
+                    )
+
+                    call.respond(HttpStatusCode.OK, Json.encodeToString(fileUploadResponse))
+                } catch (ex: Exception) {
+                    File("${Constants.USER_IMAGES_PATH}/$tempFilename").delete()
+                    call.respond(HttpStatusCode.InternalServerError, "Error")
+                }
             }
         }
 
@@ -409,6 +519,7 @@ fun Application.module() {
             defaultPage = "index.html"
             filesPath = "/Volumes/TRS-83/dev/JavascriptWebComponents"
         }
+
     }
 }
 
@@ -453,7 +564,7 @@ data class Todo(
     val id: String,
     val name: String,
     val status: ToDoStatus = ToDoStatus.pending,
-    @SerialName("userInTodo")
+    @SerialName("user")
     val userInTodo: UserInTodo? = null
 )
 
