@@ -77,6 +77,9 @@ dependencies {
 
     // For JWT's
     implementation("io.ktor:ktor-server-auth-jwt:$ktor_version")
+
+    // HOCON
+    implementation("io.github.config4k:config4k:0.5.0")
 }
 
 //tasks.test {
