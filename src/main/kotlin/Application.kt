@@ -16,6 +16,7 @@ import io.ktor.server.http.content.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.*
 import io.ktor.server.plugins.compression.*
+import io.ktor.server.plugins.forwardedheaders.*
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation as ContentNegotiationServer
 import io.ktor.server.request.*
 import io.ktor.server.response.*
@@ -24,11 +25,8 @@ import io.ktor.util.pipeline.*
 import kotlinx.serialization.*
 import kotlinx.serialization.json.Json
 import java.io.File
-import java.net.SocketAddress
 import java.util.*
 import java.util.concurrent.TimeUnit
-import kotlin.reflect.full.memberProperties
-import kotlin.reflect.jvm.isAccessible
 import io.ktor.server.application.install as installServer
 
 val jsonConfig = Json {
@@ -86,6 +84,7 @@ fun Application.module() {
     installServer(ContentNegotiationServer) {
         json(jsonConfig)
     }
+    installServer(ForwardedHeaders)
 
     ///////////////////////////////////////////////
     // SETUP KTOR CLIENT
@@ -158,40 +157,11 @@ fun Application.module() {
             realm = "Access to the '/api' path"
             authenticate { tokenCredential ->
 
-                // Doesnt seem to work. Always returns same values. (security issue?)
-                fun getIpFromRequest(): String {
-                    val context = this.request.call
-
-                    this.request.local
-
-                    val f =  context::class.memberProperties.find { it.name == "engineCall" }
-                    f?.let {
-                        f.isAccessible = true
-                        val w = f.getter.call(context) as NettyApplicationCall
-                        val ip : SocketAddress? = w.request.context.pipeline().channel().remoteAddress()
-
-                        // seems to always be 0.0.0.0.:<random_port>
-                        return ip.toString()
-                    }
-
-                    val ip = context.request.header("X-Forwarded-For")
-                    return if (ip != null) {
-                        ip.toString()
-                    } else {
-                        context.request.local.remoteHost
-                    }
-                }
-
-                val ip1 = getIpFromRequest()
-                println("ip1: $ip1")
-
                 // Check the client IP address is in the whitelist for this user
-                val clientIpAddress = this.request.headers["X-client-ip-address"]
-                    ?: this.request.cookies["clientIpAddress"]
-                    ?: "unknown client ip address"
+                val clientIpAddress = request.call.getClientIpAddress()
 
                 // Auth Token can be passed in the header or in a cookie
-                if(tokenCredential.token.isEmpty() && this.request.cookies["authenticationToken"] == null) {
+                if(tokenCredential.token.isEmpty() && this.request.cookies.rawCookies["authenticationToken"] == null) {
                     this.response.status(HttpStatusCode.Unauthorized)
                     this.response.header("Location", "/login")
                     return@authenticate null
@@ -201,6 +171,8 @@ fun Application.module() {
                         tokenCredential.token
                     else
                         this.request.cookies["authenticationToken"]
+
+                println("authenticationToken: $authenticationToken")
 
                 val userEmail = emailToTokenMap[authenticationToken]
                 if (userEmail != null) {
@@ -298,9 +270,11 @@ fun Application.module() {
                 val params = jsonConfig.decodeFromString<Map<String, String>>(body)
                 val email = params["email"]
                 val password = params["password"]
-                var clientIpAddress = params["clientIpAddress"]
+                var clientIpAddressFromParams = params["clientIpAddress"]
 
-                if (email != null && password != null && clientIpAddress != null) {
+                val clientIpAddressFromRequest = call.getClientIpAddress(clientIpAddressFromParams)
+
+                if (email != null && password != null) {
                     // check if the user exists
                     if (!usersDb.containsKey(email)) {
                         val error = mapOf("error" to "User does not exist")
@@ -324,9 +298,9 @@ fun Application.module() {
                     }
 
                     // Add the client ip address to the user if it doesn't already exist
-                    if (!user.clientIpAddressWhiteList.contains(clientIpAddress)) {
+                    if (!user.clientIpAddressWhiteList.contains(clientIpAddressFromRequest)) {
                         val newClientIpWhitelistAddresses = user.clientIpAddressWhiteList.toMutableList()
-                        newClientIpWhitelistAddresses.add(clientIpAddress)
+                        newClientIpWhitelistAddresses.add(clientIpAddressFromRequest)
                         user.clientIpAddressWhiteList = newClientIpWhitelistAddresses
 
                         saveUsersDbToDisk()
@@ -343,7 +317,7 @@ fun Application.module() {
                     call.respondText(jsonConfig.encodeToString(
                         mapOf(
                             "token" to token,
-                            "clientIpAddress" to clientIpAddress,
+                            "clientIpAddress" to clientIpAddressFromRequest,
                         )
                     ))
                     return@post
@@ -582,6 +556,24 @@ data class SuccessResponse(
 //data class TodoResponse(val todos: ArrayList<Todo>)
 
 typealias TodoResponse = ArrayList<Todo>
+
+fun ApplicationCall.getClientIpAddress(suggestedClientIpAddress: String? = null): String {
+    val call = this
+    val ipFromForwardedForHeader = call.request.header("X-Forwarded-For")
+    val ipFromCookies = call.request.cookies["clientIpAddress"]
+
+    return if (ipFromForwardedForHeader != null) {
+        ipFromForwardedForHeader.toString()
+    } else {
+        val originRemoteHost = call.request.origin.remoteHost
+        val originServerHost = call.request.origin.serverHost
+        val remoteHost = call.request.local.remoteHost
+        val serverHost = call.request.local.serverHost
+
+        ipFromCookies ?: suggestedClientIpAddress ?: remoteHost
+    }
+}
+
 
 //fun main() {
 //    embeddedServer(Netty, port = 8081) {

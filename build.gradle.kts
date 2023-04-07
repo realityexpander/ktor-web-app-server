@@ -2,6 +2,16 @@ val ktor_version: String by project
 val kotlin_version: String by project
 val logback_version: String by project
 
+// note: to run "watch" build (in a separate terminal):
+// ./gradlew -t build
+tasks.register("watch") {
+    // run the build with -t (continuous build) option and dont exit
+    doLast {
+        exec {
+            commandLine = listOf("./gradlew", "-t", "build")
+        }
+    }
+}
 
 plugins {
     application
@@ -61,6 +71,9 @@ dependencies {
 
     // For Argon2
     implementation("de.mkammerer:argon2-jvm:2.11")
+
+    // For Forwarding headers
+    implementation("io.ktor:ktor-server-forwarded-header:$ktor_version")
 }
 
 //tasks.test {
@@ -70,3 +83,5 @@ dependencies {
 //kotlin {
 //    jvmToolchain(8)
 //}
+
+
