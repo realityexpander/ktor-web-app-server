@@ -1,5 +1,7 @@
 package com.realityexpander
 
+import com.auth0.jwt.JWT
+import com.auth0.jwt.algorithms.Algorithm
 import com.github.slugify.Slugify
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -12,6 +14,7 @@ import io.ktor.http.content.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
+import io.ktor.server.auth.jwt.*
 import io.ktor.server.http.content.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.*
@@ -25,8 +28,10 @@ import io.ktor.util.pipeline.*
 import kotlinx.serialization.*
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
+import javax.naming.AuthenticationException
 import io.ktor.server.application.install as installServer
 
 val jsonConfig = Json {
@@ -40,12 +45,14 @@ val jsonConfig = Json {
 typealias EmailString = String
 typealias PasswordString = String
 typealias TokenString = String
+typealias JWTString = String
 
 @Serializable
 data class UserEntity(
     val email: String,
     val password: PasswordString,
     var token: TokenString,
+    var jwtToken: JWTString? = null,
     var clientIpAddressWhiteList: List<String> = listOf()
 )
 
@@ -144,21 +151,67 @@ fun Application.module() {
 
     loadUsersDbFromDisk()
 
-    // setup tokenLookup
+    // setup email to token Lookup table
     val emailToTokenMap = mutableMapOf<TokenString, EmailString>()
     for (user in usersDb.values) {
         emailToTokenMap[user.token] = user.email
     }
 
+    // Setup JWT (environment is from the 'resources/application.conf' file)
+    val secret = environment.config.config("ktor").property("jwt.secret").getString()
+    val issuer = environment.config.config("ktor").property("jwt.issuer").getString()
+    val audience = environment.config.config("ktor").property("jwt.audience").getString()
+    val apiRealm = environment.config.config("ktor").property("jwt.realm").getString()
+
     installServer(Authentication) {
 
-        // Note: tokens and client IP address can be passed in the header or in a cookie
+        jwt("auth-jwt") {
+            realm = apiRealm
+
+//            skipWhen { call ->
+//                call.request.path().startsWith("/api")
+//            }
+
+            verifier(JWT
+                .require(Algorithm.HMAC256(secret))
+                .withAudience(audience)
+                .withIssuer(issuer)
+                .build())
+
+            validate { credential ->
+                if (credential.payload.getClaim("email").asString().isNullOrBlank()) return@validate null
+                if (credential.payload.getClaim("clientIpAddress").asString().isNullOrBlank()) return@validate null
+                if (credential.payload.getClaim("exp").asInt() < (System.currentTimeMillis() / 1000).toInt()) return@validate null
+
+                val email = credential.payload.getClaim("email").asString()
+                val clientIpAddress = credential.payload.getClaim("clientIpAddress").asString()
+
+                val user = usersDb[email]
+                if (user != null && user.clientIpAddressWhiteList.contains(clientIpAddress)) {
+                    JWTPrincipal(credential.payload)
+                } else {
+                    null
+                }
+            }
+
+            challenge { defaultScheme, realm ->
+                println("challenge: $defaultScheme, $realm")
+                //call.respond(HttpStatusCode.Unauthorized, "Token is not valid or has expired")
+                val error = mapOf("error" to "Token is not valid or has expired")
+                call.respondText(
+                    jsonConfig.encodeToString(error),
+                    status = HttpStatusCode.Unauthorized
+                )
+            }
+        }
+
+        // Note: token and clientIPAddress can be passed in the header or in a cookie (not JWT)
         bearer("auth-bearer") {
             realm = "Access to the '/api' path"
             authenticate { tokenCredential ->
 
                 // Check the client IP address is in the whitelist for this user
-                val clientIpAddress = request.call.getClientIpAddress()
+                val clientIpAddress = request.call.getClientIpAddressFromRequest()
 
                 // Auth Token can be passed in the header or in a cookie
                 if(tokenCredential.token.isEmpty() && this.request.cookies.rawCookies["authenticationToken"] == null) {
@@ -171,8 +224,6 @@ fun Application.module() {
                         tokenCredential.token
                     else
                         this.request.cookies["authenticationToken"]
-
-                println("authenticationToken: $authenticationToken")
 
                 val userEmail = emailToTokenMap[authenticationToken]
                 if (userEmail != null) {
@@ -214,21 +265,33 @@ fun Application.module() {
             try {
                 val body = call.receiveText()
                 val params = jsonConfig.decodeFromString<Map<String, String>>(body)
-                val username = params["email"]
+                val email = params["email"]
                 val password = params["password"]
-                var clientIpAddress = params["clientIpAddress"]
+                var clientIpAddressFromParams = params["clientIpAddress"]
+                val clientIpAddress =
+                    call.getClientIpAddressFromRequest(suggestedClientIpAddress = clientIpAddressFromParams)
 
                 if (
-                    username != null
+                    email != null
                     && password != null
-                    && clientIpAddress != null
                 ) {
-                    usersDb[username] ?: run {
+                    usersDb[email] ?: run {
 
                         val passwordHash = passwordService.getSaltedPepperedPasswordHash(password)
                         val token = UUID.randomUUID().toString()
-                        usersDb[username] = UserEntity(username, passwordHash, token)
-                        usersDb[username]?.clientIpAddressWhiteList = listOf(clientIpAddress)
+                        usersDb[email] = UserEntity(email, passwordHash, token)
+                        usersDb[email]?.clientIpAddressWhiteList = listOf(clientIpAddress)
+
+                        // Generate JWT token for this user
+                        val jwtToken = JWT.create()
+                            .withSubject("Authentication")
+                            .withIssuer(issuer)
+                            .withAudience(audience)
+                            .withClaim("email", email)
+                            .withClaim("clientIpAddress", clientIpAddress)
+                            .withExpiresAt(Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24 * 7)) // 7 days
+                            .sign(Algorithm.HMAC256(secret))
+                        usersDb[email]?.jwtToken = jwtToken
 
                         saveUsersDbToDisk()
 
@@ -236,6 +299,7 @@ fun Application.module() {
                             mapOf(
                                 "token" to token,
                                 "clientIpAddress" to clientIpAddress,
+                                "jwtToken" to jwtToken
                             )
                         ))
                         return@post
@@ -271,8 +335,7 @@ fun Application.module() {
                 val email = params["email"]
                 val password = params["password"]
                 var clientIpAddressFromParams = params["clientIpAddress"]
-
-                val clientIpAddressFromRequest = call.getClientIpAddress(clientIpAddressFromParams)
+                val clientIpAddress = call.getClientIpAddressFromRequest(clientIpAddressFromParams)
 
                 if (email != null && password != null) {
                     // check if the user exists
@@ -297,27 +360,41 @@ fun Application.module() {
                         return@post
                     }
 
-                    // Add the client ip address to the user if it doesn't already exist
-                    if (!user.clientIpAddressWhiteList.contains(clientIpAddressFromRequest)) {
+                    // Add the client ip address to the user's ip address white list (if it doesn't already exist)
+                    // Note: This is to prevent a potential malicious attacker from using the same token from a different IP address.
+                    // (that they havent yet authenticated from.)
+                    // This may be a good place to add a captcha or send confirmation email to prevent brute force attacks.
+                    if (!user.clientIpAddressWhiteList.contains(clientIpAddress)) {
                         val newClientIpWhitelistAddresses = user.clientIpAddressWhiteList.toMutableList()
-                        newClientIpWhitelistAddresses.add(clientIpAddressFromRequest)
+                        newClientIpWhitelistAddresses.add(clientIpAddress)
                         user.clientIpAddressWhiteList = newClientIpWhitelistAddresses
 
                         saveUsersDbToDisk()
                     }
 
-                    // generate a new token
+                    // Generate a new session token
                     val token = UUID.randomUUID().toString()
                     emailToTokenMap[token] = email
-
-                    // Update the token in the userDb
                     usersDb[email]?.token = token
+
+                    // Generate JWT token for this user
+                    val jwtToken = JWT.create()
+                        .withSubject("Authentication")
+                        .withIssuer(issuer)
+                        .withAudience(audience)
+                        .withClaim("email", email)
+                        .withClaim("clientIpAddress", clientIpAddress)
+                        .withExpiresAt(Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24 * 7)) // 7 days
+                        .sign(Algorithm.HMAC256(secret))
+                    usersDb[email]?.jwtToken = jwtToken
+
                     saveUsersDbToDisk()
 
                     call.respondText(jsonConfig.encodeToString(
                         mapOf(
                             "token" to token,
-                            "clientIpAddress" to clientIpAddressFromRequest,
+                            "clientIpAddress" to clientIpAddress,
+                            "jwtToken" to jwtToken
                         )
                     ))
                     return@post
@@ -351,10 +428,10 @@ fun Application.module() {
                     val userEmail = emailToTokenMap[token]
                     userEmail?.let {
                         usersDb[userEmail]?.token = ""
+                        usersDb[userEmail]?.jwtToken = ""
                         emailToTokenMap.remove(token)
-                        saveUsersDbToDisk()
 
-//                        clearCookies()
+                        saveUsersDbToDisk()
 
                         call.respondText(jsonConfig.encodeToString(mapOf("success" to true)))
                         return@post
@@ -489,6 +566,44 @@ fun Application.module() {
             }
         }
 
+        authenticate("auth-jwt") {
+
+            get("/api/hello") {
+                try {
+                    val principal =
+                        call.principal<JWTPrincipal>()
+                            ?: throw AuthenticationException("Missing JWTPrincipal")
+                    val username = principal.payload.getClaim("email").asString()
+                    val expiresAt = principal.expiresAt?.time?.minus(System.currentTimeMillis())
+                    val clientIpAddress = principal.payload.getClaim("clientIpAddress").asString()
+
+                    // convert expiresAt to date
+                    val date = Date(principal.expiresAt?.time ?: 0)
+                    val formatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                    val expiresAtDate = formatter.format(date)
+                    println("expiresAtDate: $expiresAtDate")
+
+                    call.respondText(
+                        jsonConfig.encodeToString(
+                            mapOf(
+                                "success" to "Hello, $username! " +
+                                        "Token will expire at $expiresAtDate. " +
+                                        "Client IP Address: $clientIpAddress",
+                            )
+                        )
+                    )
+                } catch (e: Exception) {
+                    call.respondText(
+                        jsonConfig.encodeToString(
+                            mapOf(
+                                "error" to e.localizedMessage,
+                            )
+                        )
+                    )
+                }
+            }
+        }
+
         singlePageApplication {
             defaultPage = "index.html"
             filesPath = "/Volumes/TRS-83/dev/JavascriptWebComponents"
@@ -557,7 +672,7 @@ data class SuccessResponse(
 
 typealias TodoResponse = ArrayList<Todo>
 
-fun ApplicationCall.getClientIpAddress(suggestedClientIpAddress: String? = null): String {
+fun ApplicationCall.getClientIpAddressFromRequest(suggestedClientIpAddress: String? = null): String {
     val call = this
     val ipFromForwardedForHeader = call.request.header("X-Forwarded-For")
     val ipFromCookies = call.request.cookies["clientIpAddress"]
@@ -570,7 +685,13 @@ fun ApplicationCall.getClientIpAddress(suggestedClientIpAddress: String? = null)
         val remoteHost = call.request.local.remoteHost
         val serverHost = call.request.local.serverHost
 
-        ipFromCookies ?: suggestedClientIpAddress ?: remoteHost
+        val resultIp = ipFromCookies ?: suggestedClientIpAddress ?: remoteHost
+
+        if (resultIp != "localhost") {
+            resultIp
+        } else {
+            UUID.randomUUID().toString() // return a UUID instead of localhost, because `localhost` is not a valid IP.
+        }
     }
 }
 

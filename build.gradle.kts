@@ -69,11 +69,14 @@ dependencies {
     // For HTML
     implementation("io.ktor:ktor-server-html-builder:$ktor_version")
 
-    // For Argon2
+    // For Argon2 - password hashing & salting
     implementation("de.mkammerer:argon2-jvm:2.11")
 
     // For Forwarding headers
     implementation("io.ktor:ktor-server-forwarded-header:$ktor_version")
+
+    // For JWT's
+    implementation("io.ktor:ktor-server-auth-jwt:$ktor_version")
 }
 
 //tasks.test {
