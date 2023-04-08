@@ -4,6 +4,9 @@ import com.typesafe.config.ConfigFactory
 import io.github.config4k.getValue
 import java.io.File
 
+// https://github.com/lightbend/config/blob/master/README.md
+// https://config4k.github.io/config4k/delegated-properties
+
 fun main() {
     val config = ConfigFactory.parseString(
         """

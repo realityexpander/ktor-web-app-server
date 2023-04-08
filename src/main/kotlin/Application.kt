@@ -25,14 +25,21 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.util.pipeline.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.*
 import kotlinx.serialization.json.Json
+import org.apache.commons.mail.DefaultAuthenticator
+import org.apache.commons.mail.SimpleEmail
+import org.slf4j.LoggerFactory
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 import javax.naming.AuthenticationException
 import io.ktor.server.application.install as installServer
+
+val jwtLogger: ch.qos.logback.classic.Logger = LoggerFactory.getLogger("KTOR-JWT-Auth") as ch.qos.logback.classic.Logger
 
 val jsonConfig = Json {
     prettyPrint = true
@@ -49,11 +56,13 @@ typealias JWTString = String
 
 @Serializable
 data class UserEntity(
+    val id: String,
     val email: String,
     val password: PasswordString,
     var token: TokenString,
     var jwtToken: JWTString? = null,
-    var clientIpAddressWhiteList: List<String> = listOf()
+    var clientIpAddressWhiteList: List<String> = listOf(),
+    var passwordResetToken: String? = null,
 )
 
 const val APPLICATION_PROPERTIES_FILE = "./application.properties"
@@ -61,29 +70,37 @@ const val APPLICATION_PROPERTIES_FILE = "./application.properties"
 @Serializable
 data class ApplicationProperties(
     val pepper: String = "ooga-booga",
-    val databaseBaseUrl: String = "http://localhost:3000"
+    val databaseBaseUrl: String = "http://localhost:3000",
+    val emailSendinblueApiKey: String? = null,
+    val emailSendinblueFromEmail: String? = null,
+    val emailSendinblueFromName: String? = null,
 )
 
-fun Application.module() {
+////////////////////////////////
+// SETUP APPLICATION PROPERTIES
 
-    ////////////////////////////////
-    // SETUP APPLICATION PROPERTIES
+// load application.properties
+val applicationProperties = File(APPLICATION_PROPERTIES_FILE).inputStream()
+val applicationConfig =
+    try {
+        Properties().apply {
+            load(applicationProperties)
+        }.let {
+            ApplicationProperties(
+                pepper = it.getProperty("pepper"),
+                databaseBaseUrl = it.getProperty("databaseBaseUrl"),
+                emailSendinblueApiKey = it.getProperty("emailSendinblueApiKey"),
+                emailSendinblueFromEmail = it.getProperty("emailSendinblueFromEmail"),
+                emailSendinblueFromName = it.getProperty("emailSendinblueFromName")
 
-    // load application.properties
-    val applicationProperties = File(APPLICATION_PROPERTIES_FILE).inputStream()
-    val applicationConfig =
-        try {
-            Properties().apply {
-                load(applicationProperties)
-            }.let {
-                ApplicationProperties(
-                    pepper = it.getProperty("pepper")
-                )
-            }
-        } catch (e: Exception) {
-            println("Error loading application properties: $e")
-            ApplicationProperties()
+            )
         }
+    } catch (e: Exception) {
+        println("Error loading application properties: $e")
+        ApplicationProperties()
+    }
+
+fun Application.module() {
 
     installServer(Compression) {
         gzip()
@@ -459,6 +476,32 @@ fun Application.module() {
             }
         }
 
+        get("/send-reset-password-email") {
+            val emailAddress = call.request.queryParameters["emailAddress"]
+
+            if(emailAddress == null) {
+                call.respondText("Email address is required")
+                return@get
+            }
+
+            // generate a password reset token
+            val passwordResetToken = UUID.randomUUID().toString()
+            // save the password reset token to the user's account
+            val user = usersDb[emailAddress]
+            user?.let {
+                user.passwordResetToken = passwordResetToken
+                saveUsersDbToDisk()
+            }
+
+            val res = sendPasswordResetEmail(emailAddress = emailAddress, passwordResetToken)
+
+            if(res) {
+                call.respondText("Email sent")
+            } else {
+                call.respondText("Email failed to send")
+            }
+        }
+
         // api routes are protected by authentication
         authenticate("auth-bearer") {
 
@@ -690,10 +733,108 @@ fun ApplicationCall.getClientIpAddressFromRequest(suggestedClientIpAddress: Stri
         if (resultIp != "localhost") {
             resultIp
         } else {
-            UUID.randomUUID().toString() // return a UUID instead of localhost, because `localhost` is not a valid IP.
+            UUID.randomUUID().toString() // return a UUID instead of localhost, because `localhost` is not a valid IP. This will be the unique ID for the Application instance.
         }
     }
 }
+
+suspend fun sendPasswordResetEmail(emailAddress: String, passwordResetToken: String = ""): Boolean {
+    jwtLogger.info("Sending reset email with SendInBlue to $emailAddress")
+
+    val message = """
+    <html>
+        <body>
+            <h1>Reset Password</h1>
+            <p>Someone requested that you reset your password. If this was not you, please ignore this email.</p>
+            <br>
+            <br>
+            <a href="http://localhost:8081/reset-password/${passwordResetToken}">Click here to reset your password</a>
+        </body>
+    </html>
+        
+    """.trimIndent()
+
+    return sendEmail(
+        message,
+        emailAddress,
+        "Reset your password"
+    )
+}
+
+suspend fun sendEmail(
+    message: String,
+    emailAddress: String,
+    subject: String
+): Boolean {
+    return sendSimpleEmailViaSendInBlue(message, message, emailAddress)
+}
+
+suspend fun sendSimpleEmailViaSendInBlue(
+    message: String,
+    emailAddress: String,
+    subject: String
+): Boolean {
+    jwtLogger.info("Sending simple email with SendInBlue to $emailAddress")
+
+    // Dashboard: https://app.sendinblue.com/settings
+    // uses SendInBlue - google account realityexpanderdev@gmail.com
+
+    return withContext(Dispatchers.IO) {
+        try {
+            val email = SimpleEmail()
+            email.hostName = "smtp-relay.sendinblue.com"
+//            email.setSmtpPort(587)
+//            email.setDebug(true)
+            email.setAuthenticator(DefaultAuthenticator(applicationConfig.emailSendinblueFromName, applicationConfig.emailSendinblueApiKey))
+            email.isSSLOnConnect = true
+            email.setFrom(applicationConfig.emailSendinblueFromEmail, applicationConfig.emailSendinblueFromName)
+            email.subject = subject
+            email.setMsg(message)
+            email.addTo(emailAddress)
+            email.send()
+
+            return@withContext true
+        } catch (e: Exception) {
+            jwtLogger.error("Error sending email: $e")
+            return@withContext false
+        }
+    }
+}
+
+//suspend fun sendSimpleEmailNetcore(emailAddress: String): Boolean {
+//    jwtLogger.info("Sending simple email with NetCore to $emailAddress")
+//
+//    // uses Netcorecloud.com - google account realityexpanderdev@gmail.com, Zapper2041$$
+//    // Dashboard: https://email.netcorecloud.com/app/settings/sandbox
+//
+//    return withContext(Dispatchers.IO) {
+//        try {
+//            val email = SimpleEmail()
+//            email.hostName = "smtp.netcorecloud.net"
+//            email.isStartTLSEnabled = true
+//            email.isSSLOnConnect = true
+//            email.isStartTLSRequired = true
+//            email.setSmtpPort(587)
+//            email.setDebug(true)
+//            email.setAuthenticator(
+//                DefaultAuthenticator(
+//                    "realityexpanderdev",
+//                    "realityexpanderdev_ee2912c85b380a09ef7f3edfe99b4a61"
+//                )
+//            )
+//            email.setFrom("realityexpanderdev@pepisandbox.com", "Reality Expander Dev")
+//            email.subject = "Test email"
+//            email.setMsg("YO YO YO YOU GOT AN EMAIL")
+//            email.addTo(emailAddress)
+//            email.send()
+//
+//            return@withContext true
+//        } catch (e: Exception) {
+//            jwtLogger.error("Error sending email: $e")
+//            return@withContext false
+//        }
+//    }
+//}
 
 
 //fun main() {

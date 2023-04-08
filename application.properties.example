@@ -1,3 +1,6 @@
 pepper=<YOUR_AUTHENTICATION_PEPPER_STRING_HERE>
 jwt_secret=<YOUR_JWT_SECRET_HERE>
 databaseBaseUrl=http://localhost:3000
+emailSendinblueApiKey=<YOUR_SENDINBLUE_API_KEY_HERE>
+emailSendinblueFromEmail=<YOUR_SENDINBLUE_FROM_EMAIL_HERE>
+emailSendinblueFromName=Web-App Playground - Reset Password

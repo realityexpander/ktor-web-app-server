@@ -80,6 +80,9 @@ dependencies {
 
     // HOCON
     implementation("io.github.config4k:config4k:0.5.0")
+
+    // Simple email sender
+    implementation("org.apache.commons:commons-email:1.5")
 }
 
 //tasks.test {
