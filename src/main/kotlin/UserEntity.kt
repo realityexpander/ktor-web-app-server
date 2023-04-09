@@ -68,12 +68,13 @@ class UserService(
         return usersDb[emailToIdLookup[email]]
     }
 
-    fun getUserByToken(authToken: TokenString?): UserEntity? {
+    fun getUserByAuthToken(authToken: TokenString?): UserEntity? {
         if (authToken == null) return null
         return usersDb[authTokenToIdLookup[authToken]]
     }
 
-    fun getUserByAuthJwtToken(authJwtToken: JwtTokenString): UserEntity? {
+    fun getUserByAuthJwtToken(authJwtToken: JwtTokenString?): UserEntity? {
+        if (authJwtToken == null) return null
         return usersDb[authJwtTokenToIdLookup[authJwtToken]]
     }
 
@@ -100,17 +101,22 @@ class UserService(
         saveUsersDbToDisk()
     }
 
+    suspend fun deleteUserById(id: IdString) {
+        usersDb.remove(id)
+        saveUsersDbToDisk()
+    }
+
     suspend fun deleteUserByEmail(email: EmailString) {
         usersDb.remove(emailToIdLookup[email])
         saveUsersDbToDisk()
     }
 
-    suspend fun deleteUserByToken(authToken: TokenString) {
+    suspend fun deleteUserByAuthToken(authToken: TokenString) {
         usersDb.remove(authTokenToIdLookup[authToken])
         saveUsersDbToDisk()
     }
 
-    suspend fun deleteUserByJwtToken(authJwtToken: JwtTokenString) {
+    suspend fun deleteUserByAuthJwtToken(authJwtToken: JwtTokenString) {
         usersDb.remove(authJwtTokenToIdLookup[authJwtToken])
         saveUsersDbToDisk()
     }

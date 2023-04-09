@@ -208,31 +208,24 @@ fun Application.module() {
                     else
                         this.request.cookies["authenticationToken"]
 
-                val userEmail = userService.getUserByToken(authenticationToken)?.email
-                if (userEmail != null) {
+                val user = userService.getUserByAuthToken(authenticationToken)
+                user?.let {
+                    if (user.clientIpAddressWhiteList.contains(clientIpAddress)) {
+                        UserIdPrincipal(user.email)
+                    } else {
 
-//                    val userEntity = usersDb[userEmail]
-                    val userEntity = userService.getUserByEmail(userEmail)
-                    userEntity?.let { user ->
-                        if (user.clientIpAddressWhiteList.contains(clientIpAddress)) {
-                            UserIdPrincipal(userEmail)
-                        } else {
+                        ktorLogger.warn(
+                            "User $user attempted to access the API from an " +
+                                    "unauthorized IP address: $clientIpAddress"
+                        )
 
-                            ktorLogger.warn(
-                                "User $userEmail attempted to access the API from an " +
-                                        "unauthorized IP address: $clientIpAddress"
-                            )
+                        // todo send email to admin
 
-                            // todo send email to admin
-
-                            // attempt redirect to login page
-                            this.response.status(HttpStatusCode.Unauthorized)
-                            this.response.header("Location", "/login")
-                            null
-                        }
+                        // attempt redirect to login page
+                        this.response.status(HttpStatusCode.Unauthorized)
+                        this.response.header("Location", "/login")
+                        null
                     }
-                } else {
-                    null
                 }
             }
         }
