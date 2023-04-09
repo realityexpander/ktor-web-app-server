@@ -26,13 +26,14 @@ const val USERS_DB_FILENAME_DEFAULT = "usersDB.json"
 class UserService(
     private val usersDBFilename: String = USERS_DB_FILENAME_DEFAULT,
 ) {
-    private val usersDb = mutableMapOf<EmailString, UserEntity>()
-    private val authTokenToEmailLookup = mutableMapOf<TokenString, EmailString>()
-    private val authJwtTokenToEmailLookup = mutableMapOf<JwtTokenString, EmailString>()
+    private val usersDb = mutableMapOf<IdString, UserEntity>()
+    private val authTokenToIdLookup = mutableMapOf<TokenString, IdString>()
+    private val authJwtTokenToIdLookup = mutableMapOf<JwtTokenString, IdString>()
+    private val emailToIdLookup = mutableMapOf<EmailString, IdString>() // new
 
     init {
         if(!File(usersDBFilename).exists()
-            && !File("__usersDB.json").exists()) {
+            && !File("__$usersDBFilename").exists()) {
             ktorLogger.error("$usersDBFilename does not exist, creating DB...")
         }
 
@@ -60,21 +61,20 @@ class UserService(
     }
 
     fun getUserById(id: String): UserEntity? {
-        return usersDb.values.find { it.id == id }
+        return usersDb[id]
     }
 
     fun getUserByEmail(email: EmailString): UserEntity? {
-        return usersDb[email]
+        return usersDb[emailToIdLookup[email]]
     }
 
     fun getUserByToken(authToken: TokenString?): UserEntity? {
         if (authToken == null) return null
-        return usersDb[authTokenToEmailLookup[authToken]]
-        //return usersDb.values.find { it.authToken == token }
+        return usersDb[authTokenToIdLookup[authToken]]
     }
 
     fun getUserByAuthJwtToken(authJwtToken: JwtTokenString): UserEntity? {
-        return usersDb.values.find { it.authJwtToken == authJwtToken }
+        return usersDb[authJwtTokenToIdLookup[authJwtToken]]
     }
 
     fun getUserByPasswordResetToken(passwordResetToken: String): UserEntity? {
@@ -86,45 +86,43 @@ class UserService(
     }
 
     suspend fun addUser(user: UserEntity) {
-        usersDb[user.email] = user
+        usersDb[user.id] = user
         saveUsersDbToDisk()
     }
 
     suspend fun updateUser(user: UserEntity) {
-        usersDb[user.email] = user
+        usersDb[user.id] = user
         saveUsersDbToDisk()
     }
 
     suspend fun deleteUser(user: UserEntity) {
-        usersDb.remove(user.email)
+        usersDb.remove(user.id)
         saveUsersDbToDisk()
     }
 
     suspend fun deleteUserByEmail(email: EmailString) {
-        usersDb.remove(email)
+        usersDb.remove(emailToIdLookup[email])
         saveUsersDbToDisk()
     }
 
     suspend fun deleteUserByToken(authToken: TokenString) {
-        usersDb.remove(authTokenToEmailLookup[authToken])
-//        usersDb.remove(usersDb.values.find { it.authToken == token }?.email)
+        usersDb.remove(authTokenToIdLookup[authToken])
         saveUsersDbToDisk()
     }
 
     suspend fun deleteUserByJwtToken(authJwtToken: JwtTokenString) {
-        usersDb.remove(authJwtTokenToEmailLookup[authJwtToken])
-//        usersDb.remove(usersDb.values.find { it.authJwtToken == jwtToken }?.email)
+        usersDb.remove(authJwtTokenToIdLookup[authJwtToken])
         saveUsersDbToDisk()
     }
 
 
-    ///////////////////////// PRIVATE FUNCS /////////////////////////
+    ///////////////////////// PRIVATE FUNCTIONS /////////////////////////
 
-    // Load the users from the resources json file
+    // Load the users from the database json file
     private suspend fun loadUsersDbFromDisk() {
-//        if (!File(USERS_DB_FILENAME).exists()) {
-//            File(USERS_DB_FILENAME).writeText("")
-//        }
+        if (!File(usersDBFilename).exists() && !File("__$usersDBFilename").exists()) {
+            throw Exception("Database `$usersDBFilename` does not exist")
+        }
 
         pollIfFileExists(usersDBFilename)
 
@@ -192,19 +190,27 @@ class UserService(
     private fun updateLookupTables() {
         updateAuthTokenToEmailLookupTable()
         updateAuthJwtTokenToEmailLookupTable()
+        updateEmailToIdLookupTable()
     }
 
     private fun updateAuthTokenToEmailLookupTable() {
         // setup token to email Lookup table
         for (user in usersDb.values) {
-            authTokenToEmailLookup[user.authToken] = user.email
+            authTokenToIdLookup[user.authToken] = user.id
         }
     }
 
     private fun updateAuthJwtTokenToEmailLookupTable() {
         // setup auth JWT token to email Lookup table
         for (user in usersDb.values) {
-            authJwtTokenToEmailLookup[user.authJwtToken] = user.email
+            authJwtTokenToIdLookup[user.authJwtToken] = user.id
+        }
+    }
+
+    private fun updateEmailToIdLookupTable() {
+        // setup email to id Lookup table
+        for (user in usersDb.values) {
+            emailToIdLookup[user.email] = user.id
         }
     }
 
