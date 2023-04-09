@@ -224,6 +224,7 @@ fun Application.module() {
                         // attempt redirect to login page
                         this.response.status(HttpStatusCode.Unauthorized)
                         this.response.header("Location", "/login")
+
                         null
                     }
                 }

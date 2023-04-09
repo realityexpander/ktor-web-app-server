@@ -29,7 +29,7 @@ class UserService(
     private val usersDb = mutableMapOf<IdString, UserEntity>()
     private val authTokenToIdLookup = mutableMapOf<TokenString, IdString>()
     private val authJwtTokenToIdLookup = mutableMapOf<JwtTokenString, IdString>()
-    private val emailToIdLookup = mutableMapOf<EmailString, IdString>() // new
+    private val emailToIdLookup = mutableMapOf<EmailString, IdString>()
 
     init {
         if(!File(usersDBFilename).exists()
@@ -124,7 +124,6 @@ class UserService(
 
     ///////////////////////// PRIVATE FUNCTIONS /////////////////////////
 
-    // Load the users from the database json file
     private suspend fun loadUsersDbFromDisk() {
         if (!File(usersDBFilename).exists() && !File("__$usersDBFilename").exists()) {
             throw Exception("Database `$usersDBFilename` does not exist")
@@ -165,7 +164,6 @@ class UserService(
     private suspend fun pollIfFileExists(fileName: String) {
         var pollingAttempts = 0
         while (!File(fileName).exists()) {
-            //Thread.sleep(100)
             delay(100)
 
             pollingAttempts++;
@@ -200,21 +198,18 @@ class UserService(
     }
 
     private fun updateAuthTokenToEmailLookupTable() {
-        // setup token to email Lookup table
         for (user in usersDb.values) {
             authTokenToIdLookup[user.authToken] = user.id
         }
     }
 
     private fun updateAuthJwtTokenToEmailLookupTable() {
-        // setup auth JWT token to email Lookup table
         for (user in usersDb.values) {
             authJwtTokenToIdLookup[user.authJwtToken] = user.id
         }
     }
 
     private fun updateEmailToIdLookupTable() {
-        // setup email to id Lookup table
         for (user in usersDb.values) {
             emailToIdLookup[user.email] = user.id
         }
