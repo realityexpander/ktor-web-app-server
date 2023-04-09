@@ -466,7 +466,7 @@ fun Application.module() {
             }
         }
 
-        get("/send-reset-password-email") {
+        get("/api/send-password-reset-email") {
             val emailAddress = call.request.queryParameters["emailAddress"]
             println("emailAddress: $emailAddress")
 
