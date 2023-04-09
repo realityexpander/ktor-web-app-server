@@ -74,6 +74,7 @@ data class ApplicationProperties(
     val emailSendinblueApiKey: String? = null,
     val emailSendinblueFromEmail: String? = null,
     val emailSendinblueFromName: String? = null,
+    val maxLoginTimeSeconds: Long = 60 * 60 * 24 * 7, // 7 days
 )
 
 ////////////////////////////////
@@ -91,8 +92,8 @@ val applicationConfig =
                 databaseBaseUrl = it.getProperty("databaseBaseUrl"),
                 emailSendinblueApiKey = it.getProperty("emailSendinblueApiKey"),
                 emailSendinblueFromEmail = it.getProperty("emailSendinblueFromEmail"),
-                emailSendinblueFromName = it.getProperty("emailSendinblueFromName")
-
+                emailSendinblueFromName = it.getProperty("emailSendinblueFromName"),
+                maxLoginTimeSeconds = it.getProperty("maxLoginTimeSeconds")?.toLong() ?: 60 * 60 * 24 * 7,
             )
         }
     } catch (e: Exception) {
@@ -283,7 +284,43 @@ fun Application.module() {
 //            call.response.header("Content-Type", "application/json")
 //        }
 
-        // api routes
+        ////////////////////////
+        // API ROUTES
+
+
+        // Log a user in
+        suspend fun ApplicationCall.login(
+            emailAddress: String,
+            clientIpAddress: String,
+            user: UserEntity
+        ) {
+            // Generate a new session token
+            val token = UUID.randomUUID().toString()
+            emailToTokenMap[token] = emailAddress
+            usersDb[emailAddress] = user.copy(token = token)
+
+            // Generate JWT token for this user
+            val jwtToken = JWT.create()
+                .withSubject("Authentication")
+                .withIssuer(issuer)
+                .withAudience(audience)
+                .withClaim("email", emailAddress)
+                .withClaim("clientIpAddress", clientIpAddress)
+                .withExpiresAt(Date(System.currentTimeMillis() + 1000 * applicationConfig.maxLoginTimeSeconds)) // 7 days
+                .sign(Algorithm.HMAC256(secret))
+            usersDb[emailAddress] = usersDb[emailAddress]!!.copy(jwtToken = jwtToken)
+
+            saveUsersDbToDisk()
+
+            respondJson(
+                map=mapOf(
+                    "token" to token,
+                    "clientIpAddress" to clientIpAddress,
+                    "jwtToken" to jwtToken
+                )
+            )
+        }
+
         post("/api/register") {
             try {
                 val body = call.receiveText()
@@ -303,35 +340,16 @@ fun Application.module() {
                         val passwordHash = passwordService.getSaltedPepperedPasswordHash(password)
                         val token = UUID.randomUUID().toString()
 
-                        // Generate JWT token for this user
-                        val jwtToken = JWT.create()
-                            .withSubject("Authentication")
-                            .withIssuer(issuer)
-                            .withAudience(audience)
-                            .withClaim("email", email)
-                            .withClaim("clientIpAddress", clientIpAddress)
-                            .withExpiresAt(Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24 * 7)) // 7 days
-                            .sign(Algorithm.HMAC256(secret))
-
                         val newUser = UserEntity(
                             email=email,
                             password = passwordHash,
                             token = token,
                             clientIpAddressWhiteList = listOf(clientIpAddress),
-                            jwtToken = jwtToken
                         )
                         usersDb[email] = newUser
-
                         saveUsersDbToDisk()
 
-                        call.respondJson(
-                            map=mapOf(
-                                "token" to token,
-                                "clientIpAddress" to clientIpAddress,
-                                "jwtToken" to jwtToken,
-                                "user" to jsonConfig.encodeToString(newUser)
-                            )
-                        )
+                        call.login(email, clientIpAddress, newUser)
                         return@post
                     }
 
@@ -390,31 +408,7 @@ fun Application.module() {
                         saveUsersDbToDisk()
                     }
 
-                    // Generate a new session token
-                    val token = UUID.randomUUID().toString()
-                    emailToTokenMap[token] = email
-                    usersDb[email] = user.copy(token = token)
-
-                    // Generate JWT token for this user
-                    val jwtToken = JWT.create()
-                        .withSubject("Authentication")
-                        .withIssuer(issuer)
-                        .withAudience(audience)
-                        .withClaim("email", email)
-                        .withClaim("clientIpAddress", clientIpAddress)
-                        .withExpiresAt(Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24 * 7)) // 7 days
-                        .sign(Algorithm.HMAC256(secret))
-                    usersDb[email] = usersDb[email]!!.copy(jwtToken = jwtToken)
-
-                    saveUsersDbToDisk()
-
-                    call.respondJson(
-                        map=mapOf(
-                            "token" to token,
-                            "clientIpAddress" to clientIpAddress,
-                            "jwtToken" to jwtToken
-                        )
-                    )
+                    call.login(email, clientIpAddress, user)
                     return@post
                 }
 
