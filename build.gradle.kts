@@ -62,31 +62,33 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx:$ktor_version")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktor_version")
     implementation("io.ktor:ktor-client-content-negotiation:$ktor_version")
-    implementation("io.ktor:ktor-client-logging:$ktor_version")
     implementation("io.ktor:ktor-server-content-negotiation:$ktor_version")
+
+    // Logging
+    implementation("io.ktor:ktor-client-logging:$ktor_version")
 
     // Compression for text
     implementation("io.ktor:ktor-server-compression:$ktor_version")
 
-    // For creating file slugs
+    // Creating file slugs
     implementation("com.github.slugify:slugify:3.0.2")
 
-    // For authentication
+    // Authentication
     implementation("io.ktor:ktor-server-auth:$ktor_version")
 
-    // For HTML
+    // HTML Building
     implementation("io.ktor:ktor-server-html-builder:$ktor_version")
 
-    // For Argon2 - password hashing & salting
+    // Argon2 - password hashing & salting
     implementation("de.mkammerer:argon2-jvm:2.11")
 
-    // For Forwarding headers
+    // Forwarding headers - getting clientIP Address
     implementation("io.ktor:ktor-server-forwarded-header:$ktor_version")
 
     // For JWT's
     implementation("io.ktor:ktor-server-auth-jwt:$ktor_version")
 
-    // HOCON
+    // HOCON - configuration files
     implementation("io.github.config4k:config4k:0.5.0")
 
     // Simple email sender

@@ -1,7 +1,10 @@
 package com.realityexpander
 
-import com.auth0.jwt.JWT
-import com.auth0.jwt.algorithms.Algorithm
+import ArgonPasswordService
+import JwtService
+import JwtTokenString
+import UserEntity
+import UserService
 import com.github.slugify.Slugify
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -39,7 +42,7 @@ import java.util.concurrent.TimeUnit
 import javax.naming.AuthenticationException
 import io.ktor.server.application.install as installServer
 
-val jwtLogger: ch.qos.logback.classic.Logger = LoggerFactory.getLogger("KTOR-JWT-Auth") as ch.qos.logback.classic.Logger
+val ktorLogger: ch.qos.logback.classic.Logger = LoggerFactory.getLogger("KTOR-WEB-APP") as ch.qos.logback.classic.Logger
 
 val jsonConfig = Json {
     prettyPrint = true
@@ -49,27 +52,12 @@ val jsonConfig = Json {
     encodeDefaults = true
 }
 
-typealias EmailString = String
-typealias PasswordString = String
-typealias TokenString = String
-typealias JWTString = String
-
-@Serializable
-data class UserEntity(
-    val id: String = UUID.randomUUID().toString(),
-    val email: String,
-    val password: PasswordString,
-    val token: TokenString,
-    val jwtToken: JWTString? = null,
-    val clientIpAddressWhiteList: List<String> = listOf(),
-    val passwordResetToken: String? = null,
-)
-
 const val APPLICATION_PROPERTIES_FILE = "./application.properties"
 
 @Serializable
 data class ApplicationProperties(
     val pepper: String = "ooga-booga",
+    val jwtSecret: String = "default-jwt-secret",
     val databaseBaseUrl: String = "http://localhost:3000",
     val emailSendinblueApiKey: String? = null,
     val emailSendinblueFromEmail: String? = null,
@@ -89,6 +77,7 @@ val applicationConfig =
         }.let {
             ApplicationProperties(
                 pepper = it.getProperty("pepper"),
+                jwtSecret = System.getenv("JWT_SECRET") ?: "default-jwt-secret",
                 databaseBaseUrl = it.getProperty("databaseBaseUrl"),
                 emailSendinblueApiKey = it.getProperty("emailSendinblueApiKey"),
                 emailSendinblueFromEmail = it.getProperty("emailSendinblueFromEmail"),
@@ -97,9 +86,15 @@ val applicationConfig =
             )
         }
     } catch (e: Exception) {
-        println("Error loading application properties: $e")
+        ktorLogger.error("Error loading application properties: $e")
         ApplicationProperties()
     }
+
+////////////////////////////////
+// SETUP USERS
+
+val userService = UserService()
+// first time: userService.initUserDb()
 
 fun Application.module() {
 
@@ -142,44 +137,19 @@ fun Application.module() {
     val passwordService = ArgonPasswordService(
         pepper = applicationConfig.pepper // pepper is used to make the password hash unique
     )
-    val usersDb = mutableMapOf<EmailString, UserEntity>()
 
-    fun saveUsersDbToDisk() {
-        File("usersDB.json").writeText(
-            jsonConfig.encodeToString(
-                usersDb.values.toList()
-            )
-        )
-    }
-
-    // Load the users from the resources json file
-    fun loadUsersDbFromDisk() {
-        if (!File("usersDB.json").exists()) {
-            File("usersDB.json").writeText("")
-        }
-
-        val userDBJson = File("usersDB.json").readText()
-        if (userDBJson.isNotEmpty()) {
-            val users = jsonConfig.decodeFromString<List<UserEntity>>(userDBJson)
-            for (user in users) {
-                usersDb[user.email] = user
-            }
-        }
-    }
-
-    loadUsersDbFromDisk()
-
-    // setup email to token Lookup table
-    val emailToTokenMap = mutableMapOf<TokenString, EmailString>()
-    for (user in usersDb.values) {
-        emailToTokenMap[user.token] = user.email
-    }
-
-    // Setup JWT (environment is from the 'resources/application.conf' file)
+    // Setup JWT (`environment` is config by'resources/application.conf' file)
     val secret = environment.config.config("ktor").property("jwt.secret").getString()
     val issuer = environment.config.config("ktor").property("jwt.issuer").getString()
     val audience = environment.config.config("ktor").property("jwt.audience").getString()
     val apiRealm = environment.config.config("ktor").property("jwt.realm").getString()
+
+    // Setup JWT Authentication
+    val jwtService = JwtService(
+        secret = secret,
+        issuer = issuer,
+        audience = audience,
+    )
 
     installServer(Authentication) {
 
@@ -191,11 +161,7 @@ fun Application.module() {
 //            }
 
             verifier(
-                JWT
-                    .require(Algorithm.HMAC256(secret))
-                    .withAudience(audience)
-                    .withIssuer(issuer)
-                    .build()
+                jwtService.verifier
             )
 
             validate { credential ->
@@ -208,7 +174,7 @@ fun Application.module() {
                 val email = credential.payload.getClaim("email").asString()
                 val clientIpAddress = credential.payload.getClaim("clientIpAddress").asString()
 
-                val user = usersDb[email]
+                val user = userService.getUserByEmail(email)
                 if (user != null && user.clientIpAddressWhiteList.contains(clientIpAddress)) {
                     JWTPrincipal(credential.payload)
                 } else {
@@ -217,13 +183,8 @@ fun Application.module() {
             }
 
             challenge { defaultScheme, realm ->
-                println("challenge: $defaultScheme, $realm")
-                //call.respond(HttpStatusCode.Unauthorized, "Token is not valid or has expired")
-                val error = mapOf("error" to "Token is not valid or has expired")
-                call.respondText(
-                    jsonConfig.encodeToString(error),
-                    status = HttpStatusCode.Unauthorized
-                )
+                val error = mapOf("error" to "Token is not valid or has expired. defaultScheme: $defaultScheme, realm: $realm")
+                call.respondJson(error, status = HttpStatusCode.Unauthorized)
             }
         }
 
@@ -247,19 +208,22 @@ fun Application.module() {
                     else
                         this.request.cookies["authenticationToken"]
 
-                val userEmail = emailToTokenMap[authenticationToken]
+                val userEmail = userService.getUserByToken(authenticationToken)?.email
                 if (userEmail != null) {
 
-                    val userEntity = usersDb[userEmail]
+//                    val userEntity = usersDb[userEmail]
+                    val userEntity = userService.getUserByEmail(userEmail)
                     userEntity?.let { user ->
                         if (user.clientIpAddressWhiteList.contains(clientIpAddress)) {
                             UserIdPrincipal(userEmail)
                         } else {
 
-                            println(
+                            ktorLogger.warn(
                                 "User $userEmail attempted to access the API from an " +
                                         "unauthorized IP address: $clientIpAddress"
                             )
+
+                            // todo send email to admin
 
                             // attempt redirect to login page
                             this.response.status(HttpStatusCode.Unauthorized)
@@ -287,7 +251,6 @@ fun Application.module() {
         ////////////////////////
         // API ROUTES
 
-
         // Log a user in
         suspend fun ApplicationCall.login(
             emailAddress: String,
@@ -296,29 +259,20 @@ fun Application.module() {
         ) {
             // Generate a new session token
             val token = UUID.randomUUID().toString()
-            emailToTokenMap[token] = emailAddress
-            usersDb[emailAddress] = user.copy(token = token)
 
-            // Generate JWT token for this user
-            val jwtToken = JWT.create()
-                .withSubject("Authentication")
-                .withIssuer(issuer)
-                .withAudience(audience)
-                .withClaim("email", emailAddress)
-                .withClaim("clientIpAddress", clientIpAddress)
-                .withExpiresAt(Date(System.currentTimeMillis() + 1000 * applicationConfig.maxLoginTimeSeconds)) // 7 days
-                .sign(Algorithm.HMAC256(secret))
-            usersDb[emailAddress] = usersDb[emailAddress]!!.copy(jwtToken = jwtToken)
+            // Generate a new JWT token
+            val jwtToken = jwtService.generateLoginToken(user, clientIpAddress)
+            userService.updateUser(
+                user.copy(
+                    authJwtToken = jwtToken,
+                    authToken = token
+                ))
 
-            saveUsersDbToDisk()
-
-            respondJson(
-                map=mapOf(
-                    "token" to token,
-                    "clientIpAddress" to clientIpAddress,
-                    "jwtToken" to jwtToken
-                )
-            )
+            respondJson(mapOf(
+                "token" to token,
+                "clientIpAddress" to clientIpAddress,
+                "jwtToken" to jwtToken
+            ))
         }
 
         post("/api/register") {
@@ -335,19 +289,18 @@ fun Application.module() {
                     email != null
                     && password != null
                 ) {
-                    usersDb[email] ?: run {
+                    userService.getUserByEmail(email) ?: run {
 
                         val passwordHash = passwordService.getSaltedPepperedPasswordHash(password)
-                        val token = UUID.randomUUID().toString()
 
                         val newUser = UserEntity(
                             email=email,
                             password = passwordHash,
-                            token = token,
+                            authToken = "",
+                            authJwtToken = "",
                             clientIpAddressWhiteList = listOf(clientIpAddress),
                         )
-                        usersDb[email] = newUser
-                        saveUsersDbToDisk()
+                        userService.addUser(newUser)
 
                         call.login(email, clientIpAddress, newUser)
                         return@post
@@ -375,7 +328,8 @@ fun Application.module() {
 
                 if (email != null && password != null) {
                     // check if the user exists
-                    if (!usersDb.containsKey(email)) {
+                    val user = userService.getUserByEmail(email)
+                    user ?: run {
                         val error = mapOf("error" to "User does not exist")
                         call.respondText(
                             jsonConfig.encodeToString(error),
@@ -385,7 +339,7 @@ fun Application.module() {
                     }
 
                     // check if the password is correct
-                    val user = usersDb[email]!!
+//                    val user = usersDb[email]!!
                     val userPasswordHash = user.password
                     if (!passwordService.validatePassword(password, userPasswordHash)) {
                         val error = mapOf("error" to "Invalid credentials")
@@ -402,10 +356,9 @@ fun Application.module() {
                     // This may be a good place to add a captcha or send confirmation email to prevent brute force attacks.
                     if (!user.clientIpAddressWhiteList.contains(clientIpAddress)) {
                         val newClientIpWhitelistAddresses = user.clientIpAddressWhiteList.toMutableList()
-                        newClientIpWhitelistAddresses.add(clientIpAddress)
 
-                        usersDb[email] = user.copy(clientIpAddressWhiteList = newClientIpWhitelistAddresses)
-                        saveUsersDbToDisk()
+                        newClientIpWhitelistAddresses.add(clientIpAddress)
+                        userService.updateUser(user.copy(clientIpAddressWhiteList = newClientIpWhitelistAddresses))
                     }
 
                     call.login(email, clientIpAddress, user)
@@ -422,20 +375,17 @@ fun Application.module() {
             try {
                 val body = call.receiveText()
                 val params = jsonConfig.decodeFromString<Map<String, String>>(body)
-                val token = params["token"]
-
-                println("token: $token, body: $body, params: $params")
+                @Suppress("USELESS_CAST") // need to indicate String type is a JWT token string
+                val token = params["token"] as JwtTokenString?
 
                 token?.let {
-                    println("token: $token")
-
-                    val userEmail = emailToTokenMap[token]
-                    userEmail?.let {
-                        usersDb[userEmail] = usersDb[userEmail]!!.copy(token = "")
-                        usersDb[userEmail] = usersDb[userEmail]!!.copy(jwtToken = "")
-                        emailToTokenMap.remove(token)
-
-                        saveUsersDbToDisk()
+                    val user = userService.getUserByAuthJwtToken(token)
+                    user?.let {
+                        userService.updateUser(
+                            user.copy(
+                            authToken = "",
+                            authJwtToken = ""
+                        ))
 
                         call.respondJson(map=mapOf("success" to "true"))
                         return@post
@@ -462,27 +412,33 @@ fun Application.module() {
 
         get("/api/send-password-reset-email") {
             val emailAddress = call.request.queryParameters["emailAddress"]
-            println("emailAddress: $emailAddress")
-
-            if (emailAddress == null) {
+            emailAddress ?: run {
                 call.respondJson(mapOf("error" to "Email address is required"), HttpStatusCode.BadRequest)
                 return@get
             }
 
-            // generate a password reset token
-            val passwordResetToken = UUID.randomUUID().toString()
-            // save the password reset token to the user's account
-            val user = usersDb[emailAddress]
-            user?.let {
-                usersDb[emailAddress] = user.copy(passwordResetToken = passwordResetToken)
-                saveUsersDbToDisk()
-            } ?: run {
+            // check if the user exists
+            val user = userService.getUserByEmail(emailAddress)
+            user ?: run {
                 call.respondJson(mapOf("error" to "User does not exist"), HttpStatusCode.BadRequest)
                 return@get
             }
 
-            val res = sendPasswordResetEmail(emailAddress = emailAddress, passwordResetToken)
+            // generate password reset token
+            val passwordResetToken = UUID.randomUUID().toString()
+            val passwordResetJwtToken = jwtService.generatePasswordResetToken(user)
 
+            // save the password reset token to the user's account
+            user.let {
+                userService.updateUser(
+                    user.copy(
+                        passwordResetToken = passwordResetToken,
+                        passwordResetJwtToken = passwordResetJwtToken
+                    )
+                )
+            }
+
+            val res = sendPasswordResetEmail(emailAddress = emailAddress, passwordResetJwtToken)
             if (res) {
                 call.respondJson(mapOf("success" to "Email sent"))
                 return@get
@@ -499,8 +455,6 @@ fun Application.module() {
             val passwordResetToken = params["passwordResetToken"]
             val newPassword = params["newPassword"]
 
-            //println("passwordResetToken: $passwordResetToken, newPassword: $newPassword, body: $body, params: $params")
-
             if (passwordResetToken == null || newPassword == null) {
                 call.respondJson(
                     mapOf("error" to "Password reset token and new password are required"), HttpStatusCode.BadRequest
@@ -509,10 +463,11 @@ fun Application.module() {
             }
 
             // validate the password reset token
-            if (passwordResetToken.length != 36) {
-                call.respondJson(mapOf("error" to "Invalid password reset token"), HttpStatusCode.BadRequest)
-                return@post
-            }
+            // old way using UUID - NOTE: LEAVE for reference
+            //if (passwordResetToken.length != 36) {
+            //    call.respondJson(mapOf("error" to "Invalid password reset token"), HttpStatusCode.BadRequest)
+            //    return@post
+            //}
 
             // validate password
             if (newPassword.length < 8) {
@@ -549,17 +504,47 @@ fun Application.module() {
             }
 
             // find the user with the password reset token
-            val user = usersDb.values.find { it.passwordResetToken == passwordResetToken }
+            // val user = usersDb.values.find { it.passwordResetToken == passwordResetToken } // checks UUID old way - NOTE: LEAVE for reference
+            val user = userService.getUserByPasswordResetJwtToken(passwordResetToken)
             user?.let {
-                // update the user's password
+                // validate the password reset token
+                // new way using JWT
+                val passwordResetTokenClaims = jwtService.verify(passwordResetToken)
+                val passwordResetTokenExpiration = passwordResetTokenClaims.claims["exp"]?.asLong()
+                    ?: run {
+                        call.respondJson(mapOf("error" to "Invalid password reset token - missing expiry"), HttpStatusCode.BadRequest)
+                        return@post
+                    }
+                passwordResetTokenExpiration.let {
+                    val now = Date().time / 1000
+                    if (now > passwordResetTokenExpiration) {
+                        call.respondJson(mapOf("error" to "Password reset token has expired"), HttpStatusCode.BadRequest)
+                        return@post
+                    }
+                }
+                if (passwordResetTokenClaims.claims["type"]?.asString() != "passwordReset") {
+                    call.respondJson(mapOf("error" to "Invalid password reset token"), HttpStatusCode.BadRequest)
+                    return@post
+                }
+                val passwordResetTokenEmail = passwordResetTokenClaims.claims["email"]?.asString()
+                if (passwordResetTokenEmail != user.email) {
+                    call.respondJson(mapOf("error" to "Invalid email in password reset token"), HttpStatusCode.BadRequest)
+                    return@post
+                }
+                if (passwordResetTokenClaims.claims["id"]?.asString() != user.id) {
+                    call.respondJson(mapOf("error" to "Invalid user id in password reset token"), HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                // update the user's password & clear the password reset token(s)
                 val passwordHash = passwordService.getSaltedPepperedPasswordHash(newPassword)
                 val updatedUser =
                     user.copy(
                         password = passwordHash,
-                        passwordResetToken = ""
+                        passwordResetToken = "",
+                        passwordResetJwtToken = ""
                     )
-                usersDb[user.email] = updatedUser
-                saveUsersDbToDisk()
+                userService.updateUser(updatedUser)
 
                 call.respondJson(map=mapOf("success" to "Password updated"))
                 return@post
@@ -567,8 +552,6 @@ fun Application.module() {
                 call.respondJson(mapOf("error" to "Invalid password reset token"), HttpStatusCode.BadRequest)
                 return@post
             }
-
-            call.respondJson(mapOf("error" to "Invalid parameters"), HttpStatusCode.BadRequest)
         }
 
         // api routes are protected by authentication
@@ -580,7 +563,6 @@ fun Application.module() {
                 if (response.status.value == 200) {
                     try {
                         val body = response.body<String>()
-                        println("body: $body")
                         val todos = jsonConfig.decodeFromString<TodoResponse>(body)
 
 //                    // Simulate server edits of data
@@ -643,7 +625,7 @@ fun Application.module() {
 
                             is PartData.BinaryItem -> Unit
                             else -> {
-                                println("/upload-image Unknown PartData.???")
+                                ktorLogger.error("/upload-image Unknown PartData.???")
                             }
                         }
                     }
@@ -685,7 +667,6 @@ fun Application.module() {
                     val date = Date(principal.expiresAt?.time ?: 0)
                     val formatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
                     val expiresAtDate = formatter.format(date)
-                    println("expiresAtDate: $expiresAtDate")
 
                     call.respondJson(
                         map = mapOf(
@@ -713,8 +694,8 @@ fun PartData.FileItem.save(path: String): String {
     val fileExtension = originalFileName?.takeLastWhile { it != '.' }
     val fileName = UUID.randomUUID().toString() + "." + fileExtension
     val folder = File(path)
+
     folder.mkdir()
-    println("Path = $path $fileName")
     File("$path$fileName").writeBytes(fileBytes)
     return fileName
 }
@@ -763,9 +744,6 @@ data class SuccessResponse(
     val success: String,
 )
 
-//@Serializable
-//data class TodoResponse(val todos: ArrayList<Todo>)
-
 typealias TodoResponse = ArrayList<Todo>
 
 fun ApplicationCall.getClientIpAddressFromRequest(suggestedClientIpAddress: String? = null): String {
@@ -800,7 +778,7 @@ suspend fun ApplicationCall.respondJson(
 }
 
 suspend fun sendPasswordResetEmail(emailAddress: String, passwordResetToken: String = ""): Boolean {
-    jwtLogger.info("Sending reset email with SendInBlue to $emailAddress")
+    ktorLogger.info("Sending reset email with SendInBlue to $emailAddress")
 
     val message = """
     <html>
@@ -838,7 +816,7 @@ suspend fun sendSimpleEmailViaSendInBlue(
     emailAddress: String,
     subject: String
 ): Boolean {
-    jwtLogger.info("Sending simple email with SendInBlue to $emailAddress")
+    ktorLogger.info("Sending simple email with SendInBlue to $emailAddress")
 
     // Dashboard: https://app.sendinblue.com/settings
     // uses SendInBlue - google account realityexpanderdev@gmail.com
@@ -864,7 +842,7 @@ suspend fun sendSimpleEmailViaSendInBlue(
 
             return@withContext true
         } catch (e: Exception) {
-            jwtLogger.error("Error sending email: $e")
+            ktorLogger.error("Error sending email: $e")
             return@withContext false
         }
     }
