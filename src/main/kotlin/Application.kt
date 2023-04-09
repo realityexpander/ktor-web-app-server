@@ -6,6 +6,8 @@ import JwtTokenString
 import UserEntity
 import UserService
 import com.github.slugify.Slugify
+import com.realityexpander.Constants.APPLICATION_PROPERTIES_FILE
+import data.local.*
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.okhttp.*
@@ -52,8 +54,6 @@ val jsonConfig = Json {
     encodeDefaults = true
 }
 
-const val APPLICATION_PROPERTIES_FILE = "./application.properties"
-
 @Serializable
 data class ApplicationProperties(
     val pepper: String = "ooga-booga",
@@ -67,6 +67,11 @@ data class ApplicationProperties(
 
 ////////////////////////////////
 // SETUP APPLICATION PROPERTIES
+
+object Constants {
+    val USER_IMAGES_PATH = "./uploaded-images/"
+    val APPLICATION_PROPERTIES_FILE = "./application.properties"
+}
 
 // load application.properties
 val applicationProperties = File(APPLICATION_PROPERTIES_FILE).inputStream()
@@ -91,10 +96,8 @@ val applicationConfig =
     }
 
 ////////////////////////////////
-// SETUP USERS
-
+// SETUP USER SERVICE
 val userService = UserService()
-// first time: userService.initUserDb()
 
 fun Application.module() {
 
@@ -251,11 +254,11 @@ fun Application.module() {
             clientIpAddress: String,
             user: UserEntity
         ) {
-            // Generate a new session token
+            // Generate a new session auth token
             val token = UUID.randomUUID().toString()
 
-            // Generate a new JWT token
-            val jwtToken = jwtService.generateLoginToken(user, clientIpAddress)
+            // Generate a new session auth JWT token
+            val jwtToken = jwtService.generateLoginAuthToken(user, clientIpAddress)
             userService.updateUser(
                 user.copy(
                     authJwtToken = jwtToken,
@@ -693,52 +696,6 @@ fun PartData.FileItem.save(path: String): String {
     File("$path$fileName").writeBytes(fileBytes)
     return fileName
 }
-
-object Constants {
-    val USER_IMAGES_PATH = "./uploaded-images/"
-    val BASE_URL = "http://localhost:8080"
-}
-
-@Serializable
-data class FileUploadResponse(
-    val todo: Todo,
-    val uploadedFiles: List<String>
-)
-
-@Serializable
-data class UserInTodo(
-    val name: String,
-    val files: List<String>? = null
-)
-
-@Serializable
-enum class ToDoStatus(val value: String) {
-    pending("pending"),
-    completed("completed"),
-    archived("archived")
-}
-
-@OptIn(ExperimentalSerializationApi::class)
-@Serializable
-data class Todo(
-    val id: String,
-    val name: String,
-    val status: ToDoStatus = ToDoStatus.pending,
-    @SerialName("user")
-    val userInTodo: UserInTodo? = null
-)
-
-@Serializable
-data class ErrorResponse(
-    val error: String
-)
-
-@Serializable
-data class SuccessResponse(
-    val success: String,
-)
-
-typealias TodoResponse = ArrayList<Todo>
 
 fun ApplicationCall.getClientIpAddressFromRequest(suggestedClientIpAddress: String? = null): String {
     val call = this

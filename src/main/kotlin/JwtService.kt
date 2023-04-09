@@ -14,7 +14,7 @@ class JwtService(
         .withIssuer(issuer)
         .build()
 
-    fun generateLoginToken(user: UserEntity, clientIpAddress: String): String {
+    fun generateLoginAuthToken(user: UserEntity, clientIpAddress: String): String {
         val expiresAtTimeMillis =
             System.currentTimeMillis() + 1000 * 60 * 60 * 24 * 7 // 7 days
         val expiresAtDate = Date(expiresAtTimeMillis)
@@ -51,10 +51,6 @@ class JwtService(
     }
 
     fun verify(token: String): DecodedJWT {
-//        return JWT.require(Algorithm.HMAC512(secret))
-//            //.withAudience(audience) // used for specific routes like /api/password-reset
-//            .withIssuer(issuer)
-//            .build()
         return verifier.verify(token)
     }
 }
