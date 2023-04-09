@@ -56,13 +56,13 @@ typealias JWTString = String
 
 @Serializable
 data class UserEntity(
-    val id: String,
+    val id: String = UUID.randomUUID().toString(),
     val email: String,
     val password: PasswordString,
-    var token: TokenString,
-    var jwtToken: JWTString? = null,
-    var clientIpAddressWhiteList: List<String> = listOf(),
-    var passwordResetToken: String? = null,
+    val token: TokenString,
+    val jwtToken: JWTString? = null,
+    val clientIpAddressWhiteList: List<String> = listOf(),
+    val passwordResetToken: String? = null,
 )
 
 const val APPLICATION_PROPERTIES_FILE = "./application.properties"
@@ -189,16 +189,20 @@ fun Application.module() {
 //                call.request.path().startsWith("/api")
 //            }
 
-            verifier(JWT
-                .require(Algorithm.HMAC256(secret))
-                .withAudience(audience)
-                .withIssuer(issuer)
-                .build())
+            verifier(
+                JWT
+                    .require(Algorithm.HMAC256(secret))
+                    .withAudience(audience)
+                    .withIssuer(issuer)
+                    .build()
+            )
 
             validate { credential ->
                 if (credential.payload.getClaim("email").asString().isNullOrBlank()) return@validate null
                 if (credential.payload.getClaim("clientIpAddress").asString().isNullOrBlank()) return@validate null
-                if (credential.payload.getClaim("exp").asInt() < (System.currentTimeMillis() / 1000).toInt()) return@validate null
+                if (credential.payload.getClaim("exp")
+                        .asInt() < (System.currentTimeMillis() / 1000).toInt()
+                ) return@validate null
 
                 val email = credential.payload.getClaim("email").asString()
                 val clientIpAddress = credential.payload.getClaim("clientIpAddress").asString()
@@ -231,7 +235,7 @@ fun Application.module() {
                 val clientIpAddress = request.call.getClientIpAddressFromRequest()
 
                 // Auth Token can be passed in the header or in a cookie
-                if(tokenCredential.token.isEmpty() && this.request.cookies.rawCookies["authenticationToken"] == null) {
+                if (tokenCredential.token.isEmpty() && this.request.cookies.rawCookies["authenticationToken"] == null) {
                     this.response.status(HttpStatusCode.Unauthorized)
                     this.response.header("Location", "/login")
                     return@authenticate null
@@ -251,8 +255,10 @@ fun Application.module() {
                             UserIdPrincipal(userEmail)
                         } else {
 
-                            println("User $userEmail attempted to access the API from an " +
-                                    "unauthorized IP address: $clientIpAddress")
+                            println(
+                                "User $userEmail attempted to access the API from an " +
+                                        "unauthorized IP address: $clientIpAddress"
+                            )
 
                             // attempt redirect to login page
                             this.response.status(HttpStatusCode.Unauthorized)
@@ -296,8 +302,6 @@ fun Application.module() {
 
                         val passwordHash = passwordService.getSaltedPepperedPasswordHash(password)
                         val token = UUID.randomUUID().toString()
-                        usersDb[email] = UserEntity(email, passwordHash, token)
-                        usersDb[email]?.clientIpAddressWhiteList = listOf(clientIpAddress)
 
                         // Generate JWT token for this user
                         val jwtToken = JWT.create()
@@ -308,39 +312,36 @@ fun Application.module() {
                             .withClaim("clientIpAddress", clientIpAddress)
                             .withExpiresAt(Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24 * 7)) // 7 days
                             .sign(Algorithm.HMAC256(secret))
-                        usersDb[email]?.jwtToken = jwtToken
+
+                        val newUser = UserEntity(
+                            email=email,
+                            password = passwordHash,
+                            token = token,
+                            clientIpAddressWhiteList = listOf(clientIpAddress),
+                            jwtToken = jwtToken
+                        )
+                        usersDb[email] = newUser
 
                         saveUsersDbToDisk()
 
-                        call.respondText(jsonConfig.encodeToString(
-                            mapOf(
+                        call.respondJson(
+                            map=mapOf(
                                 "token" to token,
                                 "clientIpAddress" to clientIpAddress,
-                                "jwtToken" to jwtToken
+                                "jwtToken" to jwtToken,
+                                "user" to jsonConfig.encodeToString(newUser)
                             )
-                        ))
+                        )
                         return@post
                     }
 
-                    val error = mapOf("error" to "UserEntity already exists")
-                    call.respondText(
-                        jsonConfig.encodeToString(error),
-                        status = HttpStatusCode.Conflict
-                    )
+                    call.respondJson(mapOf("error" to "UserEntity already exists"), HttpStatusCode.Conflict)
                     return@post
                 }
 
-                val error = mapOf("error" to "Invalid parameters")
-                call.respondText(
-                    jsonConfig.encodeToString(error),
-                    status = HttpStatusCode.BadRequest
-                )
+                call.respondJson(mapOf("error" to "Invalid parameters"), HttpStatusCode.BadRequest)
             } catch (e: Exception) {
-                val error = mapOf("error" to e.message)
-                call.respondText(
-                    jsonConfig.encodeToString(error),
-                    status = HttpStatusCode.BadRequest
-                )
+                call.respondJson(mapOf("error" to e.localizedMessage), HttpStatusCode.BadRequest)
             }
         }
 
@@ -384,15 +385,15 @@ fun Application.module() {
                     if (!user.clientIpAddressWhiteList.contains(clientIpAddress)) {
                         val newClientIpWhitelistAddresses = user.clientIpAddressWhiteList.toMutableList()
                         newClientIpWhitelistAddresses.add(clientIpAddress)
-                        user.clientIpAddressWhiteList = newClientIpWhitelistAddresses
 
+                        usersDb[email] = user.copy(clientIpAddressWhiteList = newClientIpWhitelistAddresses)
                         saveUsersDbToDisk()
                     }
 
                     // Generate a new session token
                     val token = UUID.randomUUID().toString()
                     emailToTokenMap[token] = email
-                    usersDb[email]?.token = token
+                    usersDb[email] = user.copy(token = token)
 
                     // Generate JWT token for this user
                     val jwtToken = JWT.create()
@@ -403,31 +404,23 @@ fun Application.module() {
                         .withClaim("clientIpAddress", clientIpAddress)
                         .withExpiresAt(Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24 * 7)) // 7 days
                         .sign(Algorithm.HMAC256(secret))
-                    usersDb[email]?.jwtToken = jwtToken
+                    usersDb[email] = usersDb[email]!!.copy(jwtToken = jwtToken)
 
                     saveUsersDbToDisk()
 
-                    call.respondText(jsonConfig.encodeToString(
-                        mapOf(
+                    call.respondJson(
+                        map=mapOf(
                             "token" to token,
                             "clientIpAddress" to clientIpAddress,
                             "jwtToken" to jwtToken
                         )
-                    ))
+                    )
                     return@post
                 }
 
-                val error = mapOf("error" to "Invalid parameters")
-                call.respondText(
-                    jsonConfig.encodeToString(error),
-                    status = HttpStatusCode.BadRequest
-                )
+                call.respondJson(mapOf("error" to "Invalid parameters"), HttpStatusCode.BadRequest)
             } catch (e: Exception) {
-                val error = mapOf("error" to e.message)
-                call.respondText(
-                    jsonConfig.encodeToString(error),
-                    status = HttpStatusCode.BadRequest
-                )
+                call.respondJson(mapOf("error" to e.localizedMessage), HttpStatusCode.BadRequest)
             }
         }
 
@@ -444,21 +437,17 @@ fun Application.module() {
 
                     val userEmail = emailToTokenMap[token]
                     userEmail?.let {
-                        usersDb[userEmail]?.token = ""
-                        usersDb[userEmail]?.jwtToken = ""
+                        usersDb[userEmail] = usersDb[userEmail]!!.copy(token = "")
+                        usersDb[userEmail] = usersDb[userEmail]!!.copy(jwtToken = "")
                         emailToTokenMap.remove(token)
 
                         saveUsersDbToDisk()
 
-                        call.respondText(jsonConfig.encodeToString(mapOf("success" to true)))
+                        call.respondJson(map=mapOf("success" to "true"))
                         return@post
                     }
 
-                    val error = mapOf("error" to "Invalid token")
-                    call.respondText(
-                        jsonConfig.encodeToString(error),
-                        status = HttpStatusCode.Unauthorized
-                    )
+                    call.respondJson(mapOf("error" to "Invalid token"), HttpStatusCode.Unauthorized)
                     return@post
                 }
 
@@ -467,6 +456,7 @@ fun Application.module() {
                     jsonConfig.encodeToString(error),
                     status = HttpStatusCode.BadRequest
                 )
+                call.respondJson(mapOf("error" to "Invalid parameters"), HttpStatusCode.BadRequest)
             } catch (e: Exception) {
                 val error = mapOf("error" to e.message)
                 call.respondText(
@@ -478,9 +468,10 @@ fun Application.module() {
 
         get("/send-reset-password-email") {
             val emailAddress = call.request.queryParameters["emailAddress"]
+            println("emailAddress: $emailAddress")
 
-            if(emailAddress == null) {
-                call.respondText("Email address is required")
+            if (emailAddress == null) {
+                call.respondJson(mapOf("error" to "Email address is required"), HttpStatusCode.BadRequest)
                 return@get
             }
 
@@ -489,17 +480,101 @@ fun Application.module() {
             // save the password reset token to the user's account
             val user = usersDb[emailAddress]
             user?.let {
-                user.passwordResetToken = passwordResetToken
+                usersDb[emailAddress] = user.copy(passwordResetToken = passwordResetToken)
                 saveUsersDbToDisk()
+            } ?: run {
+                call.respondJson(mapOf("error" to "User does not exist"), HttpStatusCode.BadRequest)
+                return@get
             }
 
             val res = sendPasswordResetEmail(emailAddress = emailAddress, passwordResetToken)
 
-            if(res) {
-                call.respondText("Email sent")
+            if (res) {
+                call.respondJson(mapOf("success" to "Email sent"))
+                return@get
             } else {
-                call.respondText("Email failed to send")
+                call.respondJson(mapOf("error" to "Email failed to send"), HttpStatusCode.BadRequest)
+                return@get
             }
+
+        }
+
+        post("/api/reset-password") {
+            val body = call.receiveText()
+            val params = jsonConfig.decodeFromString<Map<String, String>>(body)
+            val passwordResetToken = params["passwordResetToken"]
+            val newPassword = params["newPassword"]
+
+            //println("passwordResetToken: $passwordResetToken, newPassword: $newPassword, body: $body, params: $params")
+
+            if (passwordResetToken == null || newPassword == null) {
+                call.respondJson(
+                    mapOf("error" to "Password reset token and new password are required"), HttpStatusCode.BadRequest
+                )
+                return@post
+            }
+
+            // validate the password reset token
+            if (passwordResetToken.length != 36) {
+                call.respondJson(mapOf("error" to "Invalid password reset token"), HttpStatusCode.BadRequest)
+                return@post
+            }
+
+            // validate password
+            if (newPassword.length < 8) {
+                call.respondJson(mapOf("error" to "Password must be at least 8 characters"), HttpStatusCode.BadRequest)
+                return@post
+            }
+            if (!newPassword.matches(Regex(".*[A-Z].*"))) {
+                call.respondJson(
+                    mapOf("error" to "Password must contain at least one uppercase letter"),
+                    HttpStatusCode.BadRequest
+                )
+                return@post
+            }
+            if (!newPassword.matches(Regex(".*[a-z].*"))) {
+                call.respondJson(
+                    mapOf("error" to "Password must contain at least one lowercase letter"),
+                    HttpStatusCode.BadRequest
+                )
+                return@post
+            }
+            if (!newPassword.matches(Regex(".*[0-9].*"))) {
+                call.respondJson(
+                    mapOf("error" to "Password must contain at least one number"),
+                    HttpStatusCode.BadRequest
+                )
+                return@post
+            }
+            if (!newPassword.matches(Regex(".*[!@#\$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?].*"))) {
+                call.respondJson(
+                    mapOf("error" to "Password must contain at least one special character"),
+                    HttpStatusCode.BadRequest
+                )
+                return@post
+            }
+
+            // find the user with the password reset token
+            val user = usersDb.values.find { it.passwordResetToken == passwordResetToken }
+            user?.let {
+                // update the user's password
+                val passwordHash = passwordService.getSaltedPepperedPasswordHash(newPassword)
+                val updatedUser =
+                    user.copy(
+                        password = passwordHash,
+                        passwordResetToken = ""
+                    )
+                usersDb[user.email] = updatedUser
+                saveUsersDbToDisk()
+
+                call.respondJson(map=mapOf("success" to "Password updated"))
+                return@post
+            } ?: run {
+                call.respondJson(mapOf("error" to "Invalid password reset token"), HttpStatusCode.BadRequest)
+                return@post
+            }
+
+            call.respondJson(mapOf("error" to "Invalid parameters"), HttpStatusCode.BadRequest)
         }
 
         // api routes are protected by authentication
@@ -527,20 +602,12 @@ fun Application.module() {
                         return@get
 
                     } catch (e: Exception) {
-                        val error = mapOf("error" to e.localizedMessage)
-                        call.respondText(
-                            jsonConfig.encodeToString(error),
-                            status = response.status
-                        )
+                        call.respondJson(mapOf("error" to e.localizedMessage), response.status)
                         return@get
                     }
                 }
 
-                val error = mapOf("error" to response.body<String>().toString())
-                call.respondText(
-                    jsonConfig.encodeToString(error),
-                    status = response.status
-                )
+                call.respondJson(mapOf("error" to response.body<String>().toString()), response.status)
             }
 
             // https://tahaben.com.ly/2022/04/uploading-image-using-android-ktor-client-to-ktor-server/
@@ -626,23 +693,15 @@ fun Application.module() {
                     val expiresAtDate = formatter.format(date)
                     println("expiresAtDate: $expiresAtDate")
 
-                    call.respondText(
-                        jsonConfig.encodeToString(
-                            mapOf(
-                                "success" to "Hello, $username! " +
-                                        "Token will expire at $expiresAtDate. " +
-                                        "Client IP Address: $clientIpAddress",
-                            )
+                    call.respondJson(
+                        map = mapOf(
+                            "success" to "Hello, $username! " +
+                            "Token will expire at $expiresAtDate. " +
+                            "Client IP Address: $clientIpAddress",
                         )
                     )
                 } catch (e: Exception) {
-                    call.respondText(
-                        jsonConfig.encodeToString(
-                            mapOf(
-                                "error" to e.localizedMessage,
-                            )
-                        )
-                    )
+                    call.respondJson(mapOf("error" to e.localizedMessage), HttpStatusCode.BadRequest)
                 }
             }
         }
@@ -733,9 +792,17 @@ fun ApplicationCall.getClientIpAddressFromRequest(suggestedClientIpAddress: Stri
         if (resultIp != "localhost") {
             resultIp
         } else {
-            UUID.randomUUID().toString() // return a UUID instead of localhost, because `localhost` is not a valid IP. This will be the unique ID for the Application instance.
+            UUID.randomUUID()
+                .toString() // return a UUID instead of localhost, because `localhost` is not a valid IP. This will be the unique ID for the Application instance.
         }
     }
+}
+
+suspend fun ApplicationCall.respondJson(
+    map: Map<String, String> = mapOf(),
+    status: HttpStatusCode = HttpStatusCode.OK
+) {
+    respondText(jsonConfig.encodeToString(map), ContentType.Application.Json, status)
 }
 
 suspend fun sendPasswordResetEmail(emailAddress: String, passwordResetToken: String = ""): Boolean {
@@ -745,7 +812,10 @@ suspend fun sendPasswordResetEmail(emailAddress: String, passwordResetToken: Str
     <html>
         <body>
             <h1>Reset Password</h1>
-            <p>Someone requested that you reset your password. If this was not you, please ignore this email.</p>
+            <img src="https://picsum.photos/200/300" alt="image">
+            <p>Someone requested that you reset your password.</p>
+            <p>
+            <p>If this was not you, please ignore this email.</p>
             <br>
             <br>
             <a href="http://localhost:8081/reset-password/${passwordResetToken}">Click here to reset your password</a>
@@ -766,7 +836,7 @@ suspend fun sendEmail(
     emailAddress: String,
     subject: String
 ): Boolean {
-    return sendSimpleEmailViaSendInBlue(message, message, emailAddress)
+    return sendSimpleEmailViaSendInBlue(message, emailAddress, subject)
 }
 
 suspend fun sendSimpleEmailViaSendInBlue(
@@ -784,8 +854,13 @@ suspend fun sendSimpleEmailViaSendInBlue(
             val email = SimpleEmail()
             email.hostName = "smtp-relay.sendinblue.com"
 //            email.setSmtpPort(587)
-//            email.setDebug(true)
-            email.setAuthenticator(DefaultAuthenticator(applicationConfig.emailSendinblueFromName, applicationConfig.emailSendinblueApiKey))
+            email.setDebug(true)
+            email.setAuthenticator(
+                DefaultAuthenticator(
+                    applicationConfig.emailSendinblueFromEmail,
+                    applicationConfig.emailSendinblueApiKey
+                )
+            )
             email.isSSLOnConnect = true
             email.setFrom(applicationConfig.emailSendinblueFromEmail, applicationConfig.emailSendinblueFromName)
             email.subject = subject

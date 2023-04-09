@@ -13,6 +13,14 @@ tasks.register("watch") {
     }
 }
 
+// Remove this warning:
+// 'compileJava' task (current target is 11) and 'compileKotlin' task (current target is 1.8) jvm target compatibility should be set to the same Java version.
+kotlin {
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of("11"))
+    }
+}
+
 plugins {
     application
     kotlin("jvm").version("1.8.0")
