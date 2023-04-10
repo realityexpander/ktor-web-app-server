@@ -199,18 +199,19 @@ fun Application.module() {
             )
 
             validate { credential ->
-                if (credential.payload.getClaim("email").asString().isNullOrBlank()) return@validate null
-                if (credential.payload.getClaim("clientIpAddress").asString().isNullOrBlank()) return@validate null
-                if (credential.payload.getClaim("exp")
+                val pl = credential.payload
+                if (pl.getClaim("email").asString().isNullOrBlank()) return@validate null
+                if (pl.getClaim("clientIpAddress").asString().isNullOrBlank()) return@validate null
+                if (pl.getClaim("exp")
                         .asInt() < (System.currentTimeMillis() / 1000).toInt()
                 ) return@validate null
 
-                val email = credential.payload.getClaim("email").asString()
-                val clientIpAddress = credential.payload.getClaim("clientIpAddress").asString()
+                val email = pl.getClaim("email").asString()
+                val clientIpAddress = pl.getClaim("clientIpAddress").asString()
 
                 val user = userService.getUserByEmail(email)
                 if (user != null && user.clientIpAddressWhiteList.contains(clientIpAddress)) {
-                    JWTPrincipal(credential.payload)
+                    JWTPrincipal(pl)
                 } else {
                     null
                 }
