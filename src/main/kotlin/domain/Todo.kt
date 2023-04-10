@@ -1,4 +1,4 @@
-package data.local
+package domain
 
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName

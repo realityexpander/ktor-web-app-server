@@ -1,4 +1,9 @@
-
+package data.local
+import EmailString
+import IdString
+import JwtTokenString
+import PasswordString
+import TokenString
 import com.realityexpander.jsonConfig
 import com.realityexpander.ktorLogger
 import kotlinx.coroutines.*
@@ -58,6 +63,10 @@ class UserService(
         if (!File("__${usersDBFilename}").exists()) {
             File("__${usersDBFilename}").delete()
         }
+    }
+
+    fun getAllUsers(): List<UserEntity> {
+        return usersDb.values.toList()
     }
 
     fun getUserById(id: String): UserEntity? {
@@ -135,7 +144,7 @@ class UserService(
         if (userDBJson.isNotEmpty()) {
             val users = jsonConfig.decodeFromString<List<UserEntity>>(userDBJson)
             for (user in users) {
-                usersDb[user.email] = user
+                usersDb[user.id] = user
             }
         }
 

@@ -93,6 +93,12 @@ dependencies {
 
     // Simple email sender
     implementation("org.apache.commons:commons-email:1.5")
+
+    // Rate Limiting
+    implementation("io.ktor:ktor-server-rate-limit:$ktor_version")
+
+    // Status Pages
+    implementation("io.ktor:ktor-server-status-pages:$ktor_version")
 }
 
 //tasks.test {

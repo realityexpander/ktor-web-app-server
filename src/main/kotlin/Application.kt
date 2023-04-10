@@ -3,17 +3,26 @@ package com.realityexpander
 import ArgonPasswordService
 import JwtService
 import JwtTokenString
-import UserEntity
-import UserService
+import data.local.UserEntity
+import data.local.UserService
 import com.github.slugify.Slugify
 import com.realityexpander.Constants.APPLICATION_PROPERTIES_FILE
+import data.emailer.sendPasswordResetEmail
+import data.remote.files.save
 import data.local.*
+import data.remote.files.FileUploadResponse
+import data.remote.TodoResponse
+import domain.ToDoStatus
+import domain.Todo
+import domain.UserInTodo
+import domain.validatePassword
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.okhttp.*
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation as ContentNegotiationClient
 import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
+import io.ktor.client.utils.EmptyContent.status
 import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.serialization.kotlinx.json.*
@@ -25,23 +34,25 @@ import io.ktor.server.netty.*
 import io.ktor.server.plugins.*
 import io.ktor.server.plugins.compression.*
 import io.ktor.server.plugins.forwardedheaders.*
+import io.ktor.server.plugins.ratelimit.*
+import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation as ContentNegotiationServer
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.util.pipeline.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.*
 import kotlinx.serialization.json.Json
-import org.apache.commons.mail.DefaultAuthenticator
-import org.apache.commons.mail.SimpleEmail
 import org.slf4j.LoggerFactory
+import util.getClientIpAddressFromRequest
+import util.respondJson
+import java.awt.SystemColor.window
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 import javax.naming.AuthenticationException
+import kotlin.time.Duration.Companion.seconds
 import io.ktor.server.application.install as installServer
 
 val ktorLogger: ch.qos.logback.classic.Logger = LoggerFactory.getLogger("KTOR-WEB-APP") as ch.qos.logback.classic.Logger
@@ -108,6 +119,26 @@ fun Application.module() {
         json(jsonConfig)
     }
     installServer(ForwardedHeaders)
+    installServer(RateLimit) {
+        global {
+            rateLimiter(limit = 500, refillPeriod = 1.seconds)
+        }
+
+        register(RateLimitName("auth-routes")) {
+            rateLimiter(limit = 5, refillPeriod = 60.seconds)
+        }
+    }
+
+    installServer(StatusPages) {
+        status(HttpStatusCode.TooManyRequests) { call, status ->
+            val retryAfter = call.response.headers["Retry-After"]
+            call.respondText(text = "429: Too many requests. Wait for $retryAfter seconds.", status = status)
+        }
+
+        exception<Throwable> { call, cause ->
+            call.respondText(text = "500: $cause" , status = HttpStatusCode.InternalServerError)
+        }
+    }
 
     ///////////////////////////////////////////////
     // SETUP KTOR CLIENT
@@ -235,7 +266,6 @@ fun Application.module() {
         }
     }
 
-
     routing {
         // setup CORS
 //        options("*") {
@@ -250,7 +280,6 @@ fun Application.module() {
 
         // Log a user in
         suspend fun ApplicationCall.login(
-            emailAddress: String,
             clientIpAddress: String,
             user: UserEntity
         ) {
@@ -272,282 +301,258 @@ fun Application.module() {
             ))
         }
 
-        post("/api/register") {
-            try {
-                val body = call.receiveText()
-                val params = jsonConfig.decodeFromString<Map<String, String>>(body)
-                val email = params["email"]
-                val password = params["password"]
-                var clientIpAddressFromParams = params["clientIpAddress"]
-                val clientIpAddress =
-                    call.getClientIpAddressFromRequest(suggestedClientIpAddress = clientIpAddressFromParams)
+        rateLimit(RateLimitName("auth-routes")) {
 
-                if (
-                    email != null
-                    && password != null
-                ) {
-                    userService.getUserByEmail(email) ?: run {
+            post("/api/register") {
+                try {
+                    val body = call.receiveText()
+                    val params = jsonConfig.decodeFromString<Map<String, String>>(body)
+                    val email = params["email"]
+                    val password = params["password"]
+                    var clientIpAddressFromParams = params["clientIpAddress"]
 
-                        val passwordHash = passwordService.getSaltedPepperedPasswordHash(password)
+                    if (!validatePassword(password ?: "")) return@post
 
-                        val newUser = UserEntity(
-                            email=email,
-                            password = passwordHash,
-                            authToken = "",
-                            authJwtToken = "",
-                            clientIpAddressWhiteList = listOf(clientIpAddress),
-                        )
-                        userService.addUser(newUser)
+                    val clientIpAddress =
+                        call.getClientIpAddressFromRequest(suggestedClientIpAddress = clientIpAddressFromParams)
 
-                        call.login(email, clientIpAddress, newUser)
+                    if (email != null && password != null) {
+                        userService.getUserByEmail(email) ?: run {
+
+                            val passwordHash = passwordService.getSaltedPepperedPasswordHash(password)
+
+                            val newUser = UserEntity(
+                                email = email,
+                                password = passwordHash,
+                                authToken = "",
+                                authJwtToken = "",
+                                clientIpAddressWhiteList = listOf(clientIpAddress),
+                            )
+                            userService.addUser(newUser)
+
+                            call.login(clientIpAddress, newUser)
+                            return@post
+                        }
+                        call.respondJson(mapOf("error" to "UserEntity already exists"), HttpStatusCode.Conflict)
                         return@post
                     }
-
-                    call.respondJson(mapOf("error" to "UserEntity already exists"), HttpStatusCode.Conflict)
+                    call.respondJson(mapOf("error" to "Invalid email or password"), HttpStatusCode.BadRequest)
+                    return@post
+                } catch (e: Exception) {
+                    call.respondJson(mapOf("error" to e.localizedMessage), HttpStatusCode.BadRequest)
                     return@post
                 }
-
-                call.respondJson(mapOf("error" to "Invalid parameters"), HttpStatusCode.BadRequest)
-            } catch (e: Exception) {
-                call.respondJson(mapOf("error" to e.localizedMessage), HttpStatusCode.BadRequest)
             }
-        }
 
-        // Authentication
-        post("/api/login") {
-            try {
-                val body = call.receiveText()
-                val params = jsonConfig.decodeFromString<Map<String, String>>(body)
-                val email = params["email"]
-                val password = params["password"]
-                var clientIpAddressFromParams = params["clientIpAddress"]
-                val clientIpAddress = call.getClientIpAddressFromRequest(clientIpAddressFromParams)
+            // Authentication
+            post("/api/login") {
+                try {
+                    val body = call.receiveText()
+                    val params = jsonConfig.decodeFromString<Map<String, String>>(body)
+                    val email = params["email"]
+                    val password = params["password"]
+                    var clientIpAddressFromParams = params["clientIpAddress"]
+                    val clientIpAddress = call.getClientIpAddressFromRequest(clientIpAddressFromParams)
 
-                if (email != null && password != null) {
-                    // check if the user exists
-                    val user = userService.getUserByEmail(email)
-                    user ?: run {
-                        val error = mapOf("error" to "User does not exist")
-                        call.respondText(
-                            jsonConfig.encodeToString(error),
-                            status = HttpStatusCode.NotFound
-                        )
+                    if (email != null && password != null) {
+                        // check if the user exists
+                        val user = userService.getUserByEmail(email)
+                        user ?: run {
+                            val error = mapOf("error" to "User does not exist") // todo change to generic error?
+                            call.respondText(
+                                jsonConfig.encodeToString(error),
+                                status = HttpStatusCode.NotFound
+                            )
+                            return@post
+                        }
+
+                        // check if the password is correct
+                        val userPasswordHash = user.password
+                        if (!passwordService.validatePassword(password, userPasswordHash)) {
+                            val error = mapOf("error" to "Invalid credentials")
+                            call.respondText(
+                                jsonConfig.encodeToString(error),
+                                status = HttpStatusCode.Unauthorized
+                            )
+                            return@post
+                        }
+
+                        // Add the client ip address to the user's ip address white list (if it doesn't already exist)
+                        // Note: This is to prevent a potential malicious attacker from using the same token from a different IP address.
+                        // (that they havent yet authenticated from.)
+                        // This may be a good place to add a captcha or send confirmation email to prevent brute force attacks.
+                        if (!user.clientIpAddressWhiteList.contains(clientIpAddress)) {
+                            val newClientIpWhitelistAddresses = user.clientIpAddressWhiteList.toMutableList()
+
+                            newClientIpWhitelistAddresses.add(clientIpAddress)
+                            userService.updateUser(user.copy(clientIpAddressWhiteList = newClientIpWhitelistAddresses))
+                        }
+
+                        call.login(clientIpAddress, user)
                         return@post
                     }
-
-                    // check if the password is correct
-//                    val user = usersDb[email]!!
-                    val userPasswordHash = user.password
-                    if (!passwordService.validatePassword(password, userPasswordHash)) {
-                        val error = mapOf("error" to "Invalid credentials")
-                        call.respondText(
-                            jsonConfig.encodeToString(error),
-                            status = HttpStatusCode.Unauthorized
-                        )
-                        return@post
-                    }
-
-                    // Add the client ip address to the user's ip address white list (if it doesn't already exist)
-                    // Note: This is to prevent a potential malicious attacker from using the same token from a different IP address.
-                    // (that they havent yet authenticated from.)
-                    // This may be a good place to add a captcha or send confirmation email to prevent brute force attacks.
-                    if (!user.clientIpAddressWhiteList.contains(clientIpAddress)) {
-                        val newClientIpWhitelistAddresses = user.clientIpAddressWhiteList.toMutableList()
-
-                        newClientIpWhitelistAddresses.add(clientIpAddress)
-                        userService.updateUser(user.copy(clientIpAddressWhiteList = newClientIpWhitelistAddresses))
-                    }
-
-                    call.login(email, clientIpAddress, user)
+                    call.respondJson(mapOf("error" to "Invalid parameters"), HttpStatusCode.BadRequest)
+                    return@post
+                } catch (e: Exception) {
+                    call.respondJson(mapOf("error" to e.localizedMessage), HttpStatusCode.BadRequest)
                     return@post
                 }
-
-                call.respondJson(mapOf("error" to "Invalid parameters"), HttpStatusCode.BadRequest)
-            } catch (e: Exception) {
-                call.respondJson(mapOf("error" to e.localizedMessage), HttpStatusCode.BadRequest)
             }
-        }
 
-        post("/api/logout") {
-            try {
-                val body = call.receiveText()
-                val params = jsonConfig.decodeFromString<Map<String, String>>(body)
-                @Suppress("USELESS_CAST") // need to indicate String type is a JWT token string
-                val token = params["token"] as JwtTokenString?
+            post("/api/logout") {
+                try {
+                    val body = call.receiveText()
+                    val params = jsonConfig.decodeFromString<Map<String, String>>(body)
 
-                token?.let {
-                    val user = userService.getUserByAuthJwtToken(token)
-                    user?.let {
-                        userService.updateUser(
-                            user.copy(
-                            authToken = "",
-                            authJwtToken = ""
-                        ))
+                    @Suppress("USELESS_CAST") // need to indicate String type is a JWT token string
+                    val token = params["token"] as JwtTokenString?
 
-                        call.respondJson(map=mapOf("success" to "true"))
+                    token?.let {
+                        val user = userService.getUserByAuthJwtToken(token)
+                        user?.let {
+                            userService.updateUser(
+                                user.copy(
+                                    authToken = "",
+                                    authJwtToken = ""
+                                )
+                            )
+
+                            call.respondJson(map = mapOf("success" to "true"))
+                            return@post
+                        }
+
+                        call.respondJson(mapOf("error" to "Invalid token"), HttpStatusCode.Unauthorized)
                         return@post
                     }
+                    call.respondJson(mapOf("error" to "Invalid parameters"), HttpStatusCode.BadRequest)
+                } catch (e: Exception) {
+                    call.respondJson(mapOf("error" to e.localizedMessage), HttpStatusCode.BadRequest)
+                }
+            }
 
-                    call.respondJson(mapOf("error" to "Invalid token"), HttpStatusCode.Unauthorized)
-                    return@post
+            get("/api/send-password-reset-email") {
+                val emailAddress = call.request.queryParameters["emailAddress"]
+                emailAddress ?: run {
+                    call.respondJson(mapOf("error" to "Email address is required"), HttpStatusCode.BadRequest)
+                    return@get
                 }
 
-                val error = mapOf("error" to "Invalid parameters")
-                call.respondText(
-                    jsonConfig.encodeToString(error),
-                    status = HttpStatusCode.BadRequest
-                )
-                call.respondJson(mapOf("error" to "Invalid parameters"), HttpStatusCode.BadRequest)
-            } catch (e: Exception) {
-                val error = mapOf("error" to e.message)
-                call.respondText(
-                    jsonConfig.encodeToString(error),
-                    status = HttpStatusCode.BadRequest
-                )
-            }
-        }
+                // check if the user exists
+                val user = userService.getUserByEmail(emailAddress)
+                user ?: run {
+                    call.respondJson(mapOf("error" to "User does not exist"), HttpStatusCode.BadRequest)
+                    return@get
+                }
 
-        get("/api/send-password-reset-email") {
-            val emailAddress = call.request.queryParameters["emailAddress"]
-            emailAddress ?: run {
-                call.respondJson(mapOf("error" to "Email address is required"), HttpStatusCode.BadRequest)
-                return@get
-            }
+                // generate password reset token
+                val passwordResetToken = UUID.randomUUID().toString()
+                val passwordResetJwtToken = jwtService.generatePasswordResetToken(user)
 
-            // check if the user exists
-            val user = userService.getUserByEmail(emailAddress)
-            user ?: run {
-                call.respondJson(mapOf("error" to "User does not exist"), HttpStatusCode.BadRequest)
-                return@get
-            }
-
-            // generate password reset token
-            val passwordResetToken = UUID.randomUUID().toString()
-            val passwordResetJwtToken = jwtService.generatePasswordResetToken(user)
-
-            // save the password reset token to the user's account
-            user.let {
-                userService.updateUser(
-                    user.copy(
-                        passwordResetToken = passwordResetToken,
-                        passwordResetJwtToken = passwordResetJwtToken
+                // save the password reset token to the user's account
+                user.let {
+                    userService.updateUser(
+                        user.copy(
+                            passwordResetToken = passwordResetToken,
+                            passwordResetJwtToken = passwordResetJwtToken
+                        )
                     )
-                )
-            }
-
-            val res = sendPasswordResetEmail(emailAddress = emailAddress, passwordResetJwtToken)
-            if (res) {
-                call.respondJson(mapOf("success" to "Email sent"))
-                return@get
-            } else {
-                call.respondJson(mapOf("error" to "Email failed to send"), HttpStatusCode.BadRequest)
-                return@get
-            }
-
-        }
-
-        post("/api/reset-password") {
-            val body = call.receiveText()
-            val params = jsonConfig.decodeFromString<Map<String, String>>(body)
-            val passwordResetToken = params["passwordResetToken"]
-            val newPassword = params["newPassword"]
-
-            if (passwordResetToken == null || newPassword == null) {
-                call.respondJson(
-                    mapOf("error" to "Password reset token and new password are required"), HttpStatusCode.BadRequest
-                )
-                return@post
-            }
-
-            // validate the password reset token
-            // old way using UUID - NOTE: LEAVE for reference
-            //if (passwordResetToken.length != 36) {
-            //    call.respondJson(mapOf("error" to "Invalid password reset token"), HttpStatusCode.BadRequest)
-            //    return@post
-            //}
-
-            // validate password
-            if (newPassword.length < 8) {
-                call.respondJson(mapOf("error" to "Password must be at least 8 characters"), HttpStatusCode.BadRequest)
-                return@post
-            }
-            if (!newPassword.matches(Regex(".*[A-Z].*"))) {
-                call.respondJson(
-                    mapOf("error" to "Password must contain at least one uppercase letter"),
-                    HttpStatusCode.BadRequest
-                )
-                return@post
-            }
-            if (!newPassword.matches(Regex(".*[a-z].*"))) {
-                call.respondJson(
-                    mapOf("error" to "Password must contain at least one lowercase letter"),
-                    HttpStatusCode.BadRequest
-                )
-                return@post
-            }
-            if (!newPassword.matches(Regex(".*[0-9].*"))) {
-                call.respondJson(
-                    mapOf("error" to "Password must contain at least one number"),
-                    HttpStatusCode.BadRequest
-                )
-                return@post
-            }
-            if (!newPassword.matches(Regex(".*[!@#\$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?].*"))) {
-                call.respondJson(
-                    mapOf("error" to "Password must contain at least one special character"),
-                    HttpStatusCode.BadRequest
-                )
-                return@post
-            }
-
-            // find the user with the password reset token
-            // val user = usersDb.values.find { it.passwordResetToken == passwordResetToken } // checks UUID old way - NOTE: LEAVE for reference
-            val user = userService.getUserByPasswordResetJwtToken(passwordResetToken)
-            user?.let {
-                // validate the password reset token
-                // new way using JWT
-                val passwordResetTokenClaims = jwtService.verify(passwordResetToken)
-                val passwordResetTokenExpiration = passwordResetTokenClaims.claims["exp"]?.asLong()
-                    ?: run {
-                        call.respondJson(mapOf("error" to "Invalid password reset token - missing expiry"), HttpStatusCode.BadRequest)
-                        return@post
-                    }
-                passwordResetTokenExpiration.let {
-                    val now = Date().time / 1000
-                    if (now > passwordResetTokenExpiration) {
-                        call.respondJson(mapOf("error" to "Password reset token has expired"), HttpStatusCode.BadRequest)
-                        return@post
-                    }
                 }
-                if (passwordResetTokenClaims.claims["type"]?.asString() != "passwordReset") {
+
+                val res = sendPasswordResetEmail(emailAddress = emailAddress, passwordResetJwtToken)
+                if (res) {
+                    call.respondJson(mapOf("success" to "Email sent"))
+                    return@get
+                } else {
+                    call.respondJson(mapOf("error" to "Email failed to send"), HttpStatusCode.BadRequest)
+                    return@get
+                }
+
+            }
+
+            post("/api/reset-password") {
+                val body = call.receiveText()
+                val params = jsonConfig.decodeFromString<Map<String, String>>(body)
+                val passwordResetToken = params["passwordResetToken"]
+                val newPassword = params["newPassword"]
+
+                if (passwordResetToken == null || newPassword == null) {
+                    call.respondJson(
+                        mapOf("error" to "Password reset token and new password are required"),
+                        HttpStatusCode.BadRequest
+                    )
+                    return@post
+                }
+
+                // validate the password reset token
+                // old way using UUID - NOTE: LEAVE for reference
+                //if (passwordResetToken.length != 36) {
+                //    call.respondJson(mapOf("error" to "Invalid password reset token"), HttpStatusCode.BadRequest)
+                //    return@post
+                //}
+
+                if (!validatePassword(newPassword)) return@post
+
+                // find the user with the password reset token
+                // val user = usersDb.values.find { it.passwordResetToken == passwordResetToken } // checks UUID old way - NOTE: LEAVE for reference
+                val user = userService.getUserByPasswordResetJwtToken(passwordResetToken)
+                user?.let {
+                    // validate the password reset token
+                    // new way using JWT
+                    val passwordResetTokenClaims = jwtService.verify(passwordResetToken)
+                    val passwordResetTokenExpiration = passwordResetTokenClaims.claims["exp"]?.asLong()
+                        ?: run {
+                            call.respondJson(
+                                mapOf("error" to "Invalid password reset token - missing expiry"),
+                                HttpStatusCode.BadRequest
+                            )
+                            return@post
+                        }
+                    passwordResetTokenExpiration.let {
+                        val now = Date().time / 1000
+                        if (now > passwordResetTokenExpiration) {
+                            call.respondJson(
+                                mapOf("error" to "Password reset token has expired"),
+                                HttpStatusCode.BadRequest
+                            )
+                            return@post
+                        }
+                    }
+                    if (passwordResetTokenClaims.claims["type"]?.asString() != "passwordReset") {
+                        call.respondJson(mapOf("error" to "Invalid password reset token"), HttpStatusCode.BadRequest)
+                        return@post
+                    }
+                    val passwordResetTokenEmail = passwordResetTokenClaims.claims["email"]?.asString()
+                    if (passwordResetTokenEmail != user.email) {
+                        call.respondJson(
+                            mapOf("error" to "Invalid email in password reset token"),
+                            HttpStatusCode.BadRequest
+                        )
+                        return@post
+                    }
+                    if (passwordResetTokenClaims.claims["id"]?.asString() != user.id) {
+                        call.respondJson(
+                            mapOf("error" to "Invalid user id in password reset token"),
+                            HttpStatusCode.BadRequest
+                        )
+                        return@post
+                    }
+
+                    // update the user's password & clear the password reset token(s)
+                    val passwordHash = passwordService.getSaltedPepperedPasswordHash(newPassword)
+                    val updatedUser =
+                        user.copy(
+                            password = passwordHash,
+                            passwordResetToken = "",
+                            passwordResetJwtToken = ""
+                        )
+                    userService.updateUser(updatedUser)
+
+                    call.respondJson(map = mapOf("success" to "Password updated"))
+                    return@post
+                } ?: run {
                     call.respondJson(mapOf("error" to "Invalid password reset token"), HttpStatusCode.BadRequest)
                     return@post
                 }
-                val passwordResetTokenEmail = passwordResetTokenClaims.claims["email"]?.asString()
-                if (passwordResetTokenEmail != user.email) {
-                    call.respondJson(mapOf("error" to "Invalid email in password reset token"), HttpStatusCode.BadRequest)
-                    return@post
-                }
-                if (passwordResetTokenClaims.claims["id"]?.asString() != user.id) {
-                    call.respondJson(mapOf("error" to "Invalid user id in password reset token"), HttpStatusCode.BadRequest)
-                    return@post
-                }
-
-                // update the user's password & clear the password reset token(s)
-                val passwordHash = passwordService.getSaltedPepperedPasswordHash(newPassword)
-                val updatedUser =
-                    user.copy(
-                        password = passwordHash,
-                        passwordResetToken = "",
-                        passwordResetJwtToken = ""
-                    )
-                userService.updateUser(updatedUser)
-
-                call.respondJson(map=mapOf("success" to "Password updated"))
-                return@post
-            } ?: run {
-                call.respondJson(mapOf("error" to "Invalid password reset token"), HttpStatusCode.BadRequest)
-                return@post
             }
         }
 
@@ -682,119 +687,123 @@ fun Application.module() {
             defaultPage = "index.html"
             filesPath = "/Volumes/TRS-83/dev/JavascriptWebComponents"
         }
-
     }
 }
 
-fun PartData.FileItem.save(path: String): String {
-    val fileBytes = streamProvider().readBytes()
-    val fileExtension = originalFileName?.takeLastWhile { it != '.' }
-    val fileName = UUID.randomUUID().toString() + "." + fileExtension
-    val folder = File(path)
+//private suspend fun PipelineContext<Unit, ApplicationCall>.validatePassword(
+//    newPassword: String
+//): Boolean {
+//    // validate password
+//    if (newPassword.length < 8) {
+//        call.respondJson(mapOf("error" to "Password must be at least 8 characters"), HttpStatusCode.BadRequest)
+//        return false
+//    }
+//    if (!newPassword.matches(Regex(".*[A-Z].*"))) {
+//        call.respondJson(
+//            mapOf("error" to "Password must contain at least one uppercase letter"),
+//            HttpStatusCode.BadRequest
+//        )
+//        return false
+//    }
+//    if (!newPassword.matches(Regex(".*[a-z].*"))) {
+//        call.respondJson(
+//            mapOf("error" to "Password must contain at least one lowercase letter"),
+//            HttpStatusCode.BadRequest
+//        )
+//        return false
+//    }
+//    if (!newPassword.matches(Regex(".*[0-9].*"))) {
+//        call.respondJson(
+//            mapOf("error" to "Password must contain at least one number"),
+//            HttpStatusCode.BadRequest
+//        )
+//        return false
+//    }
+//    if (!newPassword.matches(Regex(".*[!@#\$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?].*"))) {
+//        call.respondJson(
+//            mapOf("error" to "Password must contain at least one special character"),
+//            HttpStatusCode.BadRequest
+//        )
+//        return false
+//    }
+//
+//    return true
+//}
 
-    folder.mkdir()
-    File("$path$fileName").writeBytes(fileBytes)
-    return fileName
-}
+//suspend fun ApplicationCall.respondJson(
+//    map: Map<String, String> = mapOf(),
+//    status: HttpStatusCode = HttpStatusCode.OK
+//) {
+//    respondText(jsonConfig.encodeToString(map), ContentType.Application.Json, status)
+//}
 
-fun ApplicationCall.getClientIpAddressFromRequest(suggestedClientIpAddress: String? = null): String {
-    val call = this
-    val ipFromForwardedForHeader = call.request.header("X-Forwarded-For")
-    val ipFromCookies = call.request.cookies["clientIpAddress"]
-
-    return if (ipFromForwardedForHeader != null) {
-        ipFromForwardedForHeader.toString()
-    } else {
-        val originRemoteHost = call.request.origin.remoteHost
-        val originServerHost = call.request.origin.serverHost
-        val remoteHost = call.request.local.remoteHost
-        val serverHost = call.request.local.serverHost
-
-        val resultIp = ipFromCookies ?: suggestedClientIpAddress ?: remoteHost
-
-        if (resultIp != "localhost") {
-            resultIp
-        } else {
-            UUID.randomUUID()
-                .toString() // return a UUID instead of localhost, because `localhost` is not a valid IP. This will be the unique ID for the Application instance.
-        }
-    }
-}
-
-suspend fun ApplicationCall.respondJson(
-    map: Map<String, String> = mapOf(),
-    status: HttpStatusCode = HttpStatusCode.OK
-) {
-    respondText(jsonConfig.encodeToString(map), ContentType.Application.Json, status)
-}
-
-suspend fun sendPasswordResetEmail(emailAddress: String, passwordResetToken: String = ""): Boolean {
-    ktorLogger.info("Sending reset email with SendInBlue to $emailAddress")
-
-    val message = """
-    <html>
-        <body>
-            <h1>Reset Password</h1>
-            <img src="https://picsum.photos/200/300" alt="image">
-            <p>Someone requested that you reset your password.</p>
-            <p>
-            <p>If this was not you, please ignore this email.</p>
-            <br>
-            <br>
-            <a href="http://localhost:8081/reset-password/${passwordResetToken}">Click here to reset your password</a>
-        </body>
-    </html>
-        
-    """.trimIndent()
-
-    return sendEmail(
-        message,
-        emailAddress,
-        "Reset your password"
-    )
-}
-
-suspend fun sendEmail(
-    message: String,
-    emailAddress: String,
-    subject: String
-): Boolean {
-    return sendSimpleEmailViaSendInBlue(message, emailAddress, subject)
-}
-
-suspend fun sendSimpleEmailViaSendInBlue(
-    message: String,
-    emailAddress: String,
-    subject: String
-): Boolean {
-    ktorLogger.info("Sending simple email with SendInBlue to $emailAddress")
-
-    // Dashboard: https://app.sendinblue.com/settings
-    // uses SendInBlue - google account realityexpanderdev@gmail.com
-
-    return withContext(Dispatchers.IO) {
-        try {
-            val email = SimpleEmail()
-            email.hostName = "smtp-relay.sendinblue.com"
-//            email.setSmtpPort(587)
-            email.setDebug(true)
-            email.setAuthenticator(
-                DefaultAuthenticator(
-                    applicationConfig.emailSendinblueFromEmail,
-                    applicationConfig.emailSendinblueApiKey
-                )
-            )
-            email.isSSLOnConnect = true
-            email.setFrom(applicationConfig.emailSendinblueFromEmail, applicationConfig.emailSendinblueFromName)
-            email.subject = subject
-            email.setMsg(message)
-            email.addTo(emailAddress)
-            email.send()
-
-            return@withContext true
-        } catch (e: Exception) {
-            ktorLogger.error("Error sending email: $e")
-            return@withContext false
-        }
-    }
-}
+//suspend fun sendPasswordResetEmail(emailAddress: String, passwordResetToken: String = ""): Boolean {
+//    ktorLogger.info("Sending reset email with SendInBlue to $emailAddress")
+//
+//    val message = """
+//    <html>
+//        <body>
+//            <h1>Reset Password</h1>
+//            <img src="https://picsum.photos/200/300" alt="image">
+//            <p>Someone requested that you reset your password.</p>
+//            <p>
+//            <p>If this was not you, please ignore this email.</p>
+//            <br>
+//            <br>
+//            <a href="http://localhost:8081/reset-password/${passwordResetToken}">Click here to reset your password</a>
+//        </body>
+//    </html>
+//
+//    """.trimIndent()
+//
+//    return sendEmail(
+//        message,
+//        emailAddress,
+//        "Reset your password"
+//    )
+//}
+//
+//suspend fun sendEmail(
+//    message: String,
+//    emailAddress: String,
+//    subject: String
+//): Boolean {
+//    return sendSimpleEmailViaSendInBlue(message, emailAddress, subject)
+//}
+//
+//suspend fun sendSimpleEmailViaSendInBlue(
+//    message: String,
+//    emailAddress: String,
+//    subject: String
+//): Boolean {
+//    ktorLogger.info("Sending simple email with SendInBlue to $emailAddress")
+//
+//    // Dashboard: https://app.sendinblue.com/settings
+//    // uses SendInBlue - google account realityexpanderdev@gmail.com
+//
+//    return withContext(Dispatchers.IO) {
+//        try {
+//            val email = SimpleEmail()
+//            email.hostName = "smtp-relay.sendinblue.com"
+////            email.setSmtpPort(587)
+//            email.setDebug(true)
+//            email.setAuthenticator(
+//                DefaultAuthenticator(
+//                    applicationConfig.emailSendinblueFromEmail,
+//                    applicationConfig.emailSendinblueApiKey
+//                )
+//            )
+//            email.isSSLOnConnect = true
+//            email.setFrom(applicationConfig.emailSendinblueFromEmail, applicationConfig.emailSendinblueFromName)
+//            email.subject = subject
+//            email.setMsg(message)
+//            email.addTo(emailAddress)
+//            email.send()
+//
+//            return@withContext true
+//        } catch (e: Exception) {
+//            ktorLogger.error("Error sending email: $e")
+//            return@withContext false
+//        }
+//    }
+//}
