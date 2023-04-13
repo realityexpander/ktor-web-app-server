@@ -100,9 +100,11 @@ class UserService(
         saveUsersDbToDisk()
     }
 
-    suspend fun updateUser(user: UserEntity) {
+    suspend fun updateUser(user: UserEntity): UserEntity {
         usersDb[user.id] = user
         saveUsersDbToDisk()
+
+        return user;
     }
 
     suspend fun deleteUser(user: UserEntity) {

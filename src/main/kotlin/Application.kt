@@ -128,7 +128,6 @@ fun Application.module() {
             rateLimiter(limit = 5, refillPeriod = 60.seconds)
         }
     }
-
     installServer(StatusPages) {
         status(HttpStatusCode.TooManyRequests) { call, status ->
             val retryAfter = call.response.headers["Retry-After"]
@@ -297,8 +296,8 @@ fun Application.module() {
 
             respondJson(mapOf(
                 "token" to token,
+                "jwtToken" to jwtToken,
                 "clientIpAddress" to clientIpAddress,
-                "jwtToken" to jwtToken
             ))
         }
 
@@ -357,7 +356,7 @@ fun Application.module() {
 
                     if (email != null && password != null) {
                         // check if the user exists
-                        val user = userService.getUserByEmail(email)
+                        var user = userService.getUserByEmail(email)
                         user ?: run {
                             val error = mapOf("error" to "User does not exist") // todo change to generic error?
                             call.respondText(
@@ -386,7 +385,7 @@ fun Application.module() {
                             val newClientIpWhitelistAddresses = user.clientIpAddressWhiteList.toMutableList()
 
                             newClientIpWhitelistAddresses.add(clientIpAddress)
-                            userService.updateUser(user.copy(clientIpAddressWhiteList = newClientIpWhitelistAddresses))
+                            user = userService.updateUser(user.copy(clientIpAddressWhiteList = newClientIpWhitelistAddresses))
                         }
 
                         call.login(clientIpAddress, user)
@@ -406,7 +405,7 @@ fun Application.module() {
                     val params = jsonConfig.decodeFromString<Map<String, String>>(body)
 
                     @Suppress("USELESS_CAST") // need to indicate String type is a JWT token string
-                    val token = params["token"] as JwtTokenString?
+                    val token = params["jwtToken"] as JwtTokenString?
 
                     token?.let {
                         val user = userService.getUserByAuthJwtToken(token)
@@ -686,7 +685,7 @@ fun Application.module() {
 
         singlePageApplication {
             defaultPage = "index.html"
-            filesPath = "/Volumes/TRS-83/dev/JavascriptWebComponents"
+            filesPath = "/Volumes/TRS-83/dev/WebAppPlayground"
         }
     }
 }
