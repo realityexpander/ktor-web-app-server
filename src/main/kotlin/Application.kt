@@ -6,6 +6,9 @@ import JwtTokenString
 import data.local.UserEntity
 import data.local.UserService
 import com.github.slugify.Slugify
+import com.mongodb.client.model.FindOneAndUpdateOptions
+import com.mongodb.client.model.ReturnDocument
+import com.mongodb.client.model.changestream.FullDocument
 import com.realityexpander.Constants.APPLICATION_PROPERTIES_FILE
 import data.emailer.sendPasswordResetEmail
 import data.remote.files.save
@@ -16,6 +19,7 @@ import domain.ToDoStatus
 import domain.Todo
 import domain.UserInTodo
 import domain.validatePassword
+import io.fluidsonic.mongo.MongoClients
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.okhttp.*
@@ -29,6 +33,7 @@ import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
+import io.ktor.server.html.*
 import io.ktor.server.http.content.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.*
@@ -41,8 +46,19 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.util.pipeline.*
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.forEach
+import kotlinx.coroutines.launch
 import kotlinx.serialization.*
 import kotlinx.serialization.json.Json
+import org.bson.BsonInt32
+import org.bson.BsonString
+import org.bson.Document
+import org.bson.codecs.configuration.CodecRegistries
+import org.bson.codecs.configuration.CodecRegistry
+import org.bson.codecs.pojo.PojoCodecProvider
+import org.bson.types.ObjectId
 import org.slf4j.LoggerFactory
 import util.getClientIpAddressFromRequest
 import util.respondJson
@@ -52,6 +68,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 import javax.naming.AuthenticationException
+import kotlin.reflect.KClass
+import kotlin.reflect.jvm.internal.impl.resolve.constants.KClassValue
 import kotlin.time.Duration.Companion.seconds
 import io.ktor.server.application.install as installServer
 
@@ -184,6 +202,35 @@ fun Application.module() {
         audience = audience,
     )
 
+    val collection = MongoClients.create()
+        .getDatabase("test")
+        .getCollection("test")
+    launch {
+
+        collection.find().collect { document ->  // Kotlin Flow
+            println("Event: $document")
+        }
+
+
+        // Setting up a codec registry allows retrieving objects as Java classes
+        // see data class Restaurant
+        val pojoCodecRegistry: CodecRegistry = CodecRegistries.fromRegistries(
+            MongoClients.defaultCodecRegistry,
+            CodecRegistries.fromProviders(PojoCodecProvider.builder().automatic(true).build())
+        )
+
+        val database = MongoClients.create()
+            .getDatabase("test")
+            .withCodecRegistry(pojoCodecRegistry)
+        val result = database
+            .getCollection("test")
+            .distinct("count", Integer::class)
+        val flow = result
+        flow.collect { a -> println(Document("value", BsonInt32(a.toInt()))) }
+
+        println("Done")
+    }
+
     installServer(Authentication) {
 
         jwt("auth-jwt") {
@@ -199,11 +246,12 @@ fun Application.module() {
 
             validate { credential ->
                 val pl = credential.payload
-                if (pl.getClaim("email").asString().isNullOrBlank()) return@validate null
-                if (pl.getClaim("clientIpAddress").asString().isNullOrBlank()) return@validate null
+                if (pl.getClaim("email")
+                    .asString().isNullOrBlank()) return@validate null
+                if (pl.getClaim("clientIpAddress")
+                    .asString().isNullOrBlank()) return@validate null
                 if (pl.getClaim("exp")
-                        .asInt() < (System.currentTimeMillis() / 1000).toInt()
-                ) return@validate null
+                    .asInt() < (System.currentTimeMillis() / 1000).toInt()) return@validate null
 
                 val email = pl.getClaim("email").asString()
                 val clientIpAddress = pl.getClaim("clientIpAddress").asString()
@@ -217,7 +265,8 @@ fun Application.module() {
             }
 
             challenge { defaultScheme, realm ->
-                val error = mapOf("error" to "Token is not valid or has expired. defaultScheme: $defaultScheme, realm: $realm")
+                val error =
+                    mapOf("error" to "Token is not valid or has expired. defaultScheme: $defaultScheme, realm: $realm")
                 call.respondJson(error, status = HttpStatusCode.Unauthorized)
             }
         }
@@ -299,6 +348,39 @@ fun Application.module() {
                 "jwtToken" to jwtToken,
                 "clientIpAddress" to clientIpAddress,
             ))
+        }
+
+        get("/api/mongo") {
+            launch {
+                collection.insertOne(Document("hello", "world"))    // suspending call
+                collection.insertOne(Document("it's", "so easy!"))  // suspending call
+                collection.insertOne(Document("count", 0))
+
+                call.respondText("Updated")
+            }
+        }
+
+        get("/api/count") {
+
+            //collection.findOneAndUpdate({_id: ObjectId('5ed7f23789bcd51e9c6a82e0')}, {$inc: {nextTicket: 1}}, {returnOriginal: false})
+
+            launch {
+                val x = collection.findOneAndUpdate( // suspending call
+//                    Document("_id", ObjectId("6459e2902b72d018a518d5ac")),
+                    Document("nextTicket", Document("\$exists", true)),
+                    Document("\$inc", Document("nextTicket", 1)),
+                    FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER)
+                )
+
+                val y = collection.findOneAndUpdate(
+                    Document("count", Document("\$exists", true)),
+                    Document("\$inc", Document("count", 100)),
+                    FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER)
+                )
+
+                call.respondText("x: $x, y: $y")
+            }
+
         }
 
         rateLimit(RateLimitName("auth-routes")) {
@@ -440,7 +522,7 @@ fun Application.module() {
                 // check if the user exists
                 val user = userService.getUserByEmail(emailAddress)
                 user ?: run {
-                    call.respondJson(mapOf("error" to "User does not exist"), HttpStatusCode.BadRequest)
+                    call.respondJson(mapOf("error" to "User does not exist"), HttpStatusCode.BadRequest) // todo: Dont reveal this information
                     return@get
                 }
 

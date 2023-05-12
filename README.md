@@ -1,3 +1,6 @@
+### Setup
+  - To be used with node-typescript-json-server & WebAppPlayground
+
 
 ### Resources
   - nomisRev/ktor-arrow-example

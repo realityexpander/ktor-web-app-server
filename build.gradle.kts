@@ -99,6 +99,13 @@ dependencies {
 
     // Status Pages
     implementation("io.ktor:ktor-server-status-pages:$ktor_version")
+
+    // Fluid Mongo (coroutines for mongo-db)
+    implementation("io.fluidsonic.mongo:fluid-mongo:1.6.0")
+
+    // Arrow
+    implementation("io.arrow-kt:arrow-core:1.2.0-RC")
+    implementation("io.arrow-kt:arrow-fx-coroutines:1.2.0-RC")
 }
 
 //tasks.test {
