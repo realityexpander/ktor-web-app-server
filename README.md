@@ -20,4 +20,34 @@
 - Dashboard
     - https://app-smtp.sendinblue.com/real-time 
     - https://app-smtp.sendinblue.com/statistics
-  - 
+
+### MongoDB for coroutines
+- Kotlin coroutine support for MongoDB built on top of the official MongoDB Reactive Streams Java Driver. 
+  - https://github.com/fluidsonic/fluid-mongo
+- Sample application using Kotlin, Ktor, and KMongo.
+  - https://github.com/yinxing2008/ktor-kmongo-sample
+
+### KMongo
+- A Kotlin toolkit for Mongo
+  - https://github.com/Litote/kmongo
+
+### Event sourcing in Kotlin
+  - uses Ktor, KMongo, and Arrow
+  - https://engineering.vayana.com/blog/Engineering/event_sourcing_kotlin/
+
+### Kotlin, Coroutines and, Ktor
+  - https://mongo-loves-data.medium.com/kotlin-coroutines-and-ktor-19614ac299ad
+  - https://innovorder.dev/deploy-a-microservice-in-kotlin-with-ktor-part-1-2691fef75e1d
+
+### Arrow
+- Arrow aims to bring idiomatic functional programming to Kotlin. This means Arrow is inspired by the great work made in other functional programming communities, yet exposes these ideas and concepts in ways that do not feel alien to Kotlin programmers.
+- https://arrow-kt.io/learn/quickstart/
+
+
+### Ktor Plugin EventStoreDB
+https://github.com/traxterz/ktor-plugin-event-store-db
+
+### Kotlin Events like C#'s Event
+- https://github.com/stuhlmeier/kotlin-events
+
+

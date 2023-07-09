@@ -1,4 +1,4 @@
-import CustomerApplicationCmd.*
+import CustomerApplicationCommand.*
 import CustomerApplicationEvent.*
 import CustomerApplicationEvent.Approved
 import CustomerApplicationEvent.Rejected
@@ -18,7 +18,8 @@ import java.util.concurrent.ConcurrentHashMap
 
 //----- The Core Design Elements
 
-inline class Guid(val uuidString: String = UUID.randomUUID().toString())
+@JvmInline
+value class Guid(val uuid: String = UUID.randomUUID().toString())
 
 // -- Events
 interface Event {
@@ -67,33 +68,33 @@ fun <TState : State, TCommand : Command, TCommandCtx : CommandContext, TEvent : 
 ): CmdResult<TEvent> = block(state, cmd, cmdCtx)
 
 // -- Apply an event to a state and get the new state
-typealias ApplyEventFn<TState, TEvent> = (TState, TEvent) -> TState
+typealias ApplyEventFn<TState, TEvent> = (TState?, TEvent) -> TState?
 
 fun <TState : State, TEvent : Event> applyEvent(
-    state: TState,
+    state: TState?,
     event: TEvent,
     block: ApplyEventFn<TState, TEvent>
-): TState =
+): TState? =
     block(state, event)
 
 fun <TState : State, TEvent : Event> applyEvents(
-    state: TState,
+    state: TState?,
     events: List<TEvent>,
     block: ApplyEventFn<TState, TEvent>
-): TState =
-    events.fold(state, block)
+): TState? = if(events.isEmpty()) state else events.fold(state, block)
+//    events.fold(state, block)
 
 // -- Aggregates
 interface Aggregate<
-        TState : State,
+        TState : State?,
         TCommand : Command,
         TCommandCtx : CommandContext,
         TEvent : Event
         > {
-    val initialState: TState
-    fun execute(st: TState, cmd: TCommand, cmdCtx: TCommandCtx): CmdResult<TEvent>
-    fun apply(st: TState, ev: TEvent): TState
-    fun apply(st: TState, evs: List<TEvent>): TState
+    val initialState: TState?
+    fun execute(state: TState?, command: TCommand, commandContext: TCommandCtx): CmdResult<TEvent>
+    fun apply(st: TState?, ev: TEvent): TState?
+    fun apply(st: TState?, evs: List<TEvent>): TState?
 }
 
 //------------------------------------------------------------------
@@ -123,9 +124,17 @@ data class DefaultCmdContext(
 ) : CommandContext
 
 //Commands
-sealed class CustomerApplicationCmd : Command {
+sealed class CustomerApplicationCommand : Command {
     abstract val customerApplicationId: Guid
     override fun correlationId() = customerApplicationId
+
+    data class CreateApplication(
+        override val customerApplicationId: Guid,
+        val customerName: String,
+        val customerAddress: String,
+        val customerPhone: String,
+        val customerEmail: String
+    ) : CustomerApplicationCommand()
 
     data class SubmitApplication(
         override val customerApplicationId: Guid,
@@ -133,7 +142,7 @@ sealed class CustomerApplicationCmd : Command {
         val customerAddress: String,
         val customerPhone: String,
         val customerEmail: String
-    ) : CustomerApplicationCmd()
+    ) : CustomerApplicationCommand()
 
     data class UpdateDetails(
         override val customerApplicationId: Guid,
@@ -141,28 +150,36 @@ sealed class CustomerApplicationCmd : Command {
         val customerAddress: String,
         val customerPhone: String,
         val customerEmail: String
-    ) : CustomerApplicationCmd()
+    ) : CustomerApplicationCommand()
 
     data class RequestMoreInfo(
         override val customerApplicationId: Guid,
         val reason: String,
         val sentBackBy: String
-    ) : CustomerApplicationCmd()
+    ) : CustomerApplicationCommand()
 
     data class ApproveApplication(
         override val customerApplicationId: Guid,
         val approvingUser: String
-    ) : CustomerApplicationCmd()
+    ) : CustomerApplicationCommand()
 
     data class RejectApplication(
         override val customerApplicationId: Guid,
         val rejectingUser: String
-    ) : CustomerApplicationCmd()
+    ) : CustomerApplicationCommand()
 }
 
 //Events
 sealed class CustomerApplicationEvent : Event {
 //    abstract override val metadata: Metadata
+
+    data class Created(
+        override val metadata: Metadata,
+        val customerName: String,
+        val customerAddress: String,
+        val customerPhone: String,
+        val customerEmail: String,
+    ) : CustomerApplicationEvent()
 
     data class Submitted(
         override val metadata: Metadata,
@@ -239,17 +256,29 @@ sealed class CustomerApplicationState : State {
 }
 
 //------------------------------------------------------------------------
-fun handleCustomerApplicationCmd(
-    st: CustomerApplicationState,
-    cmd: CustomerApplicationCmd,
+fun handleCustomerApplicationCommand(
+    st: CustomerApplicationState?,
+    cmd: CustomerApplicationCommand,
     ctx: CommandContext
 ): CmdResult<CustomerApplicationEvent> =
     when (cmd) {
+        is CreateApplication -> {
+            listOf(
+                Created(
+                    Metadata(cmd.customerApplicationId),
+                    cmd.customerName,
+                    cmd.customerAddress,
+                    cmd.customerPhone,
+                    cmd.customerEmail
+                )
+            ).right()
+        }
+
         is SubmitApplication ->
             either {
                 listOf(
                     Submitted(
-                        Metadata(Guid(cmd.customerApplicationId.toString())),
+                        Metadata(cmd.customerApplicationId),
                         cmd.customerName,
                         cmd.customerAddress,
                         cmd.customerPhone,
@@ -262,7 +291,7 @@ fun handleCustomerApplicationCmd(
             either {
                 listOf(
                     Updated(
-                        Metadata(Guid(cmd.customerApplicationId.toString())),
+                        Metadata(cmd.customerApplicationId),
                         cmd.customerName,
                         cmd.customerAddress,
                         cmd.customerPhone,
@@ -279,7 +308,7 @@ fun handleCustomerApplicationCmd(
 
                 listOf(
                     MoreInfoRequested(
-                        Metadata(Guid(cmd.customerApplicationId.toString())),
+                        Metadata(cmd.customerApplicationId),
                         cmd.reason,
                         cmd.sentBackBy
                     )
@@ -289,14 +318,15 @@ fun handleCustomerApplicationCmd(
         is ApproveApplication ->
             either {
                 if (st !is UnderReview) {
-                    return ErrorMessage("Application approval error").left()
+                    return ErrorMessage("Application illegal state error").left()
                 }
 
-                return ErrorMessage("Application missing info error").left()
+                // TODO: check if application has all the info needed
+                return ErrorMessage("Application missing info error").left()  // simulate error
 
                 listOf(
                     Approved(
-                        Metadata(Guid(cmd.customerApplicationId.toString())),
+                        Metadata(cmd.customerApplicationId),
                         cmd.approvingUser
                     )
                 )
@@ -306,46 +336,33 @@ fun handleCustomerApplicationCmd(
             either {
                 listOf(
                     Rejected(
-                        Metadata(Guid(cmd.customerApplicationId.toString())),
+                        Metadata(cmd.customerApplicationId),
                         cmd.rejectingUser
                     )
                 )
             }
+
     }
 
 
 fun executeCustomerApplicationCmd(
     st: CustomerApplicationState,
-    cmd: CustomerApplicationCmd,
-    ctx: CommandContext
+    cmd: CustomerApplicationCommand,
+    ctx: CommandContext = DefaultCmdContext()
 ): CmdResult<CustomerApplicationEvent> =
-//    when {
-//        st is New && cmd is SubmitApplication ->
-//            executeCommand(st, cmd, DefaultCmdContext(), ::handleCustomerApplicationCmd)
-//
-//        st is UnderReview && cmd is UpdateDetails ->
-//            executeCommand(st, cmd, DefaultCmdContext(), ::handleCustomerApplicationCmd)
-//
-//        st is NeedsMoreInfo && cmd is UpdateDetails ->
-//            executeCommand(st, cmd, DefaultCmdContext(), ::handleCustomerApplicationCmd)
-//
-//        st is UnderReview && cmd is ApproveApplication ->
-//            executeCommand(st, cmd, DefaultCmdContext(), ::handleCustomerApplicationCmd)
-//
-//        st is UnderReview && cmd is RejectApplication ->
-//            executeCommand(st, cmd, DefaultCmdContext(), ::handleCustomerApplicationCmd)
-//
-//        else ->
-//            ErrorMessage("action not allowed").left()
-//    }
-    executeCommand(st, cmd, DefaultCmdContext(), ::handleCustomerApplicationCmd)
+    executeCommand(st, cmd, ctx, ::handleCustomerApplicationCommand)
 
 //------------------------------------------------------------------------
 fun applyCustomerApplicationEvent(
-    st: CustomerApplicationState,
+    st: CustomerApplicationState?,
     evt: CustomerApplicationEvent
-): CustomerApplicationState =
+): CustomerApplicationState? =
     when {
+        st == null && evt is Created ->
+            New(
+                evt.metadata.correlationId
+            )
+
         st is New && evt is Submitted ->
             UnderReview(
                 evt.metadata.correlationId,
@@ -452,32 +469,41 @@ class CustomerApplicationAggregate(
     private val es: CustomerApplicationsEventDatabase
 ) : Aggregate<
         CustomerApplicationState,
-        CustomerApplicationCmd,
+        CustomerApplicationCommand,
         CommandContext,
         CustomerApplicationEvent
         > {
-    override val initialState = New(Guid("100"))
+//    override val initialState = New(Guid("100"))
+    override val initialState = null
 
-    override fun apply(st: CustomerApplicationState, ev: CustomerApplicationEvent): CustomerApplicationState =
+    override fun apply(st: CustomerApplicationState?, ev: CustomerApplicationEvent): CustomerApplicationState? =
         applyEvent(st, ev, ::applyCustomerApplicationEvent)
 
-    override fun apply(st: CustomerApplicationState, evs: List<CustomerApplicationEvent>): CustomerApplicationState =
+    override fun apply(st: CustomerApplicationState?, evs: List<CustomerApplicationEvent>): CustomerApplicationState? =
         applyEvents(st, evs, ::applyCustomerApplicationEvent)
 
     override fun execute(
-        st: CustomerApplicationState,
-        cmd: CustomerApplicationCmd,
-        cmdCtx: CommandContext
+        state: CustomerApplicationState?,
+        command: CustomerApplicationCommand,
+        commandContext: CommandContext
     ): CmdResult<CustomerApplicationEvent> {
-        val eventStream = es.loadEventStream(cmd.correlationId())
+        val eventStream = es.loadEventStream(command.correlationId())
         val events = eventStream.events as List<CustomerApplicationEvent>
         val currentState = apply(initialState, events)
 
+//        val result =
+//            executeCommand(
+//                currentState, cmd, DefaultCmdContext(), ::executeCustomerApplicationCmd
+//            )
+//            .flatMap { evts ->
+//                es.store(cmd.correlationId(), evts)
+//                evts.right()
+//            }
+
         val result =
-            executeCommand(
-                currentState, cmd, DefaultCmdContext(), ::executeCustomerApplicationCmd
-            ).flatMap { evts ->
-                es.store(cmd.correlationId(), evts)
+            handleCustomerApplicationCommand(currentState, command, commandContext)
+            .flatMap { evts ->
+                es.store(command.correlationId(), evts)
                 evts.right()
             }
 
@@ -495,15 +521,33 @@ fun main() {
     val cmdCtx = DefaultCmdContext()
     val agg = CustomerApplicationAggregate(db)
 
-    val customer = New(Guid("100"))
+    val customerApplication = New(Guid("100"))
 
-    print("1 System state before submitting the application -> ")
+    print("0 System state before creating the application -> ")
     val correlationId = Guid()
+    val currentState0 = agg.apply(
+        customerApplication,
+        db.loadEventStream(correlationId).events as List<CustomerApplicationEvent>
+    )
+    println(currentState0)
+
+    val cmd0 = CreateApplication(
+        correlationId,
+        "John Doe",
+        "Vadodara",
+        "+91-9988776655",
+        "john@doe.com"
+    )
+    agg.execute(customerApplication, cmd0, cmdCtx)
+
+    print("1 System state after creating the application -> ")
+    //Finding the current state of an application
     val currentState1 = agg.apply(
-        customer,
+        customerApplication,
         db.loadEventStream(correlationId).events as List<CustomerApplicationEvent>
     )
     println(currentState1)
+    println()
 
     val cmd1 = SubmitApplication(
         correlationId,
@@ -512,12 +556,12 @@ fun main() {
         "+91-9988776655",
         "john@doe.com"
     )
-    agg.execute(customer, cmd1, cmdCtx)
+    agg.execute(customerApplication, cmd1, cmdCtx)
 
     print("2 System state after submitting the application -> ")
     //Finding the current state of an application
     val currentState2 = agg.apply(
-        customer,
+        customerApplication,
         db.loadEventStream(correlationId).events as List<CustomerApplicationEvent>
     )
     println(currentState2)
@@ -525,17 +569,17 @@ fun main() {
 
 
     val cmd2 = ApproveApplication(correlationId, "Jane Doe")
-    val result = agg.execute(customer, cmd2, cmdCtx)
+    val result = agg.execute(customerApplication, cmd2, cmdCtx)
     if (result.isLeft()) {
         //Error handling
         val cmd = RequestMoreInfo(correlationId, "Please provide more information", "Bilbo Baggins")
-        agg.execute(customer, cmd, cmdCtx)
+        agg.execute(customerApplication, cmd, cmdCtx)
     }
 
     print("3 System state after attempting to approve the application -> ")
     //Finding the current state of an application
     val currentState3 = agg.apply(
-        customer,
+        customerApplication,
         db.loadEventStream(correlationId).events as List<CustomerApplicationEvent>
     )
     println(currentState3)
