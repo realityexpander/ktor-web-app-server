@@ -1,6 +1,14 @@
 pepper=<YOUR_AUTHENTICATION_PEPPER_STRING_HERE>
-jwt_secret=<YOUR_JWT_SECRET_HERE>
+#jwt_secret=hello_chaps -> get from environment var (JWT_SECRET) (not in git)
+
+### Authentication config
+# 1 week in seconds (60 seconds * 60 minutes * 24 hours * 7 days = 604800)
+maxLoginTimeSeconds=604800
+
+### Endpoints
 databaseBaseUrl=http://localhost:3000
+
+### Email Sending Service
 emailSendinblueApiKey=<YOUR_SENDINBLUE_API_KEY_HERE>
 emailSendinblueFromEmail=<YOUR_SENDINBLUE_FROM_EMAIL_HERE>
 emailSendinblueFromName=Web-App Playground - Reset Password
