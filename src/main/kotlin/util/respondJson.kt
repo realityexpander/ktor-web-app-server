@@ -12,3 +12,4 @@ suspend fun ApplicationCall.respondJson(
 ) {
     respondText(jsonConfig.encodeToString(map), ContentType.Application.Json, status)
 }
+

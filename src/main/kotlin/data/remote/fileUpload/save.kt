@@ -1,4 +1,4 @@
-package data.remote.files
+package data.remote.fileUpload
 
 import io.ktor.http.content.*
 import java.io.File

@@ -1,6 +1,6 @@
-package data.remote.files
+package data.remote.fileUpload
 
-import domain.Todo
+import com.realityexpander.domain.todo.Todo
 import kotlinx.serialization.Serializable
 
 @Serializable

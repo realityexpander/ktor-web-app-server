@@ -1,3 +1,5 @@
+package util
+
 typealias EmailString = String
 typealias PasswordString = String
 typealias TokenString = String

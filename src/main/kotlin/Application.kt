@@ -1,77 +1,51 @@
 package com.realityexpander
 
-import ArgonPasswordService
-import JwtService
-import JwtTokenString
-import data.local.UserEntity
-import data.local.UserService
 import com.github.slugify.Slugify
-import com.mongodb.client.model.FindOneAndUpdateOptions
-import com.mongodb.client.model.ReturnDocument
-import com.mongodb.client.model.changestream.FullDocument
 import com.realityexpander.Constants.APPLICATION_PROPERTIES_FILE
+import com.realityexpander.domain.auth.*
+import com.realityexpander.domain.todo.ToDoStatus
+import com.realityexpander.domain.todo.Todo
+import com.realityexpander.domain.todo.UserInTodo
 import data.emailer.sendPasswordResetEmail
-import data.remote.files.save
-import data.local.*
-import data.remote.files.FileUploadResponse
-import data.remote.TodoResponse
-import domain.ToDoStatus
-import domain.Todo
-import domain.UserInTodo
-import domain.validatePassword
+import com.realityexpander.domain.todo.TodoResponse
+import data.remote.fileUpload.FileUploadResponse
+import data.remote.fileUpload.save
 import io.fluidsonic.mongo.MongoClients
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.okhttp.*
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation as ContentNegotiationClient
 import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
-import io.ktor.client.utils.EmptyContent.status
 import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
-import io.ktor.server.html.*
 import io.ktor.server.http.content.*
-import io.ktor.server.netty.*
-import io.ktor.server.plugins.*
 import io.ktor.server.plugins.compression.*
 import io.ktor.server.plugins.forwardedheaders.*
 import io.ktor.server.plugins.ratelimit.*
 import io.ktor.server.plugins.statuspages.*
-import io.ktor.server.plugins.contentnegotiation.ContentNegotiation as ContentNegotiationServer
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.util.pipeline.*
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.forEach
-import kotlinx.coroutines.launch
-import kotlinx.serialization.*
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import org.bson.BsonInt32
-import org.bson.BsonString
-import org.bson.Document
-import org.bson.codecs.configuration.CodecRegistries
-import org.bson.codecs.configuration.CodecRegistry
-import org.bson.codecs.pojo.PojoCodecProvider
-import org.bson.types.ObjectId
 import org.slf4j.LoggerFactory
+import util.JwtTokenString
 import util.getClientIpAddressFromRequest
 import util.respondJson
-import java.awt.SystemColor.window
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 import javax.naming.AuthenticationException
-import kotlin.reflect.KClass
-import kotlin.reflect.jvm.internal.impl.resolve.constants.KClassValue
 import kotlin.time.Duration.Companion.seconds
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation as ContentNegotiationClient
 import io.ktor.server.application.install as installServer
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation as ContentNegotiationServer
 
 val ktorLogger: ch.qos.logback.classic.Logger = LoggerFactory.getLogger("KTOR-WEB-APP") as ch.qos.logback.classic.Logger
 
@@ -94,15 +68,16 @@ data class ApplicationProperties(
     val maxLoginTimeSeconds: Long = 60 * 60 * 24 * 7, // 7 days
 )
 
-////////////////////////////////
-// SETUP APPLICATION PROPERTIES
+//////////////////////////////////
+// SETUP APPLICATION PROPERTIES //
+//////////////////////////////////
 
 object Constants {
     val USER_IMAGES_PATH = "./uploaded-images/"
     val APPLICATION_PROPERTIES_FILE = "./application.properties"
 }
 
-// load application.properties
+// Load application.properties
 val applicationProperties = File(APPLICATION_PROPERTIES_FILE).inputStream()
 val applicationConfig =
     try {
@@ -157,8 +132,10 @@ fun Application.module() {
         }
     }
 
-    ///////////////////////////////////////////////
-    // SETUP KTOR CLIENT
+    /////////////////////////
+    // SETUP KTOR CLIENT   //
+    /////////////////////////
+
     val client = HttpClient(OkHttp) {
         install(Logging) {
             logger = Logger.DEFAULT
@@ -182,8 +159,9 @@ fun Application.module() {
         }
     }
 
-    /////////////////////////////////////////
-    // SETUP AUTHENTICATION
+    /////////////////////////////
+    // SETUP AUTHENTICATION    //
+    /////////////////////////////
 
     val passwordService = ArgonPasswordService(
         pepper = applicationConfig.pepper // pepper is used to make the password hash unique
@@ -202,35 +180,7 @@ fun Application.module() {
         audience = audience,
     )
 
-    val collection = MongoClients.create()
-        .getDatabase("test")
-        .getCollection("test")
-    launch {
-
-        collection.find().collect { document ->  // Kotlin Flow
-            println("Event: $document")
-        }
-
-
-        // Setting up a codec registry allows retrieving objects as Java classes
-        // see data class Restaurant
-        val pojoCodecRegistry: CodecRegistry = CodecRegistries.fromRegistries(
-            MongoClients.defaultCodecRegistry,
-            CodecRegistries.fromProviders(PojoCodecProvider.builder().automatic(true).build())
-        )
-
-        val database = MongoClients.create()
-            .getDatabase("test")
-            .withCodecRegistry(pojoCodecRegistry)
-        val result = database
-            .getCollection("test")
-            .distinct("count", Integer::class)
-        val flow = result
-        flow.collect { a -> println(Document("value", BsonInt32(a.toInt()))) }
-
-        println("Done")
-    }
-
+    // Setup JWT & Bearer Authentication
     installServer(Authentication) {
 
         jwt("auth-jwt") {
@@ -294,12 +244,12 @@ fun Application.module() {
                 val user = userService.getUserByAuthToken(authenticationToken)
                 user?.let {
                     if (user.clientIpAddressWhiteList.contains(clientIpAddress)) {
-                        UserIdPrincipal(user.email)
+                        UserIdPrincipal(user.email)// success
                     } else {
 
                         ktorLogger.warn(
-                            "User $user attempted to access the API from an " +
-                                    "unauthorized IP address: $clientIpAddress"
+                            "User ${user.email} attempted to access this API from an " +
+                                    "non-white-list IP address: $clientIpAddress"
                         )
 
                         // todo send email to admin
@@ -315,6 +265,10 @@ fun Application.module() {
         }
     }
 
+    //////////////
+    // ROUTING  //
+    //////////////
+
     routing {
         // setup CORS
 //        options("*") {
@@ -324,8 +278,9 @@ fun Application.module() {
 //            call.response.header("Content-Type", "application/json")
 //        }
 
-        ////////////////////////
-        // API ROUTES
+        ////////////////////
+        // API ROUTES     //
+        ////////////////////
 
         // Log a user in
         suspend fun ApplicationCall.login(
@@ -348,39 +303,6 @@ fun Application.module() {
                 "jwtToken" to jwtToken,
                 "clientIpAddress" to clientIpAddress,
             ))
-        }
-
-        get("/api/mongo") {
-            launch {
-                collection.insertOne(Document("hello", "world"))    // suspending call
-                collection.insertOne(Document("it's", "so easy!"))  // suspending call
-                collection.insertOne(Document("count", 0))
-
-                call.respondText("Updated")
-            }
-        }
-
-        get("/api/count") {
-
-            //collection.findOneAndUpdate({_id: ObjectId('5ed7f23789bcd51e9c6a82e0')}, {$inc: {nextTicket: 1}}, {returnOriginal: false})
-
-            launch {
-                val x = collection.findOneAndUpdate( // suspending call
-//                    Document("_id", ObjectId("6459e2902b72d018a518d5ac")),
-                    Document("nextTicket", Document("\$exists", true)),
-                    Document("\$inc", Document("nextTicket", 1)),
-                    FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER)
-                )
-
-                val y = collection.findOneAndUpdate(
-                    Document("count", Document("\$exists", true)),
-                    Document("\$inc", Document("count", 100)),
-                    FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER)
-                )
-
-                call.respondText("x: $x, y: $y")
-            }
-
         }
 
         rateLimit(RateLimitName("auth-routes")) {
@@ -459,7 +381,7 @@ fun Application.module() {
                             return@post
                         }
 
-                        // Add the client ip address to the user's ip address white list (if it doesn't already exist)
+                        // Add the client ip address to the user's ip address whitelist (if it doesn't already exist)
                         // Note: This is to prevent a potential malicious attacker from using the same token from a different IP address.
                         // (that they havent yet authenticated from.)
                         // This may be a good place to add a captcha or send confirmation email to prevent brute force attacks.
@@ -641,6 +563,20 @@ fun Application.module() {
         // api routes are protected by authentication
         authenticate("auth-bearer") {
 
+            get("/api/todo_echo") {
+                val body = call.receiveText()
+                try {
+                    val todos = jsonConfig.decodeFromString<TodoResponse>(body)
+
+                    call.respond(jsonConfig.encodeToString(todos))
+                    return@get
+
+                } catch (e: Exception) {
+                    call.respondJson(mapOf("error" to e.localizedMessage), HttpStatusCode.BadRequest)
+                    return@get
+                }
+            }
+
             get("/api/todos") {
                 // make call to local database server
                 val response = client.get(applicationConfig.databaseBaseUrl + "/todos")
@@ -649,7 +585,7 @@ fun Application.module() {
                         val body = response.body<String>()
                         val todos = jsonConfig.decodeFromString<TodoResponse>(body)
 
-//                    // Simulate server edits of data
+//                    // Simulate this server editing data before sending it back to the client
 //                    val todo = todos[0]
 //                    val userInTodo = UserInTodo("John")
 //                    val updatedTodo = todo.copy(userInTodo = userInTodo)
@@ -658,7 +594,7 @@ fun Application.module() {
 //                    call.response.apply {
 //                        headers.append("Content-Type", "application/json")
 //                    }
-                        call.respond(Json.encodeToString(todos))
+                        call.respond(jsonConfig.encodeToString(todos))
                         return@get
 
                     } catch (e: Exception) {
@@ -717,7 +653,7 @@ fun Application.module() {
                     val newTodo = Todo(
                         id = "1",
                         name = name.toString(),
-                        status = ToDoStatus.pending,
+                        status = ToDoStatus.Pending,
                         userInTodo = UserInTodo(
                             name = name.toString(),
                             files = uploadedImageList

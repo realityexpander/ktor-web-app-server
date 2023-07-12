@@ -1,14 +1,17 @@
-package data.local
-import EmailString
-import IdString
-import JwtTokenString
-import PasswordString
-import TokenString
+package com.realityexpander.domain.auth
+
+import util.EmailString
+import util.IdString
+import util.JwtTokenString
+import util.PasswordString
+import util.TokenString
 import com.realityexpander.jsonConfig
 import com.realityexpander.ktorLogger
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import java.io.File
 import java.util.*

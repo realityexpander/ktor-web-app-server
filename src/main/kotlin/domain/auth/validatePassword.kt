@@ -1,4 +1,4 @@
-package domain
+package com.realityexpander.domain.auth
 
 import io.ktor.http.*
 import io.ktor.server.application.*

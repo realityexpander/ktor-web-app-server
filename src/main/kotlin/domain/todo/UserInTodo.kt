@@ -1,4 +1,4 @@
-package domain
+package com.realityexpander.domain.todo
 
 import kotlinx.serialization.Serializable
 

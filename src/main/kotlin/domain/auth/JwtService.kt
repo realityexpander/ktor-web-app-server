@@ -1,8 +1,10 @@
+package com.realityexpander.domain.auth
+
 import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.interfaces.DecodedJWT
-import data.local.UserEntity
+import com.realityexpander.domain.auth.UserEntity
 import java.util.*
 
 class JwtService(

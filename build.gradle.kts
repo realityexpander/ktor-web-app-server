@@ -27,7 +27,7 @@ plugins {
     kotlin("plugin.serialization").version("1.8.0")
 }
 
-group = "com.realityexapander"
+group = "com.realityexpander"
 version = "1.0-SNAPSHOT"
 
 application {
@@ -63,6 +63,13 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktor_version")
     implementation("io.ktor:ktor-client-content-negotiation:$ktor_version")
     implementation("io.ktor:ktor-server-content-negotiation:$ktor_version")
+
+    // Gson's serialization - For UUID's and other custom types
+//    implementation("io.ktor:ktor-gson:$ktor_version")
+//    implementation("io.ktor:ktor-client-gson:$ktor_version")
+//    implementation("io.ktor:ktor-client-serialization:$ktor_version")
+//    implementation("io.ktor:ktor-server-gson:$ktor_version")
+    implementation("com.google.code.gson:gson:2.7")
 
     // Logging
     implementation("io.ktor:ktor-client-logging:$ktor_version")
@@ -103,9 +110,6 @@ dependencies {
     // Fluid Mongo (coroutines for mongo-db)
     implementation("io.fluidsonic.mongo:fluid-mongo:1.6.0")
 
-    // Arrow
-    implementation("io.arrow-kt:arrow-core:1.2.0-RC")
-    implementation("io.arrow-kt:arrow-fx-coroutines:1.2.0-RC")
 }
 
 //tasks.test {

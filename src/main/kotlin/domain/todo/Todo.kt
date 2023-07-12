@@ -1,4 +1,4 @@
-package domain
+package com.realityexpander.domain.todo
 
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
 data class Todo(
     val id: String,
     val name: String,
-    val status: ToDoStatus = ToDoStatus.pending,
+    val status: ToDoStatus = ToDoStatus.Pending,
     @SerialName("user")
     val userInTodo: UserInTodo? = null
 )
