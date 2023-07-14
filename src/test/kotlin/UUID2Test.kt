@@ -1,3 +1,7 @@
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonParseException
+import com.realityexpander.Book
+import com.realityexpander.User
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import org.junit.Assert
@@ -10,66 +14,19 @@ import kotlin.test.assertEquals
  * UUID2Test - Unit tests for UUID2 class.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 - Kotlin version
  */
 
-open class Role(
-    open val id: IUUID2 = UUID2.createFakeUUID2<IUUID2>(1, UUID::class.java)
-)
-
-data class User(
-    override val id: UUID2<User>,
-) : Role(id), IUUID2 {
-    override fun uuid2TypeStr(): String {
-        return UUID2.calcUUID2TypeStr(this.javaClass)
-    }
-}
-
-data class Book(
-    override val id: UUID2<Book>,
-) : Role(id), IUUID2 {
-    override fun uuid2TypeStr(): String {
-        return UUID2.calcUUID2TypeStr(this.javaClass)
-    }
-}
-
-data class TestObjects(
-    val uuid2ToEntityMap: UUID2.HashMap<UUID2<Book>, UUID2<User>>,
-    val user01: UUID2<User>,
-    val user02: UUID2<User>,
-    val book1200: UUID2<Book>,
-    val book1300: UUID2<Book>
-)
-
-@Suppress("JUnitMalformedDeclaration")
 class UUID2Test {
-//    var ctx: Context? = null
 
     @Before
     fun setUp() {
         // no-op - not every test requires setup
     }
 
-    private fun setUpUuid2HashMapTest(): TestObjects {
-        val testObjects =  TestObjects(
-//             ctx = LibraryAppTest.setupDefaultTestContext()
-            uuid2ToEntityMap = UUID2.HashMap<UUID2<Book>, UUID2<User>>(),
-            book1200 = UUID2.createFakeUUID2<Book>(1200, Book::class.java),
-            book1300 = UUID2.createFakeUUID2<Book>(1300, Book::class.java),
-            user01 = UUID2.createFakeUUID2<User>(1, User::class.java),
-            user02 = UUID2.createFakeUUID2<User>(2, User::class.java)
-        )
-
-        testObjects.uuid2ToEntityMap.put(testObjects.book1200, testObjects.user01)
-        testObjects.uuid2ToEntityMap.put(testObjects.book1300, testObjects.user02)
-
-        return testObjects
-    }
-
     @Test
     fun `Deserialized UUID2 string is Correct`() {
         // • ARRANGE
-//        val book1200Id: UUID2<Book> = UUID2.createFakeUUID2(1200, Book::class.java)
         val book1200Id: UUID2<Book> = UUID2.createFakeUUID2(1200, Book::class.java)
         val expectedUUID2Str = "UUID2:Role.Book@00000000-0000-0000-0000-000000001200"
 
@@ -136,89 +93,7 @@ class UUID2Test {
     }
 
     @Test
-    fun `Get UUID2HashMap item is Success`() {
-        // • ARRANGE
-        val testObjects = setUpUuid2HashMapTest()
-
-        // • ACT
-        val user: UUID2<User>? = testObjects.uuid2ToEntityMap[testObjects.book1200]
-
-        // • ASSERT
-        user ?: Assert.fail()
-//        ctx.log.d(this, "simple retrieval, user=$user")
-        Assert.assertNotNull(user)
-    }
-
-    @Test
-    fun `Get UUID2HashMap item using new UUID2 is Success`() {
-        // • ARRANGE
-        val testObjects = setUpUuid2HashMapTest()
-        val user: UUID2<User>? = testObjects.uuid2ToEntityMap[testObjects.book1200]
-        user ?: Assert.fail()
-        val book1a: UUID2<Book> = UUID2.createFakeUUID2(1200, Book::class.java)
-
-        // • ACT
-        val user2: UUID2<User>? = testObjects.uuid2ToEntityMap[book1a]
-
-        // • ASSERT
-//        ctx.log.d(this, "retrieved using new id, user=$user")
-        Assert.assertNotNull(user2)
-        assertEquals(user2, user)
-    }
-
-    @Test
-    fun `Remove UUID2HashMap item using new UUID2 is Success`() {
-        // • ARRANGE
-        val testObjects = setUpUuid2HashMapTest()
-
-        // • ACT
-        testObjects.uuid2ToEntityMap.remove(testObjects.book1200)
-
-        // • ASSERT
-        val user: UUID2<User>? = testObjects.uuid2ToEntityMap[testObjects.book1200]
-//        ctx.log.d(this, "after removal, user=$user")
-        Assert.assertNull(user)
-
-        // check keySet count
-        val keySet: Set<UUID2<Book>> = testObjects.uuid2ToEntityMap.keySet()
-        Assert.assertEquals(1, keySet.size.toLong())
-    }
-
-    @Test
-    fun `Put UUID2HashMap item twice only upserts single item is Success`() {
-        // • ARRANGE
-        val testObjects = setUpUuid2HashMapTest()
-        testObjects.uuid2ToEntityMap.remove(testObjects.book1200)
-
-        // • ACT
-        testObjects.uuid2ToEntityMap.put(testObjects.book1200, testObjects.user01)
-        // put it in again (should replace. not duplicate)
-        testObjects.uuid2ToEntityMap.put(testObjects.book1200, testObjects.user01)
-
-        // • ASSERT
-        // check keySet count
-        val keySet: Set<UUID2<Book>> = testObjects.uuid2ToEntityMap.keySet()
-        Assert.assertEquals(2, keySet.size.toLong())
-
-        // check values count
-        val values: Collection<UUID2<User>> = testObjects.uuid2ToEntityMap.values()
-        Assert.assertEquals(2, values.size.toLong())
-
-        // check entrySet count
-        val entrySet: Set<Map.Entry<UUID2<Book>, UUID2<User>?>> = testObjects.uuid2ToEntityMap.entrySet()
-        Assert.assertEquals(2, entrySet.size.toLong())
-
-        // check containsKey
-        Assert.assertTrue("containsKey(book1) failed", testObjects.uuid2ToEntityMap.containsKey(testObjects.book1200))
-        Assert.assertTrue("containsKey(book2) failed", testObjects.uuid2ToEntityMap.containsKey(testObjects.book1300))
-        Assert.assertFalse(
-            "containsKey(Book 1400) should fail",
-            testObjects.uuid2ToEntityMap.containsKey(UUID2.createFakeUUID2(1400, Book::class.java))
-        )
-    }
-
-    @Test
-    fun `Invalid UUID2 String throws IllegalArgumentException is Success`() {
+    fun `Parse UUID2 String with fromUUID2String() using invalid UUID2 string throws IllegalArgumentException is Success`() {
         // • ARRANGE
         val invalidUUID2Str = "UUID2:Role.Book_00000000-0000-0000-0000-000000001200" // missing `@`
 
@@ -236,4 +111,193 @@ class UUID2Test {
             Assert.fail(e.message)
         }
     }
+
+    @Test
+    fun `Parse UUID2 String with fromUUID2String() using invalid UUID throws IllegalArgumentException is Success`() {
+        // • ARRANGE
+        val invalidUUID2Str = "UUID2:Role.Book@00000000-0000-0000-0000-000000000000000000001200" // UUID is too long
+
+        // • ACT
+        try {
+            val book1200aId: UUID2<Book> = UUID2.fromUUID2String<Book>(invalidUUID2Str)
+
+            // This is only here to satisfy the compiler warnings.  It should never be reached.
+            System.err.printf("SHOULD NEVER SEE THIS - book1200aId=%s", book1200aId)
+            Assert.fail("Expected IllegalArgumentException")
+        } catch (e: IllegalArgumentException) {
+            // • ASSERT
+            Assert.assertTrue(true)
+        } catch (e: Exception) {
+            Assert.fail(e.message)
+        }
+    }
+
+    @Test
+    fun `Parse UUID2 String with fromUUID2() is Success`() {
+        // • ARRANGE
+        val book1200Id: UUID2<Book> = UUID2.createFakeUUID2(1200, Book::class.java)
+        val book1200IdStr: String = book1200Id.toString()
+
+        // • ACT
+        val book1200aId: UUID2<Book> = UUID2.fromUUID2String<Book>(book1200IdStr)
+
+        // • ASSERT
+        assertEquals(book1200Id, book1200aId)
+    }
+
+    @Test
+    fun `Parse UUID2 String with fromUUID2() using invalid UUID2 string throws IllegalArgumentException`() {
+        // • ARRANGE
+        val invalidUUID2Str = "UUID2:Role.Book_00000000-0000-0000-0000-000000001200" // missing `@`
+
+        // • ACT
+        try {
+            val book1200aId: UUID2<Book> = UUID2.fromUUID2String<Book>(invalidUUID2Str)
+            Assert.fail("Expected IllegalArgumentException")
+
+            // This is only here to satisfy the compiler warnings.  It should never be reached.
+            System.err.printf("SHOULD NEVER SEE THIS - book1200aId=%s", book1200aId)
+        } catch (e: IllegalArgumentException) {
+            // • ASSERT
+            Assert.assertTrue(true)
+        } catch (e: Exception) {
+            Assert.fail(e.message)
+        }
+    }
+
+    @Test
+    fun `Parse UUID2 String with fromUUID() is Success`() {
+        // • ARRANGE
+        val book1200uuid: UUID = UUID2.createFakeUUID2<Book>(1200, Book::class.java).uuid()
+
+        // • ACT
+        val book1200aId: UUID2<Book> = UUID2.fromUUID(book1200uuid)
+
+        // • ASSERT
+        assertEquals(expected = book1200uuid, actual = book1200aId.uuid())
+    }
+
+    @Test
+    fun `Parse UUID2 String with fromUUID() using invalid UUID2 string throws IllegalArgumentException`() {
+        // • ARRANGE
+        val invalidUUID2Str = "UUID2:Role.Book_00000000-0000-0000-0000-000000001200" // missing `@`
+
+        // • ACT
+        try {
+            val book1200aId: UUID2<Book> = UUID2.fromUUID2String<Book>(invalidUUID2Str)
+            Assert.fail("Expected IllegalArgumentException")
+
+            // This is only here to satisfy the compiler warnings.  It should never be reached.
+            System.err.printf("SHOULD NEVER SEE THIS - book1200aId=%s", book1200aId)
+        } catch (e: IllegalArgumentException) {
+            // • ASSERT
+            Assert.assertTrue(true)
+        } catch (e: Exception) {
+            Assert.fail(e.message)
+        }
+    }
+
+    @Test
+    fun `Parse UUID2 String with fromUUIDString() is Success`() {
+        // • ARRANGE
+        val book1200uuid: UUID = UUID2.createFakeUUID2<Book>(1200, Book::class.java).uuid()
+        val book1200uuidStr: String = book1200uuid.toString()
+
+        // • ACT
+        val book1200aUuid: UUID = UUID2.fromUUIDString<Book>(book1200uuidStr).uuid()
+
+        // • ASSERT
+        assertEquals(book1200uuid, book1200aUuid)
+    }
+
+    @Test
+    fun `Parse UUID2 String with fromUUIDString() using invalid UUID2 string throws IllegalArgumentException`() {
+        // • ARRANGE
+        val invalidUUIDStr = "00000000-0000-0000-0000-000000000000000001200" // UUID too long
+
+        // • ACT
+        try {
+            val book1200aId: UUID2<Book> = UUID2.fromUUIDString<Book>(invalidUUIDStr)
+            Assert.fail("Expected IllegalArgumentException")
+
+            // This is only here to satisfy the compiler warnings.  It should never be reached.
+            System.err.printf("SHOULD NEVER SEE THIS - book1200aId=%s", book1200aId)
+        } catch (e: IllegalArgumentException) {
+            // • ASSERT
+            Assert.assertTrue(true)
+        } catch (e: Exception) {
+            Assert.fail(e.message)
+        }
+    }
+
+    @Test
+    fun `Deserializing a Role JSON containing a mutableMap using Uuid2HashMapJsonDeserializer is Success`() {
+        // • ARRANGE
+        val book1200: Book = Book(UUID2.createFakeUUID2(1200, Book::class.java), "The Hobbit")
+        val book1201: Book = Book(UUID2.createFakeUUID2(1201, Book::class.java), "The Fellowship of the Ring")
+        val user01 = User(
+            UUID2.createFakeUUID2(1, User::class.java),
+            "Bilbo Baggins",
+            mutableMapOf<UUID2<Book>, Long>().apply {
+                put(book1200.id, 1L)
+                put(book1201.id, 2L)
+            }
+        )
+
+        // create a Gson instance with the Uuid2MapJsonDeserializer registered
+        val gson = GsonBuilder()
+                .registerTypeAdapter(MutableMap::class.java, UUID2.Uuid2MapJsonDeserializer())
+                .setPrettyPrinting()
+                .create()
+        val user01Json: String = gson.toJson(user01)
+        val book1200Json: String = gson.toJson(book1200)
+
+        // • ACT
+        val user01a: User = gson.fromJson(user01Json, User::class.java)
+        val book1200a: Book = gson.fromJson(book1200Json, Book::class.java)
+
+        // • ASSERT
+        assertEquals(user01a.bookIdToNumAcceptedMap.containsKey(book1200.id), true)
+        assertEquals(user01a.bookIdToNumAcceptedMap.containsKey(book1201.id), true)
+        assertEquals(user01a.bookIdToNumAcceptedMap[book1200.id], 1L)
+        assertEquals(user01a.bookIdToNumAcceptedMap[book1201.id], 2L)
+        assertEquals(book1200a.id, book1200.id)
+    }
+
+    class UnknownUUID2TypeEntity(val id: UUID2<*>) : IUUID2 {
+        override fun uuid2TypeStr(): String {
+            return "UnknownUUID2Type"
+        }
+    }
+
+    @Test
+    fun `Deserializing a Role JSON containing an unknown UUID2 type using Uuid2HashMapJsonDeserializer throws JsonParseException`() {
+        // • ARRANGE
+        val unknownUUID2TypeEntity = UnknownUUID2TypeEntity(UUID2.createFakeUUID2(9999, UnknownUUID2TypeEntity::class.java))
+        val user01 = User(
+            UUID2.createFakeUUID2(1, User::class.java),
+            "Bilbo Baggins",
+            mutableMapOf<UUID2<Book>, Long>().apply {
+                @Suppress("UNCHECKED_CAST")
+                put(unknownUUID2TypeEntity.id as UUID2<Book>, 1L) // cast to UUID2<Book> to make the compiler happy
+            }
+        )
+
+        // create a Gson instance with the Uuid2MapJsonDeserializer registered
+        val gson = GsonBuilder()
+                .registerTypeAdapter(MutableMap::class.java, UUID2.Uuid2MapJsonDeserializer())
+                .setPrettyPrinting()
+                .create()
+        val user01Json: String = gson.toJson(user01)
+
+        Assert.assertThrows(RuntimeException::class.java) {
+            // • ACT
+            val user01a: User = gson.fromJson(user01Json, User::class.java)
+
+            // This is only here to satisfy the compiler warnings.  It should never be reached.
+            System.err.printf("SHOULD NEVER SEE THIS - user01a=%s", user01a)
+        }
+
+    }
+
 }

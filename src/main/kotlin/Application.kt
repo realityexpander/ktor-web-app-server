@@ -8,6 +8,8 @@ import com.realityexpander.domain.todo.Todo
 import com.realityexpander.domain.todo.UserInTodo
 import data.emailer.sendPasswordResetEmail
 import com.realityexpander.domain.todo.TodoResponse
+import common.uuid2.IUUID2
+import common.uuid2.UUID2
 import data.remote.fileUpload.FileUploadResponse
 import data.remote.fileUpload.save
 import io.fluidsonic.mongo.MongoClients
@@ -46,6 +48,32 @@ import kotlin.time.Duration.Companion.seconds
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation as ContentNegotiationClient
 import io.ktor.server.application.install as installServer
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation as ContentNegotiationServer
+
+
+open class Role(
+    @Transient
+    open val id: UUID2<*> = UUID2.createFakeUUID2(1, IUUID2::class.java)
+)
+
+class User(
+    override val id: UUID2<User>,
+    val name: String,
+    val bookIdToNumAcceptedMap: MutableMap<UUID2<Book>, Long> = mutableMapOf()
+) : Role(id), IUUID2 {
+    override fun uuid2TypeStr(): String {
+        return UUID2.calcUUID2TypeStr(this.javaClass)
+    }
+}
+
+class Book(
+    override val id: UUID2<Book>,
+    val name: String,
+) : Role(id), IUUID2 {
+    override fun uuid2TypeStr(): String {
+        return UUID2.calcUUID2TypeStr(this.javaClass)
+    }
+}
+
 
 val ktorLogger: ch.qos.logback.classic.Logger = LoggerFactory.getLogger("KTOR-WEB-APP") as ch.qos.logback.classic.Logger
 

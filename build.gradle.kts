@@ -110,6 +110,9 @@ dependencies {
     // Fluid Mongo (coroutines for mongo-db)
     implementation("io.fluidsonic.mongo:fluid-mongo:1.6.0")
 
+    // Reflections for importing JSON Object using type safety
+    implementation("org.reflections:reflections:0.10.2")
+
 }
 
 //tasks.test {
