@@ -1,4 +1,4 @@
-package data.emailer
+package com.realityexpander.domain.common.data.remote.emailer
 
 import com.realityexpander.applicationConfig
 import com.realityexpander.ktorLogger

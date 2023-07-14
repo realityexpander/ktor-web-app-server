@@ -1,5 +1,4 @@
 import com.google.gson.GsonBuilder
-import com.google.gson.JsonParseException
 import com.realityexpander.Book
 import com.realityexpander.User
 import common.uuid2.IUUID2
@@ -268,9 +267,9 @@ class UUID2Test {
             }
         )
 
-        // create a Gson instance with the Uuid2MapJsonDeserializer registered
+        // create a Gson instance with the Uuid2MutableMapJsonDeserializer registered
         val gson = GsonBuilder()
-                .registerTypeAdapter(MutableMap::class.java, UUID2.Uuid2MapJsonDeserializer())
+                .registerTypeAdapter(MutableMap::class.java, UUID2.Uuid2MutableMapJsonDeserializer())
                 .setPrettyPrinting()
                 .create()
         val user01Json: String = gson.toJson(user01)
@@ -307,9 +306,9 @@ class UUID2Test {
             }
         )
 
-        // create a Gson instance with the Uuid2MapJsonDeserializer registered
+        // create a Gson instance with the Uuid2MutableMapJsonDeserializer registered
         val gson = GsonBuilder()
-                .registerTypeAdapter(MutableMap::class.java, UUID2.Uuid2MapJsonDeserializer())
+                .registerTypeAdapter(MutableMap::class.java, UUID2.Uuid2MutableMapJsonDeserializer())
                 .setPrettyPrinting()
                 .create()
         val user01Json: String = gson.toJson(user01)

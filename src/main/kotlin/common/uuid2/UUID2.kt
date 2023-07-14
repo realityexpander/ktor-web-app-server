@@ -141,6 +141,7 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
     }
 
     // Note: Should only be used when importing JSON
+    @Suppress("FunctionName") // for leading underscore  // todo - is there a better way to do this in kotlin?
     fun _setUUID2TypeStr(uuid2TypeStr: String?): Boolean {
         _uuid2Type = getNormalizedUuid2TypeString(uuid2TypeStr)
         return true // always return `true` instead of a `void` return type
@@ -178,7 +179,7 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
 
     // Note: Deserializes all JSON Numbers to Longs for all UUID2.HashMap Entity Number values.
     // - For consistent number deserialization bc GSON defaults to Doubles.
-    class Uuid2MapJsonDeserializer: JsonDeserializer<MutableMap<UUID2<*>, *>?> {
+    class Uuid2MutableMapJsonDeserializer: JsonDeserializer<MutableMap<UUID2<*>, *>?> {
 
         @Throws(JsonParseException::class)
         override fun deserialize(

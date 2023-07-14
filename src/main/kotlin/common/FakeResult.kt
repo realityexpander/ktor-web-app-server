@@ -21,8 +21,8 @@ package common
  * @since 0.11
  */
 
-open class Result<T> {
-    class Success<T>(value: T) : Result<T>() {
+open class FakeResult<T> {
+    class Success<T>(value: T) : FakeResult<T>() {
         private val value: T?
 
         init {
@@ -38,7 +38,7 @@ open class Result<T> {
         }
     }
 
-    class Failure<T>(private val exception: Exception?) : Result<T>() {
+    class Failure<T>(private val exception: Exception?) : FakeResult<T>() {
         fun exception(): Exception? {
             return exception
         }

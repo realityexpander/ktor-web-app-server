@@ -6,12 +6,12 @@ import com.realityexpander.domain.auth.*
 import com.realityexpander.domain.todo.ToDoStatus
 import com.realityexpander.domain.todo.Todo
 import com.realityexpander.domain.todo.UserInTodo
-import data.emailer.sendPasswordResetEmail
+import com.realityexpander.domain.common.data.remote.emailer.sendPasswordResetEmail
 import com.realityexpander.domain.todo.TodoResponse
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
-import data.remote.fileUpload.FileUploadResponse
-import data.remote.fileUpload.save
+import com.realityexpander.domain.common.data.remote.fileUpload.FileUploadResponse
+import com.realityexpander.domain.common.data.remote.fileUpload.save
 import io.fluidsonic.mongo.MongoClients
 import io.ktor.client.*
 import io.ktor.client.call.*
