@@ -17,6 +17,30 @@ import kotlin.test.assertEquals
  * @since 0.12 - Kotlin version
  */
 
+open class Role(
+    @Transient
+    open val id: UUID2<*> = UUID2.createFakeUUID2(1, IUUID2::class.java)
+)
+
+class User(
+    override val id: UUID2<User>,
+    val name: String,
+    val bookIdToNumAcceptedMap: MutableMap<UUID2<Book>, Long> = mutableMapOf()
+) : Role(id), IUUID2 {
+    override fun uuid2TypeStr(): String {
+        return UUID2.calcUUID2TypeStr(this.javaClass)
+    }
+}
+
+class Book(
+    override val id: UUID2<Book>,
+    val name: String,
+) : Role(id), IUUID2 {
+    override fun uuid2TypeStr(): String {
+        return UUID2.calcUUID2TypeStr(this.javaClass)
+    }
+}
+
 class UUID2Test {
 
     @Before
@@ -271,7 +295,7 @@ class UUID2Test {
     }
 
     @Test
-    fun `Deserializing a Role JSON containing an unknown UUID2 type using Uuid2HashMapJsonDeserializer throws JsonParseException`() {
+    fun `Deserializing a Role JSON containing an unknown UUID2 type using Uuid2HashMapJsonDeserializer throws RuntimeException`() {
         // • ARRANGE
         val unknownUUID2TypeEntity = UnknownUUID2TypeEntity(UUID2.createFakeUUID2(9999, UnknownUUID2TypeEntity::class.java))
         val user01 = User(
@@ -297,7 +321,6 @@ class UUID2Test {
             // This is only here to satisfy the compiler warnings.  It should never be reached.
             System.err.printf("SHOULD NEVER SEE THIS - user01a=%s", user01a)
         }
-
     }
 
 }
