@@ -1,98 +1,94 @@
-package common.log;
-
-import org.jetbrains.annotations.NotNull;
+package common.log
 
 /**
- * Log Role<br>
- * <br>
+ * Log Role<br></br>
+ * <br></br>
  * Logs to the system console
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.11
  */
-public class Log implements ILog {
+open class Log : ILog {
     // These could be swapped out for files or network calls.
-    private void debug(String tag, String msg) {
-        System.out.println(tag + ": " + msg);
+    private fun debug(tag: String, msg: String) {
+        println("$tag: $msg")
     }
-    private void warning(String tag, String msg) {
-        System.err.println(tag + ":(WARNING) " + msg);
+
+    private fun warning(tag: String, msg: String) {
+        System.err.println("$tag:(WARNING) $msg")
     }
-    private void error(String tag, String msg) {
-        System.err.println(tag + ":(ERROR) " + msg);
+
+    private fun error(tag: String, msg: String) {
+        System.err.println("$tag:(ERROR) $msg")
     }
 
     // example: log.d(this, "message") will print "ClassName➤MethodName(): message"
-    public void d(Object tag, String msg) {
-        if(tag == null) {
-            debug("null", msg);
-            return;
+    override fun d(tag: Any?, msg: String) {
+        if (tag == null) {
+            debug("null", msg)
+            return
         }
-        if(tag instanceof String) {
-            debug((String) tag, msg);
-            return;
+        if (tag is String) {
+            debug(tag, msg)
+            return
         }
-
-        debug(calcLogPrefix(tag), msg);
+        debug(calcLogLabel(tag), msg)
     }
 
-    public void e(Object tag, String msg, Exception e) {
-        if(tag == null) {
-            error("null", msg);
-            return;
+    override fun e(tag: Any?, msg: String, e: Exception) {
+        if (tag == null) {
+            error("null", msg)
+            return
         }
-        if(tag instanceof String) {
-            error((String) tag, msg);
-            return;
+        if (tag is String) {
+            error(tag, msg)
+            return
         }
 
         // Collect stacktrace to a comma delimited string
-        StringBuilder stacktrace = new StringBuilder();
-        for(StackTraceElement ste : e.getStackTrace()) {
-            stacktrace.append(ste.toString()).append(", ");
+        val stacktrace = StringBuilder()
+        for (ste in e.stackTrace) {
+            stacktrace.append(ste.toString()).append(", ")
         }
-
-        error(calcLogPrefix(tag), msg + ", " + stacktrace);
-        e.printStackTrace(); // LEAVE for debugging
+        error(calcLogLabel(tag), "$msg, $stacktrace")
+        e.printStackTrace() // LEAVE for debugging
     }
 
     // example: log.w(this, "message") will print "ClassName➤MethodName():(WARNING) message"
-    public void w(Object tag, String msg) {
-        if(tag == null) {
-            warning("null", msg);
-            return;
+    override fun w(tag: Any?, msg: String) {
+        if (tag == null) {
+            warning("null", msg)
+            return
         }
-        if(tag instanceof String) {
-            warning((String) tag, msg);
-            return;
+        if (tag is String) {
+            warning(tag, msg)
+            return
         }
-
-        warning(calcLogPrefix(tag), msg);
+        warning(calcLogLabel(tag), msg)
     }
 
     // example: log.e(this, "message") will print "ClassName➤MethodName():(ERROR) message"
-    public void e(Object tag, String msg) {
-        if(tag == null) {
-            error("null", msg);
-            return;
+    override fun e(tag: Any?, msg: String) {
+        if (tag == null) {
+            error("null", msg)
+            return
         }
-        if(tag instanceof String) {
-            error((String) tag, msg);
-            return;
+        if (tag is String) {
+            error(tag, msg)
+            return
         }
-
-        error(calcLogPrefix(tag), msg);
+        error(calcLogLabel(tag), msg)
     }
 
-    protected @NotNull String calcLogPrefix(Object obj) {
-        return calcSimpleName(obj) + "➤" + calcMethodName() + "()";
+    protected open fun calcLogLabel(obj: Any): String {
+        return calcSimpleName(obj) + "➤" + calcMethodName() + "()"
     }
 
-    protected @NotNull String calcMethodName() {
-        return Thread.currentThread().getStackTrace()[4].getMethodName();
+    protected open fun calcMethodName(): String {
+        return Thread.currentThread().stackTrace[4].methodName
     }
 
-    protected @NotNull String calcSimpleName(@NotNull Object obj) {
-        return obj.getClass().getSimpleName();
+    protected open fun calcSimpleName(obj: Any): String {
+        return obj.javaClass.simpleName
     }
 }
