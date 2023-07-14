@@ -65,10 +65,6 @@ dependencies {
     implementation("io.ktor:ktor-server-content-negotiation:$ktor_version")
 
     // Gson's serialization - For UUID's and other custom types
-//    implementation("io.ktor:ktor-gson:$ktor_version")
-//    implementation("io.ktor:ktor-client-gson:$ktor_version")
-//    implementation("io.ktor:ktor-client-serialization:$ktor_version")
-//    implementation("io.ktor:ktor-server-gson:$ktor_version")
     implementation("com.google.code.gson:gson:2.7")
 
     // Logging

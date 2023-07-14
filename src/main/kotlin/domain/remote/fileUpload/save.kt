@@ -1,4 +1,4 @@
-package com.realityexpander.domain.common.data.remote.fileUpload
+package com.realityexpander.domain.remote.fileUpload
 
 import io.ktor.http.content.*
 import java.io.File

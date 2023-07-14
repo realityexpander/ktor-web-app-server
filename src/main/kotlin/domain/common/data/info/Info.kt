@@ -1,6 +1,7 @@
 package domain.common.data.info
 
 import com.google.gson.Gson
+import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.Context
 import domain.common.data.Model
@@ -25,23 +26,24 @@ import java.util.function.UnaryOperator
  * @since 0.11
  */
 
-interface Info<TInfo : Model?> {
+interface Info<TInfo : Model> {
     // Note: Implementation requires a `AtomicReference<TInfo>` field named `info` (todo is there a way to enforce this in java?)
     // private final AtomicReference<TInfo> info;   // <-- this is *REQUIRED* in the Role superclass
-    fun id(): UUID2<*>? // Return the UUID2 of the Info object.
+    fun id(): UUID2<IUUID2> // Return the UUID2 of the Info object.
     fun fetchInfo(): TInfo // Fetch data for the Info from server/DB.
 
     // Return true if Info has been successfully fetched from server/DB.
     val isInfoFetched: Boolean
 
-    fun fetchInfoResult(): Result<TInfo>? // Fetch Result<T> for the Info from server/DB.
-    fun updateInfo(info: TInfo): Result<TInfo>? // Update Info to server/DB.
-    fun refreshInfo(): Result<TInfo>? // Set Info data to `null` and fetches Info from server/DB.
-    fun fetchInfoFailureReason(): String? // Performs fetch for Info and returns failure reason, or `null` if successful.
-    fun cachedInfo(): AtomicReference<TInfo>? // Return thread-safe Info from cache.
-    interface ToInfo<TInfo : Model?> {
-        fun id(): UUID2<*>? // Returns the UUID2 of the Info object
-        fun info(): TInfo {     // Fetches (if necessary) and Returns the Info object
+    fun fetchInfoResult(): Result<TInfo>          // Fetch Result<T> for the Info from server/DB.
+    fun updateInfo(info: TInfo): Result<TInfo>    // Update Info to server/DB.
+    fun refreshInfo(): Result<TInfo>              // Set Info data to `null` and fetches Info from server/DB.
+    fun fetchInfoFailureReason(): String?         // Performs fetch for Info and returns failure reason, or `null` if successful.
+    fun cachedInfo(): AtomicReference<TInfo>      // Return thread-safe Info from cache.
+
+    interface ToInfo<TInfo : Model> {
+        fun id(): UUID2<IUUID2>       // Returns the UUID2 of the Info object
+        fun info(): TInfo {           // Fetches (if necessary) and Returns the Info object
             return this as TInfo
         }
 
@@ -55,11 +57,11 @@ interface Info<TInfo : Model?> {
     // This interface used to enforce all {Domain}Info objects has a `deepCopy()` method.
     // - Just add `implements ToInfo.hasDeepCopyInfo<ToInfo<{InfoClass}>>` to the class
     //   definition, and the toDeepCopyInfo() method will be added.
-    interface hasToDeepCopyInfo<TInfo : ToInfo<*>?> {
+    interface hasToDeepCopyInfo<TInfo : ToInfo<*>> {
         fun deepCopyInfo(): TInfo {
             // This default implementation for deepCopyInfo() simply calls the toDeepCopyInfo() implemented in the subclass.
             // This is a workaround for the fact that Java doesn't allow static methods in interfaces.
-            return (this as TInfo)!!.toDeepCopyInfo() as TInfo // calls the toDeepCopyInfo() method of the implementing class
+            return (this as TInfo).toDeepCopyInfo() as TInfo // calls the toDeepCopyInfo() method of the implementing class
         }
     }
 
@@ -83,14 +85,14 @@ interface Info<TInfo : Model?> {
     //////////////////////////////
     // Helper methods for Info  //
     //////////////////////////////
-    fun checkJsonInfoIdMatchesThisInfoId(infoFromJson: TInfo, infoClazz: Class<*>): Result<TInfo>? {
+    fun checkJsonInfoIdMatchesThisInfoId(infoFromJson: TInfo, infoClazz: Class<*>): Result<TInfo> {
         try {
             // Ensure JSON Info object has an `_id` field
             val rootInfoClazz = findRootClazz(infoClazz)
             val idField = rootInfoClazz.getDeclaredField("_id")[infoFromJson]
                 ?: return Result.failure(Exception("checkJsonInfoIdMatchesThisInfoId(): Info class does not have an _id field"))
             val idFromJson: UUID = (idField as UUID2<*>).uuid()
-            if (idFromJson != id()?.uuid()) {
+            if (idFromJson != id().uuid()) {
                 return Result.failure(
                     Exception(
                         "checkJsonInfoIdMatchesThisInfoId(): Info _id does not match json _id, " +
@@ -104,6 +106,7 @@ interface Info<TInfo : Model?> {
         } catch (e: Exception) {
             return Result.failure(e)
         }
+
         return Result.success(infoFromJson)
     }
 
@@ -112,6 +115,7 @@ interface Info<TInfo : Model?> {
         while (rootClazz.superclass.simpleName != "Object") {
             rootClazz = rootClazz.superclass
         }
+
         return rootClazz
     }
 
@@ -130,6 +134,7 @@ interface Info<TInfo : Model?> {
                 infoClazz.cast(obj)
                     ?.id()
                     ?._setUUID2TypeStr(infoClazzName)
+
                 obj
             } catch (e: Exception) {
                 context.log.d(

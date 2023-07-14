@@ -1,4 +1,4 @@
-package com.realityexpander.domain.common.data.remote
+package com.realityexpander.domain.remote
 
 import kotlinx.serialization.Serializable
 
