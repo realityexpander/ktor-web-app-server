@@ -1,11 +1,9 @@
 package domain.common
 
-import kotlin.Result.*
 import com.google.gson.JsonSyntaxException
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.Context
-import domain.common.data.Model
 import domain.common.data.info.DomainInfo
 import domain.common.data.info.Info
 import domain.common.data.info.Info.Companion.createInfoFromJson
@@ -25,22 +23,28 @@ import java.util.concurrent.atomic.AtomicReference
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.11
  */
-abstract class Role<TDomainInfo : DomainInfo,
-        TDomainInfoModel : Model.ToDomainInfo<TDomainInfo>
-        > : Info<TDomainInfo>, IUUID2 {
-    private val id: UUID2<IUUID2> // the UUID of the Domain object matches the UUID of the Info object
+
+abstract class Role<TDomainInfo : DomainInfo> (
+    @Transient
+    open val id: UUID2<*> = UUID2.randomUUID2<IUUID2>(),
+    private val info: AtomicReference<TDomainInfo> = AtomicReference<TDomainInfo>(null),
+    protected val context: Context
+) : Info<TDomainInfo>, IUUID2 {
+
+//    val id: UUID2<IUUID2> // the UUID of the Domain object matches the UUID of the Info object
+//    @Transient
+//    open val id: UUID2<*> // the UUID of the Domain object matches the UUID of the Info object
 
     // It is final and private in the Domain layer.
-    private val info // Cached Information object for Info<Domain.{Domain}Info> interface
-            : AtomicReference<TDomainInfo>
+//    private val info // Cached Information object for Info<Domain.{Domain}Info> interface
+//            : AtomicReference<TDomainInfo>
     private val infoResult: AtomicReference<Result<TDomainInfo>> =
         AtomicReference<Result<TDomainInfo>>(null) // Convenience for Repo Debugging and future UI use
 
     // Singletons
-    val context: Context // All roles have access the Context singleton
+//    val context: Context // All roles have access the Context singleton
 
     // Class of the Info<TDomain> info object (for Gson serialization)
-    // - also JAVA REFLECTION IS UGLY!! :/
     private val infoClazz =
         if (javaClass.genericSuperclass is ParameterizedType) (
             javaClass
@@ -53,60 +57,80 @@ abstract class Role<TDomainInfo : DomainInfo,
                 .actualTypeArguments[0] as Class<TDomainInfo>
         )
 
+    ///////////////////
+    // Constructors  //
+    ///////////////////
+
+    constructor(
+        id: UUID2<*>,
+        info: TDomainInfo?,
+        context: Context
+    ) : this(id, AtomicReference<TDomainInfo>(info), context) {
+//        this.id = id // intentionally NOT validating `id==info.id` bc need to be able to pass in `info` as null.
+//        this.context = context
+//        this.info = AtomicReference<TDomainInfo>(info)
+    }
+
+//    private constructor(
+//        id: UUID,
+//        info: TDomainInfo?,
+//        context: Context
+//    ) {
+////        this.id = UUID2.fromUUID(id) // Note: NOT validating "id==info.id" due to need to pass in `info` as `null`
+////        this.id = UUID2.fromUUID<IUUID2>(id) // Note: NOT validating "id==info.id" due to need to pass in `info` as `null`
+//        this.id = UUID2.fromUUID<IUUID2>(id) // Note: NOT validating "id==info.id" due to need to pass in `info` as `null`
+//        this.context = context
+//        this.info = AtomicReference<TDomainInfo>(info)
+//    }
+
+    protected
+    constructor(
+        id: UUID2<*>,
+        context: Context
+    ) : this(id, AtomicReference<TDomainInfo>(null), context)
+
+    protected
+    constructor(
+        domainInfoJson: String,
+        domainInfoClazz: Class<TDomainInfo>,
+        context: Context
+    ) : this(
+        createInfoFromJson(domainInfoJson, domainInfoClazz, context) as TDomainInfo?
+            ?: throw Exception("Failed to create Info from JSON"),
+        context
+    )
+
+    protected
+    constructor(
+        info: TDomainInfo?,
+        context: Context
+//    ) : this(info.id().toDomainUUID2(), info, context)
+    ) : this(
+        info?.id()?.toDomainUUID2() ?: UUID2.randomUUID2<IUUID2>(),  // if info is null, then user a random UUID // todo is there a better way to do this?
+        AtomicReference<TDomainInfo>(info),
+        context
+    )
+
     private constructor(
         id: UUID,
         info: TDomainInfo?,
         context: Context
-    ) {
-        this.id = UUID2.fromUUID(id) // Note: NOT validating "id==info.id" due to need to pass in `info` as `null`
-        this.context = context
-        this.info = AtomicReference<TDomainInfo>(info)
-    }
+    ) : this(UUID2.fromUUID<IUUID2>(id), AtomicReference<TDomainInfo>(info), context)
 
-    private constructor(
-        id: UUID2<IUUID2>,
-        info: TDomainInfo?,
-        context: Context
-    ) {
-        this.id = id // intentionally NOT validating `id==info.id` bc need to be able to pass in `info` as null.
-        this.context = context
-        this.info = AtomicReference<TDomainInfo>(info)
-    }
 
-    protected constructor(
-        domainInfoJson: String,
-        clazzOfDomainInfo: Class<TDomainInfo>,
-        context: Context
-    ) : this(
-        Objects.requireNonNull(
-            createInfoFromJson(domainInfoJson, clazzOfDomainInfo, context)
-        ).getDomainInfo(),
-        context
-    )
+//    internal
+//    constructor(
+//        context: Context
+//    ) : this(UUID2.randomUUID2<IUUID2>(), AtomicReference(null) as AtomicReference<TDomainInfo>, context)
 
-    protected constructor(
-        info: TDomainInfo,
-        context: Context
-    ) : this(info.id(), info, context)
-
-    protected constructor(
-        id: UUID2<IUUID2>,
-        context: Context
-    ) : this(id, null, context)
-
-    internal constructor(context: Context) : this(UUID.randomUUID(), null, context)
-
-    // LEAVE FOR REFERENCE, for static Context instance implementation
-    // Role(String json) {
-    //    this(json, null);
-    //    this.context = Context.setupInstance(context);  // LEAVE for reference, for static Context instance implementation
-    // }
     /////////////////////
     // Simple getters  //
     /////////////////////
-    override fun id(): UUID2<IUUID2> {
-        return id
-    }
+
+//    override fun id(): UUID2<IUUID2> {
+//    fun id(): UUID2<*> {
+//        return id
+//    }
 
     override fun cachedInfo(): AtomicReference<TDomainInfo> {
         return info
@@ -120,13 +144,13 @@ abstract class Role<TDomainInfo : DomainInfo,
         context.log.d(
             this, "Updating Info from JSON for " +
                     "class: " + this.javaClass.name + ", " +
-                    "id: " + id()
+                    "id: " + infoId()
         )
         return try {
             val domainInfoClazz = infoClazz
             val infoFromJson: TDomainInfo = context.gson.fromJson(json, domainInfoClazz)
             val checkResult: Result<TDomainInfo> = checkJsonInfoIdMatchesThisInfoId(infoFromJson, domainInfoClazz)
-            if (checkResult is Result.failure) {
+            if (checkResult.isFailure) {
                 return checkResult
             }
 
@@ -149,7 +173,7 @@ abstract class Role<TDomainInfo : DomainInfo,
             context.log.w(
                 this, "called on un-fetched info for " +
                         "class: " + this.javaClass.name + ", " +
-                        "id: " + id()
+                        "id: " + infoId()
             )
             return "{}"
         }
@@ -159,6 +183,7 @@ abstract class Role<TDomainInfo : DomainInfo,
     /////////////////////////////////////////////////////
     // Methods REQUIRED to be overridden in subclasses //
     /////////////////////////////////////////////////////
+
     // Defines how to fetch info from server
     // - REQUIRED - *MUST* be overridden/implemented in subclasses
     override fun fetchInfoResult(): Result<TDomainInfo> {
@@ -169,7 +194,7 @@ abstract class Role<TDomainInfo : DomainInfo,
     // - REQUIRED - *MUST* be overridden/implemented in subclasses
     // - Call `super.updateFetchInfoResult(newInfo)` to update the info<TDomainInfo> object
     //   (caller decides when appropriate, ie: optimistic updates, or after server confirms update)
-    abstract override fun updateInfo(info: TDomainInfo): Result<TDomainInfo> // **MUST** Override in subclasses
+    abstract override fun updateInfo(updatedInfo: TDomainInfo): Result<TDomainInfo> // **MUST** Override in subclasses
 
     // NOTE: Should be Implemented by subclasses but not required
     override fun toString(): String {
@@ -177,12 +202,13 @@ abstract class Role<TDomainInfo : DomainInfo,
         // default toString() implementation
         val infoString = if (info() == null) "null" else info().toString()
         val nameOfClass = this.javaClass.name
-        return nameOfClass + ": " + id() + ", info=" + infoString
+        return nameOfClass + ": " + infoId() + ", info=" + infoString
     }
 
     /////////////////////////////////
     // Info<T> interface methods   //
     /////////////////////////////////
+
     // Shorter named wrapper for fetchInfo()
     fun info(): TDomainInfo? {
         return fetchInfo()
@@ -199,7 +225,7 @@ abstract class Role<TDomainInfo : DomainInfo,
         // Attempt to fetch info, since it hasn't been successfully fetched yet.
         val fetchResult = fetchInfoResult()
         updateFetchInfoResult(fetchResult)
-        if (fetchResult is Result.failure) {
+        if (fetchResult.isFailure) {
             context.log.d(
                 this, "fetchInfoResult() FAILED for " +
                         "class: " + this.javaClass.name + ", " +
@@ -210,7 +236,7 @@ abstract class Role<TDomainInfo : DomainInfo,
 
         // Fetch was successful, so set info and return it.
         return super.updateCachedInfo(
-            (fetchResult as Result.success<TDomainInfo>).value()
+            fetchResult.getOrNull()
         )
     }
 
@@ -220,8 +246,8 @@ abstract class Role<TDomainInfo : DomainInfo,
     // - BOOP Exception: The "returning null" behavior is to make the call site error handling code smaller.
     override fun fetchInfoFailureReason(): String? {
         if (!isInfoFetched) {
-            if (fetchInfoResult() is Result.failure) {
-                return (fetchInfoResult() as Result.failure<TDomainInfo>).exception().getMessage()
+            if (fetchInfoResult().isFailure) {
+                return fetchInfoResult().exceptionOrNull()?.message
             }
         }
         return null // Returns `null` if the info has been fetched successfully. This makes the call site smaller.
@@ -249,14 +275,15 @@ abstract class Role<TDomainInfo : DomainInfo,
         infoResult.getAndSet(updatedInfoResult)
 
         // Update the cached info if the fetch was successful
-        if (updatedInfoResult is Result.success) {
+        if (updatedInfoResult.isSuccess) {
             super.updateCachedInfo(
-                (updatedInfoResult as Result.success<TDomainInfo>).value()
+                updatedInfoResult.getOrNull()
             )
         }
     }
 
     companion object {
+
         ///////////////////////////
         // Static Constructors   //
         ///////////////////////////
@@ -272,10 +299,8 @@ abstract class Role<TDomainInfo : DomainInfo,
         // - todo : Should change to a marker interface instead of a constraining to the ToDomain<TDomain> interface?
         // for _setIdFromImportedJson() call
 
-        fun <TDomain : DomainInfo,  // restrict to Domain subclasses, ie: Domain.BookInfo
-//             TDomainInfo : Model.ToDomainInfo<out TDomain>
-             TDomainInfo : Model.ToDomainInfo<TDomain>
-        > createInfoFromJson(
+        fun <TDomainInfo : DomainInfo>  // restrict to Domain subclasses, ie: Domain.BookInfo
+        createInfoFromJson(
             json: String?,
             domainInfoClazz: Class<TDomainInfo>,  // type of `Domain.TDomainInfo` object to create
             context: Context
@@ -293,8 +318,8 @@ abstract class Role<TDomainInfo : DomainInfo,
                     ?._setUUID2TypeStr(domainInfoClazzName)
 
                 // Set `id` to match `id` of the Info
-                (obj as TDomain)._setIdFromImportedJson(
-                    UUID2((obj as TDomain).id() ?: throw Exception("id is null"),
+                (obj as TDomainInfo)._setIdFromImportedJson(
+                    UUID2((obj as TDomainInfo).id() ?: throw Exception("id is null"),
                         domainInfoClazzName
                     )
                 )

@@ -8,7 +8,6 @@ import domain.common.data.Model
 import java.lang.reflect.Type
 import java.util.*
 import java.util.concurrent.atomic.AtomicReference
-import java.util.function.UnaryOperator
 
 /**
  * **`Info`** is an interface for smart "data holder" implementing class. It is used for transferring data
@@ -29,21 +28,22 @@ import java.util.function.UnaryOperator
 interface Info<TInfo : Model> {
     // Note: Implementation requires a `AtomicReference<TInfo>` field named `info` (todo is there a way to enforce this in java?)
     // private final AtomicReference<TInfo> info;   // <-- this is *REQUIRED* in the Role superclass
-    fun id(): UUID2<IUUID2> // Return the UUID2 of the Info object.
-    fun fetchInfo(): TInfo // Fetch data for the Info from server/DB.
+//    fun id(): UUID2<IUUID2> // Return the UUID2 of the Info object.
+    fun infoId(): UUID2<IUUID2> // Return the UUID2 of the Info object.
+    fun fetchInfo(): TInfo? // Fetch data for the Info from server/DB.
 
     // Return true if Info has been successfully fetched from server/DB.
     val isInfoFetched: Boolean
 
-    fun fetchInfoResult(): Result<TInfo>          // Fetch Result<T> for the Info from server/DB.
-    fun updateInfo(info: TInfo): Result<TInfo>    // Update Info to server/DB.
-    fun refreshInfo(): Result<TInfo>              // Set Info data to `null` and fetches Info from server/DB.
-    fun fetchInfoFailureReason(): String?         // Performs fetch for Info and returns failure reason, or `null` if successful.
-    fun cachedInfo(): AtomicReference<TInfo>      // Return thread-safe Info from cache.
+    fun fetchInfoResult(): Result<TInfo>       // Fetch Result<T> for the Info from server/DB.
+    fun updateInfo(info: TInfo): Result<TInfo> // Update Info to server/DB.
+    fun refreshInfo(): Result<TInfo>           // Set Info data to `null` and fetches Info from server/DB.
+    fun fetchInfoFailureReason(): String?      // Performs fetch for Info and returns failure reason, or `null` if successful.
+    fun cachedInfo(): AtomicReference<TInfo>   // Return thread-safe Info from cache.
 
     interface ToInfo<TInfo : Model> {
-        fun id(): UUID2<IUUID2>       // Returns the UUID2 of the Info object
-        fun info(): TInfo {           // Fetches (if necessary) and Returns the Info object
+        abstract fun id(): UUID2<*>    // Returns the UUID2 of the Info object
+        fun info(): TInfo? {           // Fetches (if necessary) and Returns the Info object
             return this as TInfo
         }
 
@@ -57,7 +57,7 @@ interface Info<TInfo : Model> {
     // This interface used to enforce all {Domain}Info objects has a `deepCopy()` method.
     // - Just add `implements ToInfo.hasDeepCopyInfo<ToInfo<{InfoClass}>>` to the class
     //   definition, and the toDeepCopyInfo() method will be added.
-    interface hasToDeepCopyInfo<TInfo : ToInfo<*>> {
+    interface HasToDeepCopyInfo<TInfo : ToInfo<*>> {
         fun deepCopyInfo(): TInfo {
             // This default implementation for deepCopyInfo() simply calls the toDeepCopyInfo() implemented in the subclass.
             // This is a workaround for the fact that Java doesn't allow static methods in interfaces.
@@ -66,7 +66,7 @@ interface Info<TInfo : Model> {
     }
 
     // Performs Atomic update of cachedInfo
-    fun updateCachedInfo(updatedInfo: TInfo): TInfo? {
+    fun updateCachedInfo(updatedInfo: TInfo?): TInfo? {
         return cachedInfo()?.updateAndGet { updatedInfo }
     }
 
@@ -92,11 +92,11 @@ interface Info<TInfo : Model> {
             val idField = rootInfoClazz.getDeclaredField("_id")[infoFromJson]
                 ?: return Result.failure(Exception("checkJsonInfoIdMatchesThisInfoId(): Info class does not have an _id field"))
             val idFromJson: UUID = (idField as UUID2<*>).uuid()
-            if (idFromJson != id().uuid()) {
+            if (idFromJson != infoId().uuid()) {
                 return Result.failure(
                     Exception(
                         "checkJsonInfoIdMatchesThisInfoId(): Info _id does not match json _id, " +
-                                "info _id: " + id() + ", " +
+                                "info _id: " + infoId() + ", " +
                                 "json _id: " + idFromJson
                     )
                 )

@@ -86,8 +86,8 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
         _uuid2Type = getNormalizedUuid2TypeString(uuid2TypeStr)
     }
     constructor(uuid: UUID, clazz: Class<TUUID2>?) : this(uuid, calcUUID2TypeStr(clazz))
-    constructor(clazz: Class<TUUID2>) : this(UUID.randomUUID(), clazz)
-    constructor(uuid2TypeStr: String) : this(UUID.randomUUID(), uuid2TypeStr)
+//    constructor(clazz: Class<TUUID2>) : this(UUID.randomUUID(), clazz)
+//    constructor(uuid2TypeStr: String) : this(UUID.randomUUID(), uuid2TypeStr)
     constructor() : this(UUID.randomUUID(), "UUID")
 
     ////////////////////////////////
@@ -342,8 +342,8 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
         // Converters                 //
         ////////////////////////////////
 
-        fun <TUUID2 : IUUID2> fromUUID2(id: UUID2<TUUID2>, clazz: Class<TUUID2>): UUID2<TUUID2> {
-            return UUID2<TUUID2>(id, clazz)
+        fun <TUUID2 : IUUID2> fromUUID2(id: UUID2<IUUID2>, clazz: Class<TUUID2>): UUID2<TUUID2> {
+            return UUID2<TUUID2>(id.uuid, clazz)
         }
 
         fun <TUUID2 : IUUID2> fromUUID(uuid: UUID): UUID2<TUUID2> {

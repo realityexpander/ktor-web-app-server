@@ -12,6 +12,10 @@ import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import com.realityexpander.domain.remote.fileUpload.FileUploadResponse
 import com.realityexpander.domain.remote.fileUpload.save
+import domain.book.Book
+import domain.common.Role
+import domain.common.data.info.DomainInfo
+import domain.library.data.LibraryInfo
 import io.fluidsonic.mongo.MongoClients
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -50,29 +54,73 @@ import io.ktor.server.application.install as installServer
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation as ContentNegotiationServer
 
 
-open class Role(
-    @Transient
-    open val id: UUID2<*> = UUID2.createFakeUUID2(1, IUUID2::class.java)
-)
-
-class User(
-    override val id: UUID2<User>,
-    val name: String,
-    val bookIdToNumAcceptedMap: MutableMap<UUID2<Book>, Long> = mutableMapOf()
-) : Role(id), IUUID2 {
-    override fun uuid2TypeStr(): String {
-        return UUID2.calcUUID2TypeStr(this.javaClass)
-    }
-}
-
-class Book(
-    override val id: UUID2<Book>,
-    val name: String,
-) : Role(id), IUUID2 {
-    override fun uuid2TypeStr(): String {
-        return UUID2.calcUUID2TypeStr(this.javaClass)
-    }
-}
+//abstract class Role<T>(
+//    @Transient
+//    open val id: UUID2<*> = UUID2.createFakeUUID2(1, IUUID2::class.java)
+//)
+//
+//class User(
+//    override val id: UUID2<User>,
+//    val name: String,
+//    val bookIdToNumAcceptedMap: MutableMap<UUID2<Book>, Long> = mutableMapOf()
+//) : Role<DomainInfo>(id), IUUID2 {
+//
+//    override fun updateInfo(updatedInfo: DomainInfo): Result<DomainInfo> {
+//        return Result.success(updatedInfo)
+//    }
+//
+//    override fun infoId(): UUID2<IUUID2> {
+//        return this.id as UUID2<IUUID2>
+//    }
+//
+//    override fun uuid2TypeStr(): String {
+//        return UUID2.calcUUID2TypeStr(this.javaClass)
+//    }
+//}
+//
+//class Book(
+//    override val id: UUID2<Book>,
+//    val name: String,
+//) : Role<Any>(id), IUUID2 {
+//    override fun uuid2TypeStr(): String {
+//        return UUID2.calcUUID2TypeStr(this.javaClass)
+//    }
+//}
+//open class Library(
+//    override val id: UUID2<Library>,
+//    val users: MutableMap<UUID2<User>, User> = mutableMapOf(),
+//    val books: MutableMap<UUID2<Book>, Book> = mutableMapOf(),
+//    val userBookAcceptances: MutableMap<UUID2<UserBookAcceptance>, UserBookAcceptance> = mutableMapOf(),
+//) : Role<LibraryInfo>(id), IUUID2 {
+//    fun addUser(user: User) {
+//        users[user.id] = user
+//    }
+//
+//    fun addBook(book: Book) {
+//        books[book.id as UUID2<Book>] = book
+//    }
+//
+//    fun addUserBookAcceptance(userBookAcceptance: UserBookAcceptance) {
+//        userBookAcceptances[userBookAcceptance.id] = userBookAcceptance
+//    }
+//}
+//
+//class PrivateLibrary(
+//    override val id: UUID2<Library>,
+//    val name: String,
+//) : Library(id) {
+//    fun updateInfo(updatedInfo: DomainInfo): Result<DomainInfo> {
+//        return Result.success(updatedInfo)
+//    }
+//
+//    override fun infoId(): UUID2<IUUID2> {
+//        return this.infoId()
+//    }
+//
+//    override fun uuid2TypeStr(): String {
+//        return UUID2.calcUUID2TypeStr(this.javaClass)
+//    }
+//}
 
 
 val ktorLogger: ch.qos.logback.classic.Logger = LoggerFactory.getLogger("KTOR-WEB-APP") as ch.qos.logback.classic.Logger

@@ -1,7 +1,6 @@
 package domain.common.data
 
 import com.google.gson.GsonBuilder
-import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.Context
 import domain.common.data.info.DomainInfo
@@ -35,8 +34,8 @@ import domain.common.data.info.network.DTOInfo
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.11
  */
-open class Model protected constructor(id: UUID2<IUUID2>) {
-    var _id: UUID2<IUUID2> // Can't make final due to need to set it during JSON deserialization. 🫤
+open class Model protected constructor(id: UUID2<*>) {
+    var _id: UUID2<*> // Can't make final due to need to set it during JSON deserialization. 🫤
 
     // Also can't make it private due to Gson's need to access it during deserialization. 🫤
     // todo Is there a better way to do this? (maybe another JSON library?)
@@ -47,7 +46,7 @@ open class Model protected constructor(id: UUID2<IUUID2>) {
     ////////////////////////
     // Simple getters     //
     ////////////////////////
-    fun id(): UUID2<IUUID2> {
+    open fun id(): UUID2<*> {
         return _id
     }
 
@@ -55,7 +54,7 @@ open class Model protected constructor(id: UUID2<IUUID2>) {
     // - This method is for JSON deserialization purposes & should only be used for such.
     // - It is not intended to be used for any other purpose.
     // - todo Is there a better way to do this?
-    fun _setIdFromImportedJson(_id: UUID2<IUUID2>) {
+    fun _setIdFromImportedJson(_id: UUID2<*>) {
         this._id = _id
     }
 
@@ -77,7 +76,7 @@ open class Model protected constructor(id: UUID2<IUUID2>) {
         // *MUST* override
         // - Overridden method should return `id` with the correct type of UUID2 for the domain
         //   ie: `UUID2<User>` for the `User`, `UUID2<UserInfo>` for the UserInfo, etc.
-        fun id(): UUID2<IUUID2>
+        abstract fun id(): UUID2<*>
 
         val domainInfo: TDomainInfo  // Return reference to TDomainInfo, used when importing JSON
             get() =
@@ -90,7 +89,7 @@ open class Model protected constructor(id: UUID2<IUUID2>) {
         // This interface enforces all DomainInfo objects to include a deepCopyDomainInfo() method
         // - Just add "implements ToDomainInfo.deepCopyDomainInfo<ToDomainInfo<Domain>>" to the class
         //   definition, and the deepCopy() method will be added.
-        interface hasToDeepCopyDomainInfo<TToInfo : ToDomainInfo<out DomainInfo>> {
+        interface HasToDeepCopyDomainInfo<TToInfo : ToDomainInfo<out DomainInfo>> {
             fun deepCopyDomainInfo(): DomainInfo // Requires method override, should return a deep copy (no original references)
             {
                 // This method is a lazy convenience, and should really be overridden in each class.

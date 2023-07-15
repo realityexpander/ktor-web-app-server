@@ -5,9 +5,10 @@ import common.uuid2.UUID2
 import domain.common.data.Model
 
 /**
- * DomainInfo is a base class for all DomainInfo classes.<br></br>
- * <br></br>
- * Domain object encapsulate this DomainInfo class to provide mutable information about the domain object.<br></br>
+ * DomainInfo is a base class for all DomainInfo classes.
+ *
+ * Domain object encapsulate this DomainInfo class to provide mutable information about the domain object.
+ *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.11
  */

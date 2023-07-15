@@ -17,4 +17,5 @@ interface IAPI<TUUID2 : IUUID2, TDTOInfo> {
     fun updateDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo>
     fun upsertDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo>
     fun deleteDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo>
+    fun findAllUUID2ToDtoInfoMap(): Map<UUID2<TUUID2>, TDTOInfo>
 }

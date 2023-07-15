@@ -4,8 +4,6 @@ import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.common.data.info.network.DTOInfo
 import okhttp3.internal.toImmutableMap
-import java.util.*
-import kotlin.Result.*
 
 /**
  * InMemoryAPI is an implementation of the IAPI interface for the DTOInfo.
@@ -17,14 +15,14 @@ import kotlin.Result.*
 
 class InMemoryAPI<TUUID2 : IUUID2, TDTOInfo : DTOInfo> (
     private val fakeUrl: FakeURL,
-    private val client: HttpClient
+    private val client: FakeHttpClient
 ) : IAPI<TUUID2, TDTOInfo> {
     // Simulate a database accessed via a network API
     private val database: MutableMap<UUID2<TUUID2>, TDTOInfo> = mutableMapOf()
 
     internal constructor() : this(
         FakeURL("http://localhost:8080"),
-        HttpClient()
+        FakeHttpClient()
     )
 
     override fun fetchDtoInfo(id: UUID2<TUUID2>): Result<TDTOInfo> {
@@ -80,15 +78,15 @@ class InMemoryAPI<TUUID2 : IUUID2, TDTOInfo : DTOInfo> (
         } else Result.success(dtoInfo)
     }
 
-    val findAllUUID2ToDtoInfoMap: Map<UUID2<TUUID2>, TDTOInfo>
-        get() {
-            val map: MutableMap<UUID2<TUUID2>, TDTOInfo> = mutableMapOf()
+    override fun findAllUUID2ToDtoInfoMap(): Map<UUID2<TUUID2>, TDTOInfo> {
+        val map: MutableMap<UUID2<TUUID2>, TDTOInfo> = mutableMapOf()
 
-            // Simulate Network
-            for ((key, value) in database.entries) {
-                map[UUID2(key)] = value
-            }
+        // Simulate Network
+        for ((key, value) in database.entries) {
+            map[UUID2(key)] = value
+        }
 
             return map.toImmutableMap()
-        }
+//        return map.toMap()
+    }
 }
