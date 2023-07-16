@@ -7,14 +7,15 @@ import domain.book.Book
 import domain.common.Role
 import domain.library.data.LibraryInfo
 import domain.library.data.LibraryInfoRepo
+import domain.user.User
 import okhttp3.internal.toImmutableMap
 
 /**
- * Library Role Object<br></br>
- * <br></br>
- * Library is a Role Object that represents a Library in the LibraryApp domain.<br></br>
- * <br></br>
- * *ONLY* interacts with its own Repo, Context, and other Role Objects<br></br>
+ * Library Role Object
+ *
+ * Library is a Role Object that represents a Library in the LibraryApp domain.
+ *
+ * *ONLY* interacts with its own Repo, Context, and other Role Objects
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.11
@@ -26,7 +27,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
         info: LibraryInfo,
         context: Context
     ) : super(info, context) {
-        repo = context.libraryInfoRepo()
+        repo = context.libraryInfoRepo
         context.log.d(this, "Library (" + id() + ") created from Info")
     }
 
@@ -35,15 +36,15 @@ open class Library : Role<LibraryInfo>, IUUID2 {
         clazz: Class<LibraryInfo>,
         context: Context
     ) : super(json, clazz, context) {
-        repo = context.libraryInfoRepo()
-        context.log.d(this, "Library (" + id() + ") created from Json with class: " + clazz.getName())
+        repo = context.libraryInfoRepo
+        context.log.d(this, "Library (" + id() + ") created from Json with class: " + clazz.name)
     }
 
     constructor(
         id: UUID2<Library>,
         context: Context
     ) : super(id, context) {
-        repo = context.libraryInfoRepo()
+        repo = context.libraryInfoRepo
         context.log.d(this, "Library (" + id() + ") created using id with no Info")
     }
 
@@ -56,7 +57,11 @@ open class Library : Role<LibraryInfo>, IUUID2 {
 
     // Convenience method to get the Type-safe id from the Class
     fun id(): UUID2<Library> {
-        return super.id() as UUID2<Library>
+        return super.id as UUID2<Library>
+    }
+
+    override fun infoId(): UUID2<IUUID2> { // todo remove and use id() instead
+        return super.id as UUID2<IUUID2>
     }
 
     /////////////////////////////////////
@@ -88,6 +93,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
     // - Methods to modify it's LibraryInfo  //
     // - Communicate with other ROle objects //
     ///////////////////////////////////////////
+
     open fun checkOutBookToUser(book: Book, user: User): Result<Book> {
         context.log.d(this, "Library (" + id() + ") - bookId: " + book.id() + ", userId: " + user.id())
         if (fetchInfoFailureReason() != null) return Result.failure(Exception(fetchInfoFailureReason()))

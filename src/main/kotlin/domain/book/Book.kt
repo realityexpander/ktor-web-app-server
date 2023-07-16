@@ -1,6 +1,6 @@
 package domain.book
 
-import com.realityexpander.User
+
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.Context
@@ -12,6 +12,7 @@ import domain.common.Role
 import domain.library.Library
 import domain.library.PrivateLibrary
 import domain.library.data.LibraryInfo
+import domain.user.User
 import java.awt.SystemColor.info
 
 /**
@@ -23,6 +24,7 @@ import java.awt.SystemColor.info
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.11
  */
+
 class Book : Role<BookInfo>, IUUID2 {
     private val repo: BookInfoRepo
     private val sourceLibrary: Library // Book's source Library Role Object - owns this Book.

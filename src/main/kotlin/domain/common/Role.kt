@@ -168,7 +168,7 @@ abstract class Role<TDomainInfo : DomainInfo> (
         }
     }
 
-    fun toJson(): String {
+    open fun toJson(): String {
         if (!isInfoFetched) {
             context.log.w(
                 this, "called on un-fetched info for " +

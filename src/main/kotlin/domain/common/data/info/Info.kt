@@ -11,15 +11,15 @@ import java.util.concurrent.atomic.AtomicReference
 
 /**
  * **`Info`** is an interface for smart "data holder" implementing class. It is used for transferring data
- * to/from the Domain to/from Database/Api.<br></br>
+ * to/from the Domain to/from Database/Api.
  *
  *  * The **`Info`** interface defines the logic to update and fetch the {Domain}Info object.
  *  * It is the "single source of truth" for the Domain object's mutable data.
- * <br></br>
+ *
  *  * **`TInfo`** - A required {Domain}Info subclass that contains all business logic to mutate
- * the 'Info' object, ie: **`BookInfo`** or **`EntityLibraryInfo`**.
- *  * **`AtomicReference<TInfo> info`** - Is a required thread-safe cache object for the Role's "Info"
- * and is usually defined in the Role superclass.
+ *    the 'Info' object, ie: **`BookInfo`** or **`EntityLibraryInfo`**.
+ *  * **`info: AtomicReference<TInfo>`** - Is a required thread-safe cache object for the Role's "Info"
+ *    and is usually defined in the Role superclass.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.11
@@ -28,9 +28,9 @@ import java.util.concurrent.atomic.AtomicReference
 interface Info<TInfo : Model> {
     // Note: Implementation requires a `AtomicReference<TInfo>` field named `info` (todo is there a way to enforce this in java?)
     // private final AtomicReference<TInfo> info;   // <-- this is *REQUIRED* in the Role superclass
-//    fun id(): UUID2<IUUID2> // Return the UUID2 of the Info object.
-    fun infoId(): UUID2<IUUID2> // Return the UUID2 of the Info object.
-    fun fetchInfo(): TInfo? // Fetch data for the Info from server/DB.
+//    fun id(): UUID2<IUUID2>                       // Return the UUID2 of the Info object.
+    fun infoId(): UUID2<IUUID2>                     // Return the UUID2 of the Info object.
+    fun fetchInfo(): TInfo?                         // Fetch data for the Info from server/DB.
 
     // Return true if Info has been successfully fetched from server/DB.
     val isInfoFetched: Boolean

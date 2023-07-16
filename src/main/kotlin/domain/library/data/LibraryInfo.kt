@@ -5,6 +5,7 @@ import domain.book.Book
 import domain.common.data.Model
 import domain.common.data.info.DomainInfo
 import domain.library.Library
+import domain.user.User
 import java.util.*
 
 /**
@@ -17,7 +18,7 @@ import java.util.*
  */
 
 class LibraryInfo(
-    id: UUID2<Library>,
+    val id: UUID2<Library>,
     val name: String,
     registeredUserIdToCheckedOutBookIdMap: MutableMap<UUID2<User>, ArrayList<UUID2<Book>>>,
     bookIdToNumBooksAvailableMap: MutableMap<UUID2<Book>, Long>
@@ -50,8 +51,9 @@ class LibraryInfo(
     ///////////////////////////////
 
     // Convenience method to get the Type-safe id from the Class
-    fun id(): UUID2<Library> {
-        return super.id() as UUID2<Library>
+    override fun id(): UUID2<Library> {
+//        return super.id() as UUID2<Library>
+        return this.id
     }
 
     override fun toString(): String {

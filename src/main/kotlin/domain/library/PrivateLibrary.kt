@@ -5,6 +5,7 @@ import common.uuid2.UUID2
 import domain.Context
 import domain.book.Book
 import domain.library.data.LibraryInfo
+import domain.user.User
 
 /**
  *
