@@ -1,10 +1,5 @@
 package com.realityexpander.domain.auth
 
-import util.EmailString
-import util.IdString
-import util.JwtTokenString
-import util.PasswordString
-import util.TokenString
 import com.realityexpander.jsonConfig
 import com.realityexpander.ktorLogger
 import kotlinx.coroutines.CoroutineScope
@@ -13,6 +8,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
+import util.*
 import java.io.File
 import java.util.*
 
@@ -21,23 +17,23 @@ data class UserEntity(
     val id: String = UUID.randomUUID().toString(),
     val email: String,
     val password: PasswordString,
-    val authToken: TokenString,
-    val authJwtToken: JwtTokenString,
+    val authToken: TokenStr,
+    val authJwtToken: JwtTokenStr,
     val clientIpAddressWhiteList: List<String> = listOf(),
     val passwordResetToken: String? = null,
     val passwordResetJwtToken: String? = null,
 )
 
-const val MAX_POLLING_ATTEMPTS = 20
+const val MAX_POLLING_ATTEMPTS = 50
 const val USERS_DB_FILENAME_DEFAULT = "usersDB.json"
 
 class UserService(
     private val usersDBFilename: String = USERS_DB_FILENAME_DEFAULT,
 ) {
-    private val usersDb = mutableMapOf<IdString, UserEntity>()
-    private val authTokenToIdLookup = mutableMapOf<TokenString, IdString>()
-    private val authJwtTokenToIdLookup = mutableMapOf<JwtTokenString, IdString>()
-    private val emailToIdLookup = mutableMapOf<EmailString, IdString>()
+    private val usersDb = mutableMapOf<UserIdStr, UserEntity>()
+    private val authTokenToIdLookup = mutableMapOf<TokenStr, UserIdStr>()
+    private val authJwtTokenToIdLookup = mutableMapOf<JwtTokenStr, UserIdStr>()
+    private val emailToIdLookup = mutableMapOf<EmailStr, UserIdStr>()
 
     init {
         if(!File(usersDBFilename).exists()
@@ -76,16 +72,16 @@ class UserService(
         return usersDb[id]
     }
 
-    fun getUserByEmail(email: EmailString): UserEntity? {
+    fun getUserByEmail(email: EmailStr): UserEntity? {
         return usersDb[emailToIdLookup[email]]
     }
 
-    fun getUserByAuthToken(authToken: TokenString?): UserEntity? {
+    fun getUserByAuthToken(authToken: TokenStr?): UserEntity? {
         if (authToken == null) return null
         return usersDb[authTokenToIdLookup[authToken]]
     }
 
-    fun getUserByAuthJwtToken(authJwtToken: JwtTokenString?): UserEntity? {
+    fun getUserByAuthJwtToken(authJwtToken: JwtTokenStr?): UserEntity? {
         if (authJwtToken == null) return null
         return usersDb[authJwtTokenToIdLookup[authJwtToken]]
     }
@@ -120,17 +116,17 @@ class UserService(
         saveUsersDbToDisk()
     }
 
-    suspend fun deleteUserByEmail(email: EmailString) {
+    suspend fun deleteUserByEmail(email: EmailStr) {
         usersDb.remove(emailToIdLookup[email])
         saveUsersDbToDisk()
     }
 
-    suspend fun deleteUserByAuthToken(authToken: TokenString) {
+    suspend fun deleteUserByAuthToken(authToken: TokenStr) {
         usersDb.remove(authTokenToIdLookup[authToken])
         saveUsersDbToDisk()
     }
 
-    suspend fun deleteUserByAuthJwtToken(authJwtToken: JwtTokenString) {
+    suspend fun deleteUserByAuthJwtToken(authJwtToken: JwtTokenStr) {
         usersDb.remove(authJwtTokenToIdLookup[authJwtToken])
         saveUsersDbToDisk()
     }
@@ -148,6 +144,8 @@ class UserService(
         val userDBJson = File(usersDBFilename).readText()
         if (userDBJson.isNotEmpty()) {
             val users = jsonConfig.decodeFromString<List<UserEntity>>(userDBJson)
+
+            // Add the users to the primary Lookup Table
             for (user in users) {
                 usersDb[user.id] = user
             }
@@ -157,17 +155,18 @@ class UserService(
     }
 
     private suspend fun saveUsersDbToDisk() {
-        pollIfFileExists(usersDBFilename)
+        updateLookupTables()  // optimistically update the lookup tables
 
+        pollIfFileExists(usersDBFilename)
         try {
             val tempFilename = renameFileBeforeWriting(usersDBFilename)
 
             File(tempFilename).writeText(
                 jsonConfig.encodeToString(
-                    usersDb.values.toList()
+                    usersDb.values
+                        .toList()
                 )
             )
-            updateLookupTables()
         } catch (e: Exception) {
             ktorLogger.error("Error saving usersDB.json: ${e.message}")
         } finally {
@@ -177,6 +176,7 @@ class UserService(
 
     private suspend fun pollIfFileExists(fileName: String) {
         var pollingAttempts = 0
+
         while (!File(fileName).exists()) {
             delay(100)
 

@@ -1,8 +1,10 @@
 package util
 
-typealias EmailString = String
+typealias EmailStr = String
 typealias PasswordString = String
-typealias TokenString = String
-typealias JwtTokenString = String
+typealias TokenStr = String
+typealias JwtTokenStr = String
 typealias IdString = String
+
+typealias UserIdStr = IdString
 

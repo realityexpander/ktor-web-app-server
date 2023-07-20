@@ -8,15 +8,8 @@ import com.realityexpander.domain.todo.Todo
 import com.realityexpander.domain.todo.UserInTodo
 import com.realityexpander.domain.remote.emailer.sendPasswordResetEmail
 import com.realityexpander.domain.todo.TodoResponse
-import common.uuid2.IUUID2
-import common.uuid2.UUID2
 import com.realityexpander.domain.remote.fileUpload.FileUploadResponse
 import com.realityexpander.domain.remote.fileUpload.save
-import domain.book.Book
-import domain.common.Role
-import domain.common.data.info.DomainInfo
-import domain.library.data.LibraryInfo
-import io.fluidsonic.mongo.MongoClients
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.okhttp.*
@@ -40,7 +33,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
-import util.JwtTokenString
+import util.JwtTokenStr
 import util.getClientIpAddressFromRequest
 import util.respondJson
 import java.io.File
@@ -417,7 +410,7 @@ fun Application.module() {
                     val params = jsonConfig.decodeFromString<Map<String, String>>(body)
 
                     @Suppress("USELESS_CAST") // need to indicate String type is a JWT token string
-                    val token = params["jwtToken"] as JwtTokenString?
+                    val token = params["jwtToken"] as JwtTokenStr?
 
                     token?.let {
                         val user = userService.getUserByAuthJwtToken(token)
