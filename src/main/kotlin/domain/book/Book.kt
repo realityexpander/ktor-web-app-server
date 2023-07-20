@@ -38,7 +38,6 @@ class Book : Role<BookInfo>, IUUID2 {
 
         context.log.d(this, "Book (" + id() + ") created from Info")
     }
-
     constructor(
         id: UUID2<Book>,
         info: BookInfo?,
@@ -50,7 +49,6 @@ class Book : Role<BookInfo>, IUUID2 {
 
         context.log.d(this, "Book (" + id() + ") created using id with no Info")
     }
-
     constructor(
         bookInfoJson: String,
         clazz: Class<BookInfo>,
@@ -62,7 +60,6 @@ class Book : Role<BookInfo>, IUUID2 {
 
         context.log.d(this, "Book (" + id() + ") created from JSON using class:" + clazz.name)
     }
-
     constructor(
         id: UUID2<Book>,
         sourceLibrary: Library?,
@@ -73,14 +70,12 @@ class Book : Role<BookInfo>, IUUID2 {
 
         context.log.d(this, "Book (" + id() + ") created using id with no Info")
     }
-
     constructor(bookInfoJson: String, sourceLibrary: Library?, context: Context) : this(
         bookInfoJson,
         BookInfo::class.java,
         sourceLibrary,
         context
     )
-
     constructor(bookInfoJson: String, context: Context) : this(bookInfoJson, BookInfo::class.java, null, context)
 
     /////////////////////////////////////////
@@ -94,7 +89,6 @@ class Book : Role<BookInfo>, IUUID2 {
         sourceLibrary,
         context
     )
-
     constructor(bookInfoEntity: EntityBookInfo, sourceLibrary: Library, context: Context) : this(
         BookInfo(bookInfoEntity),
         sourceLibrary,

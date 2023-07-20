@@ -339,7 +339,7 @@ class LibraryAppTest {
             "{}",
             "afterCheckInBookCount != initialBookCount")
 
-//        // todo should check result, this will be a failure case bc the ID's wont match
+//        // todo add test - attempting to load json when ID's dont match
 //        println(roles.library1.info()?.toPrettyJson())
 //        library99.updateInfoFromJson(roles.library1.toJson())
 

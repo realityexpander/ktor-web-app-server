@@ -48,7 +48,6 @@ class EntityBookInfo(
     ////////////////////////////////////////////////////////////
 
     constructor(bookInfo: EntityBookInfo) : this(
-//        UUID2<Book>(bookInfo.id()),  // change `UUID2Type` to UUID2<Book>
         UUID2.fromUUID2(bookInfo.id().toDomainUUID2(), Book::class.java),  // change `UUID2Type` to UUID2<Book>
         bookInfo.title,
         bookInfo.author,

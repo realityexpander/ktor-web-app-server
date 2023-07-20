@@ -33,7 +33,6 @@ open class Library : Role<LibraryInfo>, IUUID2 {
 
         context.log.d("Library<Init>", "Library (" + id() + ") created from Info")
     }
-
     constructor(
         libraryInfoJson: String,
         clazz: Class<LibraryInfo>,
@@ -43,7 +42,6 @@ open class Library : Role<LibraryInfo>, IUUID2 {
 
         context.log.d("Library<Init>", "Library (" + id() + ") created from Json with class: " + clazz.name)
     }
-
     constructor(
         id: UUID2<Library>,
         context: Context
@@ -215,16 +213,19 @@ open class Library : Role<LibraryInfo>, IUUID2 {
 
         // Check if `from` Source Library is known
         if (fromSourceLibrary.fetchInfoFailureReason() != null)
-            return Result.failure(Exception("Book's Source Library is not known, bookId: " + bookToTransfer.id() + ", libraryId: " + id()))
+            return Result.failure(Exception("Book's fetched Source Library is not known, fromLibraryId: " + fromSourceLibrary.id() + ", bookId: " + bookToTransfer.id()))
 
         // Check if Book is known at `from` Source Library
         val fromSourceLibraryInfo: LibraryInfo = fromSourceLibrary.info()
             ?: return Result.failure(Exception("LibraryInfo is null, libraryId: " + fromSourceLibrary.id()))
-        if ( !fromSourceLibraryInfo.isKnownBook(bookToTransfer) )
+        if (!fromSourceLibraryInfo.isKnownBook(bookToTransfer))
             return Result.failure(Exception("Book is not known at from Source Library, bookId: " + bookToTransfer.id() + ", libraryId: " + fromSourceLibrary.id()))
 
+        ///////////////////////////////
+        //// Process Book Transfer ////
+        ///////////////////////////////
 
-        // Remove Book from Library Inventory of Books at `from` Source Library
+        // • Remove Book from Library Inventory of Books at `from` Source Library
         val removeBookResult: Result<UUID2<Book>> =
             fromSourceLibraryInfo.removeTransferringBookFromBooksAvailableMap(bookToTransfer)
         if (removeBookResult.isFailure)
@@ -237,7 +238,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
             ?: Exception("Unknown failure updating LibraryInfo, libraryId: " + fromSourceLibrary.id() + ", bookId: " + bookToTransfer.id())))
 
 
-        // Add Book to this Library's Inventory of Books
+        // • Add Book to this Library's Inventory of Books
         val addBookResult: Result<UUID2<Book>> = this.info()?.addTransferringBookToBooksAvailableMap(bookToTransfer)
             ?: return Result.failure(Exception("LibraryInfo is null, libraryId: " + id()))
         if (addBookResult.isFailure) return Result.failure((addBookResult.exceptionOrNull()
