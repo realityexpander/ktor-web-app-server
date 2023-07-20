@@ -292,33 +292,35 @@ class LibraryAppTest {
     }
 
     private val ronaldReaganLibraryInfoJson: String =
-            "{\n" +
-            "  \"name\": \"Ronald Reagan Library\",\n" +
-            "  \"registeredUserIdToCheckedOutBookIdsMap\": {\n" +
-            "    \"UUID2:Role.User@00000000-0000-0000-0000-000000000001\": [\n" +
-            "      {\n" +
-            "        \"uuid\": \"00000000-0000-0000-0000-000000001500\",\n" +
-            "        \"uuid2Type\": \"Role.Book\"\n" +
-            "      }\n" +
-            "    ]\n" +
-            "  },\n" +
-            "  \"bookIdToNumBooksAvailableMap\": {\n" +
-            "    \"UUID2:Role.Book@00000000-0000-0000-0000-000000001400\": 25,\n" +
-            "    \"UUID2:Role.Book@00000000-0000-0000-0000-000000001000\": 25,\n" +
-            "    \"UUID2:Role.Book@00000000-0000-0000-0000-000000001300\": 25,\n" +
-            "    \"UUID2:Role.Book@00000000-0000-0000-0000-000000001200\": 25,\n" +
-            "    \"UUID2:Role.Book@00000000-0000-0000-0000-000000001500\": 24,\n" +
-            "    \"UUID2:Role.Book@00000000-0000-0000-0000-000000001600\": 25,\n" +
-            "    \"UUID2:Role.Book@00000000-0000-0000-0000-000000001700\": 25,\n" +
-            "    \"UUID2:Role.Book@00000000-0000-0000-0000-000000001800\": 25,\n" +
-            "    \"UUID2:Role.Book@00000000-0000-0000-0000-000000001900\": 25,\n" +
-            "    \"UUID2:Role.Book@00000000-0000-0000-0000-000000001100\": 25\n" +
-            "  },\n" +
-            "  \"id\": {\n" +
-            "    \"uuid\": \"00000000-0000-0000-0000-000000000099\",\n" +
-            "    \"uuid2Type\": \"Role.Library\"\n" +
-            "  }\n" +
-            "}".trimIndent()
+        """
+            {
+              "name": "Ronald Reagan Library",
+              "registeredUserIdToCheckedOutBookIdsMap": {
+                "UUID2:Role.User@00000000-0000-0000-0000-000000000001": [
+                  {
+                    "uuid":"00000000-0000-0000-0000-000000001500",
+                    "uuid2Type":"Role.Book"
+                  }
+                ]
+              },
+              "bookIdToNumBooksAvailableMap": {
+                "UUID2:Role.Book@00000000-0000-0000-0000-000000001400": 25,
+                "UUID2:Role.Book@00000000-0000-0000-0000-000000001000": 25,
+                "UUID2:Role.Book@00000000-0000-0000-0000-000000001300": 25,
+                "UUID2:Role.Book@00000000-0000-0000-0000-000000001200": 25,
+                "UUID2:Role.Book@00000000-0000-0000-0000-000000001500": 24,
+                "UUID2:Role.Book@00000000-0000-0000-0000-000000001600": 25,
+                "UUID2:Role.Book@00000000-0000-0000-0000-000000001700": 25,
+                "UUID2:Role.Book@00000000-0000-0000-0000-000000001800": 25,
+                "UUID2:Role.Book@00000000-0000-0000-0000-000000001900": 25,
+                "UUID2:Role.Book@00000000-0000-0000-0000-000000001100": 25
+              },
+              "id": {
+                "uuid": "00000000-0000-0000-0000-000000000099",
+                "uuid2Type": "Role.Library"
+              }
+            }
+        """.trimIndent()
 
     @Test
     fun `Update LibraryInfo by updateInfoFromJson is Success`() {
