@@ -295,6 +295,10 @@ class LibraryAppTest {
         """
             {
               "name": "Ronald Reagan Library",
+              "id": {
+                "uuid": "00000000-0000-0000-0000-000000000099",
+                "uuid2Type": "Role.Library"
+              },
               "registeredUserIdToCheckedOutBookIdsMap": {
                 "UUID2:Role.User@00000000-0000-0000-0000-000000000001": [
                   {
@@ -314,10 +318,6 @@ class LibraryAppTest {
                 "UUID2:Role.Book@00000000-0000-0000-0000-000000001800": 25,
                 "UUID2:Role.Book@00000000-0000-0000-0000-000000001900": 25,
                 "UUID2:Role.Book@00000000-0000-0000-0000-000000001100": 25
-              },
-              "id": {
-                "uuid": "00000000-0000-0000-0000-000000000099",
-                "uuid2Type": "Role.Library"
               }
             }
         """.trimIndent()
@@ -339,18 +339,14 @@ class LibraryAppTest {
         assertEquals(
             library99.toJson(),
             "{}",
-            "afterCheckInBookCount != initialBookCount")
-
-//        // todo add test - attempting to load json when ID's dont match
-//        println(roles.library1.info()?.toPrettyJson())
-//        library99.updateInfoFromJson(roles.library1.toJson())
+            "library99.toJson() != {}")
 
         // Check JSON loaded properly
         val library99UpdateResult = library99.updateInfoFromJson(json)
         if (library99UpdateResult.isFailure) {
             // NOTE: FAILURE IS EXPECTED HERE
-            println("^^^^^^^^^^^^ 2 Warnings `Library➤toJson()` are expected and normal.")
-            ctx.log.d(this, "^^^^^^^^ warning is expected and normal.")
+            println("▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ 2 Warnings `Library➤toJson()` are expected and normal.")
+            ctx.log.d(this, "▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ warnings are expected and normal.")
 
             // Since the library2 was not saved in the central database, we will get a "library not found error" which is expected
             ctx.log.d(this, "Error: " + library99UpdateResult.exceptionOrNull()?.message)
@@ -371,14 +367,38 @@ class LibraryAppTest {
                 "Library2 should have 10 books")
 
             // check existence of a particular book
-            assertTrue(library99.isKnownBook(book1500),
-                "Library2 should have known Book with id 1500")
+            assertTrue(library99.isKnownBook(book1500), "Library2 should have known Book with id 1500")
         } else {
             // Intentionally should NEVER see this branch bc the library2 was never saved to the central database/api.
             ctx.log.d(this, "Results of Library2 json load:")
             ctx.log.d(this, library99.toJson())
             fail("Library2 JSON load should have failed")
         }
+    }
+
+    @Test
+    fun `Update LibraryInfo by updateInfoFromJson with wrong id in JSON is Failure`() {
+        // • ARRANGE
+        val json = ronaldReaganLibraryInfoJson
+        val roles = setupDefaultRolesAndScenario(ctx, TestingUtils(ctx))
+        val library99: Library = Library(UUID2.createFakeUUID2(99, Library::class.java), ctx)
+
+        // • ASSERT
+        assertEquals(
+            library99.toJson(),
+            "{}",
+            "library99.toJson() != {}")
+
+        // Attempt to load json when ID's don't match
+        val result = library99.updateInfoFromJson(roles.library1.toJson())
+        if (result.isFailure) {
+            assertTrue(true, "Expected failure")
+        } else {
+            fail("Expected failure")
+        }
+
+        println("▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ 2 Warnings `Library➤toJson()` are expected and normal.")
+        ctx.log.d(this, "▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ warnings are expected and normal.")
     }
 
     @Test
@@ -426,7 +446,8 @@ class LibraryAppTest {
               "author": "F. Scott Fitzgerald",
               "description": "The Great Gatsby is a 1925 novel written by American author F. Scott Fitzgerald that follows a cast of characters living in the fictional towns of West Egg and East Egg on prosperous Long Island in the summer of 1922. The story primarily concerns the young and mysterious millionaire Jay Gatsby and his quixotic passion and obsession with the beautiful former debutante Daisy Buchanan. Considered to be Fitzgerald's magnum opus, The Great Gatsby explores themes of decadence, idealism, resistance to change, social upheaval, and excess, creating a portrait of the Jazz Age or the Roaring Twenties that has been described as a cautionary tale regarding the American Dream.",
               "extraFieldToShowThisIsADTO": "Extra Unneeded Data from JSON payload load"
-            }""".trimIndent()
+            }
+            """.trimIndent()
 
     @Test
     fun `Create Book Role from DTOInfo Json`() {
