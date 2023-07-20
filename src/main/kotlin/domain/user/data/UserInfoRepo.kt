@@ -13,7 +13,7 @@ import domain.user.User
  * Simulates a database on a server via in-memory HashMap.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 Kotlin conversion
  */
 
 class UserInfoRepo(log: ILog) : Repo(log), IUserInfoRepo {

@@ -12,8 +12,9 @@ import domain.library.Library
  * Useful for testing.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 Kotlin conversion
  */
+
 interface ILibraryInfoRepo : IRepo {
     fun fetchLibraryInfo(id: UUID2<Library>): Result<LibraryInfo>
     fun updateLibraryInfo(libraryInfo: LibraryInfo): Result<LibraryInfo>

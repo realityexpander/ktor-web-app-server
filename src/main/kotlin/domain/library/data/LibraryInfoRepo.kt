@@ -14,7 +14,7 @@ import domain.library.PrivateLibrary
  * Simulates a database on a server via in-memory HashMap.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 Kotlin conversion
  */
 
 class LibraryInfoRepo(log: ILog) : Repo(log), ILibraryInfoRepo {
@@ -52,10 +52,11 @@ class LibraryInfoRepo(log: ILog) : Repo(log), ILibraryInfoRepo {
     /////////////////////////
     /// Repo-specific Jobs //
     /////////////////////////
+
     fun removeAllOrphanPrivateLibrariesWithNoBooksInInventory() {
         log.d(this, "removeAllPrivateLibrariesWithNoBooksInInventory")
         for (entry in database.keys) {
-            val uuid2TypeStr: String = entry.uuid2TypeStr()
+            val uuid2TypeStr: String = entry.uuid2Type
             val libraryInfo: LibraryInfo? = database[entry]
 
             libraryInfo?.let {

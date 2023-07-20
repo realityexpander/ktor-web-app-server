@@ -10,7 +10,7 @@ import okhttp3.internal.toImmutableMap
  *
  * @param <TUUID2> The type of the UUID2
  * @param <TDTOInfo> The type of the DTOInfo
- * @since 0.11
+ * @since 0.12 Kotlin conversion
 */
 
 class InMemoryAPI<TUUID2 : IUUID2, TDTOInfo : DTOInfo> (
@@ -36,7 +36,7 @@ class InMemoryAPI<TUUID2 : IUUID2, TDTOInfo : DTOInfo> (
 
     override fun fetchDtoInfo(uuidStr: String): Result<TDTOInfo> {
         return try {
-            val uuid: UUID2<TUUID2> = UUID2.fromUUIDString<TUUID2>(uuidStr) as UUID2<TUUID2>
+            val uuid: UUID2<TUUID2> = UUID2.fromUUIDString<TUUID2>(uuidStr)
             fetchDtoInfo(uuid)
         } catch (e: Exception) {
             Result.failure(e)
@@ -46,6 +46,7 @@ class InMemoryAPI<TUUID2 : IUUID2, TDTOInfo : DTOInfo> (
     override fun updateDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
         try {
             // Simulate Network
+            @Suppress("UNCHECKED_CAST")
             database[dtoInfo.id() as UUID2<TUUID2>] = dtoInfo
         } catch (e: Exception) {
             return Result.failure(e)
@@ -55,15 +56,18 @@ class InMemoryAPI<TUUID2 : IUUID2, TDTOInfo : DTOInfo> (
 
     override fun addDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
         // Simulate Network
+        @Suppress("UNCHECKED_CAST")
         if (database.containsKey(dtoInfo.id() as UUID2<TUUID2>)) {
             return Result.failure(Exception("API: DtoInfo already exists, use UPDATE, id=" + dtoInfo.id()))
         }
+        @Suppress("UNCHECKED_CAST")
         database[dtoInfo.id() as UUID2<TUUID2>] = dtoInfo
         return Result.success(dtoInfo)
     }
 
     override fun upsertDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
         // Simulate Network
+        @Suppress("UNCHECKED_CAST")
         return if (database.containsKey(dtoInfo.id() as UUID2<TUUID2>)) {
             updateDtoInfo(dtoInfo)
         } else {
@@ -73,6 +77,7 @@ class InMemoryAPI<TUUID2 : IUUID2, TDTOInfo : DTOInfo> (
 
     override fun deleteDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
         // Simulate Network
+        @Suppress("UNCHECKED_CAST")
         return if (database.remove(dtoInfo.id() as UUID2<TUUID2>) == null) {
             Result.failure(Exception("API: Failed to delete DtoInfo"))
         } else Result.success(dtoInfo)

@@ -18,7 +18,7 @@ package common
  *
  * @param <T> Type of the result.<br></br>
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 Kotlin conversion
  */
 
 open class FakeResult<T> {

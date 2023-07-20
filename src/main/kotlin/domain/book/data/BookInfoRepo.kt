@@ -10,7 +10,6 @@ import domain.book.data.local.EntityBookInfo
 import domain.book.data.network.BookInfoApi
 import domain.book.data.network.DTOBookInfo
 import domain.common.data.repo.Repo
-import sun.jvm.hotspot.oops.CellTypeState.value
 
 /**
  * BookInfoRepo is a repository for the BookInfo class.
@@ -20,13 +19,13 @@ import sun.jvm.hotspot.oops.CellTypeState.value
  * Simulates a database on a server via in-memory HashMap.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 Kotlin conversion
  */
 
 class BookInfoRepo @JvmOverloads constructor(
     val bookInfoApi: BookInfoApi = BookInfoApi(),
     val bookInfoDatabase: BookInfoDatabase = BookInfoDatabase(),
-    val log: ILog = Log()
+    override val log: ILog = Log()
 ) : Repo(log), IBookInfoRepo {
 
     override fun fetchBookInfo(id: UUID2<Book>): Result<BookInfo> {

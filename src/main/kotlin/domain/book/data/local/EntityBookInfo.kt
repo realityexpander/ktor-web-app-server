@@ -14,10 +14,12 @@ import domain.common.data.info.local.EntityInfo
  * Domain Layer and the Data Layer.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 Kotlin conversion
  */
+
 class EntityBookInfo(
-    val id: UUID2<Book>,
+    @Transient
+    override val id: UUID2<Book>,
     val title: String,
     val author: String,
     val description: String,
@@ -25,11 +27,12 @@ class EntityBookInfo(
     val creationTimeMillis: Long,
     val lastModifiedTimeMillis: Long,
     val isDeleted: Boolean
-) : EntityInfo(id.toDomainUUID2()),
+) : EntityInfo(id),
     Model.ToDomainInfo<BookInfo>,
     Model.ToDomainInfo.HasToDeepCopyDomainInfo<BookInfo>,
     Info.ToInfo<EntityBookInfo>,
-    Info.HasToDeepCopyInfo<EntityBookInfo> {
+    Info.HasToDeepCopyInfo<EntityBookInfo>
+{
 
     constructor(json: String, context: Context) : this(
         context.gson.fromJson<EntityBookInfo>(

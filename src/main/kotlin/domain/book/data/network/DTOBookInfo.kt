@@ -10,13 +10,14 @@ import domain.common.data.info.Info
 import domain.common.data.info.network.DTOInfo
 
 /**
- * DTOBookInfo<br></br>
- * <br></br>
- * "Dumb" Data Transfer Object for BookInfo<br></br>
- * <br></br>
+ * DTOBookInfo
+ *
+ * "Dumb" Data Transfer Object for BookInfo
+ *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 Kotlin conversion
  */
+
 class DTOBookInfo(
     id: UUID2<Book>,
     val title: String,
@@ -26,7 +27,7 @@ class DTOBookInfo(
     val creationTimeMillis: Long = 0,
     val lastModifiedTimeMillis: Long = 0,
     val isDeleted: Boolean = false
-) : DTOInfo(id.toDomainUUID2()),
+) : DTOInfo(id),
     Model.ToDomainInfo<BookInfo>,
     Model.ToDomainInfo.HasToDeepCopyDomainInfo<BookInfo>,
     Info.ToInfo<DTOBookInfo>,
@@ -39,8 +40,8 @@ class DTOBookInfo(
     // Note: Intentionally DON'T accept `EntityInfo.EntityBookInfo`    //
     //   - to keep DB layer separate from API layer                    //
     /////////////////////////////////////////////////////////////////////
+
     constructor(bookInfo: DTOBookInfo) : this(
-//        UUID2<Book>(bookInfo.id()),  // change `UUID2Type` to UUID2<Book>
         UUID2.fromUUID2(bookInfo.id().toDomainUUID2(), Book::class.java),  // change `UUID2Type` to UUID2<Book>
         bookInfo.title,
         bookInfo.author,
@@ -81,6 +82,7 @@ class DTOBookInfo(
     /////////////////////////////////
     // ToDomainInfo implementation //
     /////////////////////////////////
+
     override fun toDeepCopyDomainInfo(): BookInfo {
         // note: implement deep copy (if class is not flat.)
         return BookInfo(this)

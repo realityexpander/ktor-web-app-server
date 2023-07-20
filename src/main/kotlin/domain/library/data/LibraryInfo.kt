@@ -14,25 +14,25 @@ import java.util.*
  * LibraryInfo is a mutable class that contains information about the Library domain object.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 Kotlin conversion
  */
 
 class LibraryInfo(
-    val id: UUID2<Library>,
+    id: UUID2<Library>,
     val name: String,
-    registeredUserIdToCheckedOutBookIdMap: MutableMap<UUID2<User>, ArrayList<UUID2<Book>>>,
+    registeredUserIdToCheckedOutBookIdsMap: MutableMap<UUID2<User>, ArrayList<UUID2<Book>>>,
     bookIdToNumBooksAvailableMap: MutableMap<UUID2<Book>, Long>
-) : DomainInfo(id.toDomainUUID2()),
+) : DomainInfo(id),
     Model.ToDomainInfo<LibraryInfo>
 {
     // registered users of this library
-    private val registeredUserIdToCheckedOutBookIdMap: MutableMap<UUID2<User>, ArrayList<UUID2<Book>>>
+    private val registeredUserIdToCheckedOutBookIdsMap: MutableMap<UUID2<User>, ArrayList<UUID2<Book>>>
 
     // known books & number available in this library (inventory)
     private val bookIdToNumBooksAvailableMap: MutableMap<UUID2<Book>, Long>
 
     init {
-        this.registeredUserIdToCheckedOutBookIdMap = registeredUserIdToCheckedOutBookIdMap
+        this.registeredUserIdToCheckedOutBookIdsMap = registeredUserIdToCheckedOutBookIdsMap
         this.bookIdToNumBooksAvailableMap = bookIdToNumBooksAvailableMap
     }
 
@@ -40,7 +40,7 @@ class LibraryInfo(
     internal constructor(libraryInfo: LibraryInfo) : this(
         libraryInfo.id(),
         libraryInfo.name,
-        libraryInfo.registeredUserIdToCheckedOutBookIdMap,
+        libraryInfo.registeredUserIdToCheckedOutBookIdsMap,
         libraryInfo.bookIdToNumBooksAvailableMap
     )
     constructor(uuid: UUID, name: String) : this(UUID2(uuid, Library::class.java), name)
@@ -52,28 +52,41 @@ class LibraryInfo(
 
     // Convenience method to get the Type-safe id from the Class
     override fun id(): UUID2<Library> {
-//        return super.id() as UUID2<Library>
-        return this.id
+        @Suppress("UNCHECKED_CAST")
+        return this.id as UUID2<Library>  // todo remove & use direct val access
     }
 
-    override fun toString(): String {
-        return this.toPrettyJson()
-    }
+//    override fun toString(): String {
+////        return this.toPrettyJson() // todo why does this cause ClassCastException? need to use UUID2Map adapter
+//
+//        return "LibraryInfo{" +
+//                "id=" + id() +
+//                ", name='" + name + '\'' +
+//                ", registeredUserIdToCheckedOutBookIdsMap=" + registeredUserIdToCheckedOutBookIdsMap +
+//                ", bookIdToNumBooksAvailableMap=" + bookIdToNumBooksAvailableMap +
+//                '}'
+//    }
 
     ////////////////////////
     // Creational Methods //
     ////////////////////////
+
     fun withName(name: String): LibraryInfo {
-        return LibraryInfo(id(), name, registeredUserIdToCheckedOutBookIdMap, bookIdToNumBooksAvailableMap)
+        return LibraryInfo(id(), name, registeredUserIdToCheckedOutBookIdsMap, bookIdToNumBooksAvailableMap)
     }
 
     /////////////////////////////////////////////
     // Published Domain Business Logic Methods //
     /////////////////////////////////////////////
 
+    fun registerUser(userId: UUID2<User>): Result<UUID2<User>> {
+        return upsertUserIdIntoRegisteredUserCheckedOutBookMap(userId)
+    }
+
     fun checkOutPublicLibraryBookToUser(book: Book, user: User): Result<Book> {
         //  if(!book.isBookFromPublicLibrary())   // todo - should only allow public library books to be checked out from public libraries?
         //    return new Result.Failure<>(new IllegalArgumentException("Book is not from a public library, bookId: " + book.id()));
+
         val checkedOutUUID2Book: Result<UUID2<Book>> = checkOutPublicLibraryBookIdToUserId(book.id(), user.id())
         if (checkedOutUUID2Book.isFailure) 
             return Result.failure(checkedOutUUID2Book.exceptionOrNull() ?: Exception("Error checking out book, bookId: " + book.id()))
@@ -85,25 +98,7 @@ class LibraryInfo(
         else
             Result.success(book)
     }
-
-    fun checkOutPrivateLibraryBookToUser(book: Book, user: User): Result<Book> {
-        // Private library book check-outs skip Account checks.
-        val checkOutBookResult = _checkOutBookIdToUserId(book.id(), user.id())
-        if (checkOutBookResult.isFailure) return Result.failure(checkOutBookResult.exceptionOrNull()
-            ?: Exception("Error checking out book, bookId: " + book.id()))
-
-        val addBookResult: Result<UUID2<Book>> = addBookIdToRegisteredUser(book.id(), user.id())
-        if (addBookResult.isFailure) return Result.failure(addBookResult.exceptionOrNull()
-            ?: Exception("Error adding book to user, bookId: " + book.id()))
-
-        val acceptBookResult: Result<ArrayList<Book>> = user.acceptBook(book)
-        return if (acceptBookResult.isFailure) Result.failure(acceptBookResult.exceptionOrNull()
-            ?: Exception("Error accepting book, bookId: " + book.id()))
-        else
-            Result.success(book)
-    }
-
-    fun checkOutPublicLibraryBookIdToUserId(bookId: UUID2<Book>, userId: UUID2<User>): Result<UUID2<Book>> {
+    private fun checkOutPublicLibraryBookIdToUserId(bookId: UUID2<Book>, userId: UUID2<User>): Result<UUID2<Book>> {
         if (!isKnownBookId(bookId))
             return Result.failure(IllegalArgumentException("BookId is not known. bookId: $bookId"))
         if (!isKnownUserId(userId))
@@ -113,31 +108,37 @@ class LibraryInfo(
         if (isBookIdCheckedOutByUserId(bookId, userId))
             return Result.failure(IllegalArgumentException("Book is already checked out by User, bookId: $bookId, userId: $userId"))
 
-        val checkOutBookResult = _checkOutBookIdToUserId(bookId, userId)
+        val checkOutBookResult = checkOutBookIdToUserId(bookId, userId)
         if (checkOutBookResult.isFailure) return Result.failure(checkOutBookResult.exceptionOrNull()
             ?: Exception("Error checking out book, bookId: $bookId"))
 
-        val addBookResult: Result<UUID2<Book>> = addBookIdToRegisteredUser(bookId, userId)
-        return if (addBookResult.isFailure)
-            Result.failure(addBookResult.exceptionOrNull() ?: Exception("Error adding book to user, bookId: $bookId"))
+        return Result.success(bookId)
+    }
+
+    fun checkOutPrivateLibraryBookToUser(book: Book, user: User): Result<Book> {
+        // Private library book check-outs skip Account checks.
+        val checkOutBookResult = checkOutBookIdToUserId(book.id(), user.id())
+        if (checkOutBookResult.isFailure) return Result.failure(checkOutBookResult.exceptionOrNull()
+            ?: Exception("Error checking out book, bookId: " + book.id()))
+
+        val acceptBookResult: Result<ArrayList<Book>> = user.acceptBook(book)
+        return if (acceptBookResult.isFailure) Result.failure(acceptBookResult.exceptionOrNull()
+            ?: Exception("Error accepting book, bookId: " + book.id()))
         else
-            Result.success(bookId)
+            Result.success(book)
     }
 
     fun checkInPublicLibraryBookFromUser(book: Book, user: User): Result<Book> {
         //    if(!book.isBookFromPublicLibrary()) // todo - should only allow public library books to be checked in?
         //        return new Result.Failure<>(new IllegalArgumentException("Book is not from a public library, bookId: " + book.id()));
+
         val returnedBookIdResult: Result<UUID2<Book>> = checkInPublicLibraryBookIdFromUserId(book.id(), user.id())
         if (returnedBookIdResult.isFailure) return Result.failure(returnedBookIdResult.exceptionOrNull()
             ?: Exception("Error checking in book, bookId: " + book.id()))
 
-        val unacceptBookResult: Result<ArrayList<UUID2<Book>?>> = user.unacceptBook(book)
-        if (unacceptBookResult.isFailure) return Result.failure(unacceptBookResult.exceptionOrNull()
+        val unacceptBookResult: Result<ArrayList<UUID2<Book>>> = user.unacceptBook(book)
+        return if (unacceptBookResult.isFailure) return Result.failure(unacceptBookResult.exceptionOrNull()
             ?: Exception("Error unaccepting book, bookId: " + book.id()))
-
-        val removeBookResult: Result<UUID2<Book>> = removeBookIdFromRegisteredUserId(book.id(), user.id())
-        return if (removeBookResult.isFailure) Result.failure(removeBookResult.exceptionOrNull()
-            ?: Exception("Error removing book from user, bookId: " + book.id()))
         else
             Result.success(book)
     }
@@ -146,33 +147,32 @@ class LibraryInfo(
         //    if(!book.isBookFromPrivateLibrary()) // todo - should not allow private library books to be checked in from public library?
         //        return new Result.Failure<>(new IllegalArgumentException("Book is not from private library, bookId: " + book.id()));
 
+        // Automatically register any user that is checking in book. // todo is this needed?
+        if(!isKnownUserId(user.id()))
+            registerUser(user.id())
+
         // Private Library Book check-ins skip all Public Library User Account checks.
-        val checkInBookResult = _checkInBookIdFromUserId(book.id(), user.id())
+        val checkInBookResult = checkInBookIdFromUserId(book.id(), user.id())
         if (checkInBookResult.isFailure)
             return Result.failure(checkInBookResult.exceptionOrNull()
                 ?: Exception("Error checking in book, bookId: " + book.id()))
 
-        val unacceptBookResult: Result<ArrayList<UUID2<Book>?>> = user.unacceptBook(book)
-        if (unacceptBookResult.isFailure)
+        val unacceptBookResult: Result<ArrayList<UUID2<Book>>> = user.unacceptBook(book)
+        return if (unacceptBookResult.isFailure)
             return Result.failure(unacceptBookResult.exceptionOrNull()
                 ?: Exception("Error unaccepting book, bookId: " + book.id()))
-        val removeBookResult: Result<UUID2<Book>> = removeBookIdFromRegisteredUserId(book.id(), user.id())
-
-        return if (removeBookResult.isFailure)
-            Result.failure(removeBookResult.exceptionOrNull() ?: Exception("Error removing book from user, bookId: " + book.id()))
         else
             Result.success(book)
     }
-
-    fun checkInPublicLibraryBookIdFromUserId(bookId: UUID2<Book>, userId: UUID2<User>): Result<UUID2<Book>> {
+    private fun checkInPublicLibraryBookIdFromUserId(bookId: UUID2<Book>, userId: UUID2<User>): Result<UUID2<Book>> {
         if (!isKnownBookId(bookId))
             return Result.failure(IllegalArgumentException("BookId is not known, bookId: $bookId")) // todo - do we allow unknown books to be checked in, and just add them to the list?
         if (!isKnownUserId(userId))
             return Result.failure(IllegalArgumentException("UserId is not known, userId: $userId"))
         if (!isBookIdCheckedOutByUserId(bookId, userId))
             return Result.failure(IllegalArgumentException("Book is not checked out by User, bookId: $bookId, userId: $userId"))
-        val checkInBookResult = _checkInBookIdFromUserId(bookId, userId)
 
+        val checkInBookResult = checkInBookIdFromUserId(bookId, userId)
         return if (checkInBookResult.isFailure)
             Result.failure((checkInBookResult.exceptionOrNull() ?: Exception("Error checking in book, bookId: $bookId"))
         ) else
@@ -184,30 +184,37 @@ class LibraryInfo(
         fromUser: User,
         toUser: User
     ): Result<Book> {
-        if (toUser.fetchInfoFailureReason() != null)
-            return Result.failure(Exception(toUser.fetchInfoFailureReason()))
-        if (fromUser.fetchInfoFailureReason() != null)
-            return Result.failure(Exception(fromUser.fetchInfoFailureReason()))
+        toUser.fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
+        fromUser.fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
+
         if (book.isBookFromPublicLibrary) {
             // Check if the fromUser can transfer the Book
             if (!isKnownUserId(fromUser.id()))
                 return Result.failure(IllegalArgumentException("fromUser is not known, fromUserId: " + fromUser.id()))
-            if (!fromUser.accountInfo()
-                    .isAccountInGoodStanding()
-            ) return Result.failure(IllegalArgumentException("fromUser Account is not in good standing, fromUserId: " + fromUser.id()))
+
+            fromUser.accountInfo()?.let { accountInfo ->
+                if (!accountInfo.isAccountInGoodStanding)
+                    return Result.failure(IllegalArgumentException("fromUser Account is not in good standing, fromUserId: " + fromUser.id()))
+            }
 
             // Check if receiving User can check out Book
             if (!isKnownUserId(toUser.id()))
                 return Result.failure(IllegalArgumentException("toUser is not known, toUser: " + toUser.id()))
-            if (!toUser.accountInfo().isAccountInGoodStanding())
-                return Result.failure(IllegalArgumentException("toUser Account is not in good standing, toUser: " + toUser.id()))
+
+            toUser.accountInfo()?.let { accountInfo ->
+                if (!accountInfo.isAccountInGoodStanding)
+                    return Result.failure(IllegalArgumentException("toUser Account is not in good standing, toUser: " + toUser.id()))
+            }
+
             if (toUser.hasReachedMaxAmountOfAcceptedPublicLibraryBooks())
                 return Result.failure(IllegalArgumentException("toUser has reached max number of accepted Public Library Books, toUser: " + toUser.id()))
         }
-        val returnedBookResult = _checkInBookIdFromUserId(book.id(), fromUser.id())
+
+        val returnedBookResult = checkInBookIdFromUserId(book.id(), fromUser.id())
         if (returnedBookResult.isFailure) return Result.failure(returnedBookResult.exceptionOrNull()
             ?: Exception("Error checking in book, bookId: " + book.id()))
-        val checkedOutBookIdResult = _checkOutBookIdToUserId(book.id(), toUser.id())
+
+        val checkedOutBookIdResult = checkOutBookIdToUserId(book.id(), toUser.id())
         return if (checkedOutBookIdResult.isFailure)
             Result.failure(checkedOutBookIdResult.exceptionOrNull() ?: Exception("Error checking out book, bookId: " + book.id())
         )
@@ -218,16 +225,16 @@ class LibraryInfo(
     /////////////////////////////////////////
     // Published Domain Reporting Methods  //
     /////////////////////////////////////////
+
     fun findAllCheckedOutBookIdsByUserId(userId: UUID2<User>): Result<ArrayList<UUID2<Book>>> {
         return if (!isKnownUserId(userId))
             Result.failure(IllegalArgumentException("userId is not known, id: $userId"))
         else
-            Result.success(registeredUserIdToCheckedOutBookIdMap[userId] ?: ArrayList<UUID2<Book>>())
+            Result.success(registeredUserIdToCheckedOutBookIdsMap[userId] ?: ArrayList<UUID2<Book>>())
     }
 
-    fun calculateAvailableBookIdToCountOfAvailableBooksMap(): Result<java.util.HashMap<UUID2<Book>, Long>> { // todo change to MutableMap
-        val availableBookIdToNumBooksAvailableMap: java.util.HashMap<UUID2<Book>, Long> =
-            java.util.HashMap<UUID2<Book>, Long>()
+    fun calculateAvailableBookIdToCountOfAvailableBooksMap(): Result<MutableMap<UUID2<Book>, Long>> { // todo change to MutableMap
+        val availableBookIdToNumBooksAvailableMap: MutableMap<UUID2<Book>, Long> = mutableMapOf()
 
         val bookSet: Set<UUID2<Book>> = bookIdToNumBooksAvailableMap.keys
         for (bookId in bookSet) {
@@ -236,6 +243,7 @@ class LibraryInfo(
                 availableBookIdToNumBooksAvailableMap[bookId] = numBooksAvail
             }
         }
+
         return Result.success(availableBookIdToNumBooksAvailableMap)
     }
 
@@ -246,63 +254,25 @@ class LibraryInfo(
     /////////////////////////////////
     // Published Helper Methods    //
     /////////////////////////////////
-    fun registerUser(userId: UUID2<User>): Result<UUID2<User>> {
-        return upsertUserId(userId)
-    }
 
     fun isKnownBook(book: Book): Boolean {
         return isKnownBookId(book.id())
-    }
-
-    fun isKnownBookId(bookId: UUID2<Book>): Boolean {
-        return bookIdToNumBooksAvailableMap.containsKey(bookId)
     }
 
     fun isKnownUser(user: User): Boolean {
         return isKnownUserId(user.id())
     }
 
-    fun isKnownUserId(userId: UUID2<User>?): Boolean {
-        return registeredUserIdToCheckedOutBookIdMap.containsKey(userId)
-    }
-
     fun isBookAvailableToCheckout(book: Book): Boolean {
         return isBookIdAvailableToCheckout(book.id())
-    }
-
-    fun isBookIdAvailableToCheckout(bookId: UUID2<Book>): Boolean {
-        return bookIdToNumBooksAvailableMap[bookId]?.let { numBooksAvailable ->
-            numBooksAvailable > 0
-        } ?: false
     }
 
     fun isBookCheckedOutByUser(book: Book, user: User): Boolean {
         return isBookIdCheckedOutByUserId(book.id(), user.id())
     }
 
-    fun isBookIdCheckedOutByUserId(bookId: UUID2<Book>, userId: UUID2<User>): Boolean {
-        return registeredUserIdToCheckedOutBookIdMap[userId]?.contains(bookId)
-            ?: false
-    }
-
     fun isBookCheckedOutByAnyUser(book: Book): Boolean {
         return isBookIdCheckedOutByAnyUser(book.id())
-    }
-
-    fun isBookIdCheckedOutByAnyUser(bookId: UUID2<Book>): Boolean {
-        return registeredUserIdToCheckedOutBookIdMap.values
-            .stream()
-            .anyMatch { bookIds -> bookIds.contains(bookId) }
-    }
-
-    fun findUserIdOfCheckedOutBookId(bookId: UUID2<Book>): Result<UUID2<User>> {
-        if (!isBookIdCheckedOutByAnyUser(bookId)) return Result.failure(IllegalArgumentException("Book is not checked out by any User, bookId: $bookId"))
-
-        for (userId in registeredUserIdToCheckedOutBookIdMap.keys) {
-            if (isBookIdCheckedOutByUserId(bookId, userId)) return Result.success(userId)
-        }
-
-        return Result.failure(IllegalArgumentException("Book is not checked out by any User, bookId: $bookId"))
     }
 
     fun findUserIdOfCheckedOutBook(book: Book): Result<UUID2<User>> {
@@ -311,52 +281,101 @@ class LibraryInfo(
 
     // Convenience method - Called from PrivateLibrary class ONLY
     fun addPrivateBookIdToInventory(bookId: UUID2<Book>, quantity: Int): Result<UUID2<Book>> {
-        return addBookIdToInventory(bookId, quantity)
+        return addBookIdToBooksAvailableMap(bookId, quantity)
     }
 
-    fun removeTransferringBookFromInventory(transferringBook: Book): Result<UUID2<Book>> {
-        return removeBookIdFromInventory(transferringBook.id(), 1)
+    fun removeTransferringBookFromBooksAvailableMap(transferringBook: Book): Result<UUID2<Book>> {
+        return removeBookIdFromBooksAvailableMap(transferringBook.id(), 1)
     }
 
-    fun addTransferringBookToInventory(transferringBook: Book): Result<UUID2<Book>> {
-        return addBookIdToInventory(transferringBook.id(), 1)
+    fun addTransferringBookToBooksAvailableMap(transferringBook: Book): Result<UUID2<Book>> {
+        return addBookIdToBooksAvailableMap(transferringBook.id(), 1)
+    }
+
+    //////////////////////////////
+    // Private Helper Methods   //
+    //////////////////////////////
+
+    private fun isKnownBookId(bookId: UUID2<Book>): Boolean {
+        return bookIdToNumBooksAvailableMap.containsKey(bookId)
+    }
+
+    private fun isKnownUserId(userId: UUID2<User>?): Boolean {
+        return registeredUserIdToCheckedOutBookIdsMap.containsKey(userId)
+    }
+
+    private fun isBookIdAvailableToCheckout(bookId: UUID2<Book>): Boolean {
+        return bookIdToNumBooksAvailableMap[bookId]?.let { numBooksAvailable ->
+            numBooksAvailable > 0
+        } ?: false
+    }
+
+    private fun isBookIdCheckedOutByUserId(bookId: UUID2<Book>, userId: UUID2<User>): Boolean {
+        return registeredUserIdToCheckedOutBookIdsMap[userId]?.contains(bookId)
+            ?: false
+    }
+
+    fun isBookIdCheckedOutByAnyUser(bookId: UUID2<Book>): Boolean {
+        return registeredUserIdToCheckedOutBookIdsMap.values
+            .stream()
+            .anyMatch { bookIds ->
+                bookIds.contains(bookId)
+            }
+    }
+
+    private fun findUserIdOfCheckedOutBookId(bookId: UUID2<Book>): Result<UUID2<User>> {
+        if (!isBookIdCheckedOutByAnyUser(bookId))
+            return Result.failure(IllegalArgumentException("Book is not checked out by any User, bookId: $bookId"))
+
+        for (userId in registeredUserIdToCheckedOutBookIdsMap.keys) {
+            if (isBookIdCheckedOutByUserId(bookId, userId)) return Result.success(userId)
+        }
+
+        return Result.failure(IllegalArgumentException("Book is not checked out by any User, bookId: $bookId"))
     }
 
     /////////////////////////////////////////
     // Published Testing Helper Methods    //
     /////////////////////////////////////////
-    // Intention revealing method
+
+    // Intention revealing method name
     fun addTestBook(bookId: UUID2<Book>, quantity: Int): Result<UUID2<Book>> {
-        return addBookIdToInventory(bookId, quantity)
+        return addBookIdToBooksAvailableMap(bookId, quantity)
     }
 
-    protected fun upsertTestUser(userId: UUID2<User>): Result<UUID2<User>> {
-        return upsertUserId(userId)
+    fun upsertTestUser(userId: UUID2<User>): Result<UUID2<User>> {
+        return upsertUserIdIntoRegisteredUserCheckedOutBookMap(userId)
     }
 
     //////////////////////////////
     // Private Helper Functions //
     //////////////////////////////
 
-    private fun _checkInBookIdFromUserId(bookId: UUID2<Book>, userId: UUID2<User>): Result<Unit> {
+    private fun checkInBookIdFromUserId(bookId: UUID2<Book>, userId: UUID2<User>): Result<Unit> {
         return try {
-            addBookIdToInventory(bookId, 1)
+            addBookIdToBooksAvailableMap(bookId, 1)
+            removeBookIdFromRegisteredUserCheckedOutBookMap(bookId, userId)
+
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    private fun _checkOutBookIdToUserId(bookId: UUID2<Book>, userId: UUID2<User>): Result<Unit> {
-        return if (!isBookIdAvailableToCheckout(bookId)) Result.failure(IllegalArgumentException("Book is not in inventory, bookId: $bookId")) else try {
-            removeBookIdFromInventory(bookId, 1)
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    private fun checkOutBookIdToUserId(bookId: UUID2<Book>, userId: UUID2<User>): Result<Unit> {
+        return if (!isBookIdAvailableToCheckout(bookId))
+            Result.failure(IllegalArgumentException("Book is not in inventory, bookId: $bookId"))
+        else try {
+                removeBookIdFromBooksAvailableMap(bookId, 1)
+                addBookIdToRegisteredUserCheckedOutBookMap(bookId, userId)
+
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
     }
 
-    private fun addBookIdToInventory(bookId: UUID2<Book>, quantityToAdd: Int): Result<UUID2<Book>> { // todo change quantity to Long
+    private fun addBookIdToBooksAvailableMap(bookId: UUID2<Book>, quantityToAdd: Int): Result<UUID2<Book>> { // todo change quantity to Long
         if (quantityToAdd <= 0) return Result.failure(IllegalArgumentException("quantity must be > 0, quantity: $quantityToAdd"))
 
         try {
@@ -374,14 +393,14 @@ class LibraryInfo(
         return Result.success(bookId)
     }
 
-    private fun addBookToInventory(book: Book, quantity: Int): Result<Book> {
-        val addedUUID2Book: Result<UUID2<Book>> = addBookIdToInventory(book.id(), quantity)
+    private fun addBookToBooksAvailableMap(book: Book, quantity: Int): Result<Book> {
+        val addedUUID2Book: Result<UUID2<Book>> = addBookIdToBooksAvailableMap(book.id(), quantity)
         return if (addedUUID2Book.isFailure) {
             Result.failure(addedUUID2Book.exceptionOrNull() ?: Exception("Error adding book to inventory, book: $book"))
         } else Result.success(book)
     }
 
-    private fun removeBookIdFromInventory(bookId: UUID2<Book>, quantityToRemove: Int): Result<UUID2<Book>> {
+    private fun removeBookIdFromBooksAvailableMap(bookId: UUID2<Book>, quantityToRemove: Int): Result<UUID2<Book>> {
         if (quantityToRemove <= 0) return Result.failure(IllegalArgumentException("quantity must be > 0"))
 
         // Check if book is in inventory first
@@ -408,8 +427,8 @@ class LibraryInfo(
         return Result.success(bookId)
     }
 
-    private fun removeBookFromInventory(book: Book, quantity: Int): Result<Book> {
-        val removedUUID2Book: Result<UUID2<Book>> = removeBookIdFromInventory(book.id(), quantity)
+    private fun removeBookFromBooksAvailableMap(book: Book, quantity: Int): Result<Book> {
+        val removedUUID2Book: Result<UUID2<Book>> = removeBookIdFromBooksAvailableMap(book.id(), quantity)
 
         return if (removedUUID2Book.isFailure) Result.failure(removedUUID2Book.exceptionOrNull()
             ?: Exception("Error removing book from inventory, book: $book"))
@@ -417,19 +436,19 @@ class LibraryInfo(
             Result.success(book)
     }
 
-    private fun addBookIdToRegisteredUser(bookId: UUID2<Book>, userId: UUID2<User>): Result<UUID2<Book>> {
+    private fun addBookIdToRegisteredUserCheckedOutBookMap(bookId: UUID2<Book>, userId: UUID2<User>): Result<UUID2<Book>> {
         if (!isKnownBookId(bookId))
             return Result.failure(IllegalArgumentException("bookId is not known, id: $bookId"))
         if (!isKnownUserId(userId))
             return Result.failure(IllegalArgumentException("userId is not known, id: $userId"))
-        if (isBookIdCheckedOutByUserId(bookId, userId))
+        if (isBookIdCheckedOutByUserId(bookId, userId)) // todo remove?
             return Result.failure(IllegalArgumentException("Book is already checked out by user, bookId: $bookId, userId: $userId"))
 
         try {
-            if (registeredUserIdToCheckedOutBookIdMap.containsKey(userId)) {
-                registeredUserIdToCheckedOutBookIdMap[userId]?.add(bookId)
+            if (registeredUserIdToCheckedOutBookIdsMap.containsKey(userId)) {
+                registeredUserIdToCheckedOutBookIdsMap[userId]?.add(bookId)
             } else {
-                registeredUserIdToCheckedOutBookIdMap[userId] = arrayListOf(bookId)
+                registeredUserIdToCheckedOutBookIdsMap[userId] = arrayListOf(bookId)
             }
         } catch (e: Exception) {
             return Result.failure(e)
@@ -438,8 +457,8 @@ class LibraryInfo(
         return Result.success(bookId)
     }
 
-    private fun addBookToUser(book: Book, user: User): Result<Book> {
-        val addBookToUserResult: Result<UUID2<Book>> = addBookIdToRegisteredUser(book.id(), user.id())
+    private fun addBookToRegisteredUserCheckedOutBookMap(book: Book, user: User): Result<Book> {
+        val addBookToUserResult: Result<UUID2<Book>> = addBookIdToRegisteredUserCheckedOutBookMap(book.id(), user.id())
 
         return if (addBookToUserResult.isFailure) Result.failure(addBookToUserResult.exceptionOrNull()
                 ?: Exception("Error adding book to user, book: $book, user: $user"))
@@ -447,7 +466,7 @@ class LibraryInfo(
             Result.success(book)
     }
 
-    private fun removeBookIdFromRegisteredUserId(bookId: UUID2<Book>, userId: UUID2<User>): Result<UUID2<Book>> {
+    private fun removeBookIdFromRegisteredUserCheckedOutBookMap(bookId: UUID2<Book>, userId: UUID2<User>): Result<UUID2<Book>> {
         if (!isKnownBookId(bookId))
             return Result.failure(IllegalArgumentException("bookId is not known, bookId: $bookId"))
         if (!isKnownUserId(userId))
@@ -457,7 +476,7 @@ class LibraryInfo(
 
         try {
             //todo reduce count instead of remove? Can someone check out multiple copies of the same book?
-            registeredUserIdToCheckedOutBookIdMap[userId]
+            registeredUserIdToCheckedOutBookIdsMap[userId]
                 ?.remove(bookId)
                 ?: return Result.failure(Exception("Error removing book from user, bookId: $bookId, userId: $userId"))
         } catch (e: Exception) {
@@ -467,8 +486,8 @@ class LibraryInfo(
         return Result.success(bookId)
     }
 
-    private fun removeBookFromUser(book: Book, user: User): Result<Book> {
-        val removedBookResult: Result<UUID2<Book>> = removeBookIdFromRegisteredUserId(book.id(), user.id())
+    private fun removeBookFromRegisteredUserCehckoutMap(book: Book, user: User): Result<Book> {
+        val removedBookResult: Result<UUID2<Book>> = removeBookIdFromRegisteredUserCheckedOutBookMap(book.id(), user.id())
 
         return if (removedBookResult.isFailure) Result.failure(removedBookResult.exceptionOrNull()
             ?: Exception("Error removing book from user, book: $book, user: $user"))
@@ -476,11 +495,11 @@ class LibraryInfo(
             Result.success(book)
     }
 
-    private fun insertUserId(userId: UUID2<User>): Result<UUID2<User>> {
+    private fun insertUserIdIntoRegisteredUserCheckedOutBookMap(userId: UUID2<User>): Result<UUID2<User>> {
         if (isKnownUserId(userId)) return Result.failure(IllegalArgumentException("userId is already known"))
 
         try {
-            registeredUserIdToCheckedOutBookIdMap[userId] = ArrayList<UUID2<Book>>()
+            registeredUserIdToCheckedOutBookIdsMap[userId] = ArrayList<UUID2<Book>>()
         } catch (e: Exception) {
             return Result.failure(e)
         }
@@ -488,18 +507,18 @@ class LibraryInfo(
         return Result.success(userId)
     }
 
-    private fun upsertUserId(userId: UUID2<User>): Result<UUID2<User>> {
+    private fun upsertUserIdIntoRegisteredUserCheckedOutBookMap(userId: UUID2<User>): Result<UUID2<User>> {
         return if (isKnownUserId(userId))
             Result.success(userId)
         else
-            insertUserId(userId)
+            insertUserIdIntoRegisteredUserCheckedOutBookMap(userId)
     }
 
-    private fun removeUserId(userId: UUID2<User>): Result<UUID2<User>> {
+    private fun removeUserIdFromRegisteredUserCheckedOutBookMap(userId: UUID2<User>): Result<UUID2<User>> {
         if (!isKnownUserId(userId)) return Result.failure(IllegalArgumentException("userId is not known, userId: $userId"))
 
         try {
-            registeredUserIdToCheckedOutBookIdMap.remove(userId)
+            registeredUserIdToCheckedOutBookIdsMap.remove(userId)
         } catch (e: Exception) {
             return Result.failure(e)
         }
@@ -507,9 +526,10 @@ class LibraryInfo(
         return Result.success(userId)
     }
 
-    ///////////////////////////
-    // ToInfo implementation //
-    ///////////////////////////
+    /////////////////////////////////
+    // ToDomainInfo implementation //
+    /////////////////////////////////
+
     // note: currently no DB or API for UserInfo (so no .ToInfoEntity() or .ToInfoDTO())
     override fun toDeepCopyDomainInfo(): LibraryInfo {
         // Note: *MUST* return a deep copy
@@ -519,8 +539,8 @@ class LibraryInfo(
         libraryInfoDeepCopy.bookIdToNumBooksAvailableMap.putAll(bookIdToNumBooksAvailableMap)
 
         // Deep copy the userIdToCheckedOutBookMap
-        for ((key, value) in registeredUserIdToCheckedOutBookIdMap.entries) {
-            libraryInfoDeepCopy.registeredUserIdToCheckedOutBookIdMap[key] = ArrayList<UUID2<Book>>(value)
+        for ((key, value) in registeredUserIdToCheckedOutBookIdsMap.entries) {
+            libraryInfoDeepCopy.registeredUserIdToCheckedOutBookIdsMap[key] = ArrayList<UUID2<Book>>(value)
         }
 
         return libraryInfoDeepCopy

@@ -2,15 +2,19 @@
 
 package common.uuid2
 
-import com.google.gson.InstanceCreator
-import com.google.gson.JsonDeserializationContext
-import com.google.gson.JsonDeserializer
+import com.google.gson.*
+import domain.account.Account
+import domain.book.Book
+import domain.library.Library
+import domain.library.PrivateLibrary
+import domain.user.User
 import io.ktor.util.reflect.*
 import org.bson.json.JsonParseException
 import org.reflections.Reflections
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.util.*
+import kotlin.collections.ArrayList
 import kotlin.reflect.*
 
 /**
@@ -23,11 +27,11 @@ import kotlin.reflect.*
  *    type of **`UUID`**.
  *  * Allows for easier debugging and defining of types of objects that the **`UUID`** is
  *    referencing in Json payloads.
- *  * Includes implementation of type-safe **`HashMap`** for **`UUID2`s**.
+ *  * Includes Gson Serializers for of type-safe **`Map`s** and **`Array`s** for **`UUID2`s**.
  *  * **`UUID2`** is immutable.
  *
  *  *  **`IUUID2`** is a marker interface for classes that will be used with **`UUID2`**.
- *  *  Domain objects must be marked with the **`IUUID2`** marker interface to be used with
+ *  *  All Domain objects must be marked with the **`IUUID2`** marker interface to be used with
  *     **`UUID2`**.
  *
  * _Note on Class Inheritance Path:_
@@ -47,52 +51,53 @@ import kotlin.reflect.*
  *
  * **UUID2 String Format example:**
  * ```
- * ・UUID2:Object.Role.User@00000000-0000-0000-0000-000000000001
+ * ・UUID2:Role.User@00000000-0000-0000-0000-000000000001
  * ・▲▲▲▲▲⸻Always prefixed with `UUID2`
  * ・     ▲⸻ `:` divides between Prefix and Type
- * ・      ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲⸻ UUID2Type
- * ・                      ▲⸻ `@` divides the UUID2Type and UUID Value
- * ・                       ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲⸻ UUID Value
+ * ・      ▲▲▲▲▲▲▲▲▲⸻ UUID2Type
+ * ・               ▲⸻ `@` divides the UUID2Type and UUID Value
+ * ・                ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲⸻ UUID Value
  * ```
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 Kotlin Conversion
  */
 
 open class UUID2<TUUID2 : IUUID2> : IUUID2 {
     private val uuid: UUID
 
-    // NOT final due to need for it to be set for creating objects via JSON deserialization. :( // todo - is there a way around this? Maybe reflection?
-    private var _uuid2Type: String // Class Inheritance Path of the object the UUID refers to. '.' separated.
+    // NOT final due to need for it to be set for creating objects via JSON deserialization. :(
+    // todo - is there a way around this? Maybe reflection? Test Use Val?
+    var uuid2Type: String // Class Inheritance Path of the object the UUID refers to. '.' separated.
         private set(value) {
             field = getNormalizedUuid2TypeString(value)
         }
-    val uuid2TypeStr: String  // todo change interface to use this getter instead of overridden method
+    val uuid2TypeStr: String  // todo change interface to use this getter instead of overridden method uuid2TypeStr()
         get() {
-            return _uuid2Type
+            return uuid2Type
         }
 
     constructor(uuid2: UUID2<TUUID2>, uuid2TypeStr: String? = uuid2.uuid2TypeStr()) {
         uuid = (uuid2 as UUID2<*>).uuid()
-        _uuid2Type = if (uuid2TypeStr != null) {
-            getNormalizedUuid2TypeString(uuid2TypeStr)
-        } else {
-            "UUID" // Default to untyped UUID
-        }
+        uuid2Type =
+            if (uuid2TypeStr != null) {
+                getNormalizedUuid2TypeString(uuid2TypeStr)
+            } else {
+                "UUID" // Default to untyped UUID
+            }
     }
     constructor(uuid2: UUID2<TUUID2>, clazz: Class<TUUID2>?) : this(uuid2, calcUUID2TypeStr(clazz))
     constructor(uuid: UUID, uuid2TypeStr: String = "UUID") {
         this.uuid = uuid
-        _uuid2Type = getNormalizedUuid2TypeString(uuid2TypeStr)
+        uuid2Type = getNormalizedUuid2TypeString(uuid2TypeStr)
     }
     constructor(uuid: UUID, clazz: Class<TUUID2>?) : this(uuid, calcUUID2TypeStr(clazz))
-//    constructor(clazz: Class<TUUID2>) : this(UUID.randomUUID(), clazz)
-//    constructor(uuid2TypeStr: String) : this(UUID.randomUUID(), uuid2TypeStr)
     constructor() : this(UUID.randomUUID(), "UUID")
 
-    ////////////////////////////////
-    // Published Getters          //
-    ////////////////////////////////
+
+    ///////////////////////
+    // Published Methods //
+    ///////////////////////
 
     fun uuid(): UUID {
         return uuid
@@ -103,20 +108,11 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
     }
 
     override fun toString(): String {
-        return "UUID2:$_uuid2Type@$uuid"
-    }
-
-    override fun hashCode(): Int {
-        return uuid().hashCode()
+        return "UUID2:$uuid2Type@$uuid"
     }
 
     fun isOnlyUUIDEqual(other: UUID2<*>): Boolean {
         return other.uuid() == uuid()
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (other == null) return false
-        return if (other !is UUID2<*>) false else other.uuid() == uuid() && uuid2TypeStr() == other.uuid2TypeStr()
     }
 
     fun isMatchingUUID2Type(otherUUID2: UUID2<*>): Boolean {
@@ -126,6 +122,19 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
     fun isMatchingUUID2TypeStr(otherUUID2TypeStr: String): Boolean {
         return uuid2TypeStr() == otherUUID2TypeStr
     }
+
+    override fun hashCode(): Int {
+        return uuid().hashCode()
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (other == null) return false
+        return if (other !is UUID2<*>) false else other.uuid() == uuid() && uuid2TypeStr() == other.uuid2TypeStr()
+    }
+
+    ////////////////////////////////
+    // Converters                 //
+    ////////////////////////////////
 
     fun toUUID(): UUID {
         return UUID(uuid.mostSignificantBits, uuid.leastSignificantBits)
@@ -138,13 +147,6 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
 
     fun toUUID2(): UUID2<TUUID2> {
         return UUID2(this)
-    }
-
-    // Note: Should only be used when importing JSON
-    @Suppress("FunctionName") // for leading underscore  // todo - is there a better way to do this in kotlin?
-    fun _setUUID2TypeStr(uuid2TypeStr: String?): Boolean {
-        _uuid2Type = getNormalizedUuid2TypeString(uuid2TypeStr)
-        return true // always return `true` instead of a `void` return type
     }
 
     ////////////////////////////
@@ -167,19 +169,73 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
                 normalizedTypeStr.append(uuid2TypeStr[i])
             }
         }
+
         return normalizedTypeStr.toString()
     }
 
-    class UUID2IUUID2InstanceCreator : InstanceCreator<UUID2<IUUID2>> {
-        override fun createInstance(type: Type): UUID2<IUUID2> {
-            // Create and return an instance of UUID2<IUUID2>
-            return randomUUID2()
-        }
-    } // todo delete?
+    // Note: Should only be used when importing JSON
+    @Suppress("FunctionName") // for leading underscore  // todo - is there a better way to do this in kotlin?
+    fun _setUUID2TypeStr(uuid2TypeStr: String?): Boolean {
+        uuid2Type = getNormalizedUuid2TypeString(uuid2TypeStr)
+        return true // always return `true` instead of a `void` return type
+    }
 
-    // Note: Deserializes all JSON Numbers to Longs for all UUID2.HashMap Entity Number values.
-    // - For consistent number deserialization bc GSON defaults to Doubles.
-    class Uuid2MutableMapJsonDeserializer: JsonDeserializer<MutableMap<UUID2<*>, *>?> {
+
+    ////////////////////////////////
+    // JSON Serialization Helpers //
+    ////////////////////////////////
+
+    class Uuid2ArrayListJsonSerializer: JsonSerializer<ArrayList<*>?> {
+        override fun serialize(
+            src: ArrayList<*>?,
+            typeOfSrc: Type?,
+            context: JsonSerializationContext?
+        ): JsonElement {
+            val uuid2JsonArray = JsonArray()
+
+            try {
+                src?.forEach { uuid2 ->
+                    uuid2JsonArray.add(uuid2.toString())
+                }
+            } catch (e: Exception) {
+                throw RuntimeException("Error serializing UUID2 ArrayList JSON", e)
+            }
+
+            return uuid2JsonArray
+        }
+    }
+
+    class Uuid2ArrayListJsonDeserializer: JsonDeserializer<ArrayList<*>?> {
+        @Throws(JsonParseException::class)
+        override fun deserialize(
+            json: com.google.gson.JsonElement?,
+            typeOfT: Type?,
+            jsonDeserializationContext: JsonDeserializationContext?
+        ): ArrayList<*> {
+
+            val uuid2ArrayList: ArrayList<Any> = arrayListOf()
+            try {
+
+                val uuid2ArrayListJson =
+                    json?.asJsonArray
+
+                // Rebuild the UUID2<*> to Entity
+                uuid2ArrayListJson?.forEach { entity ->
+                    val uuid2 = UUID2.fromUUID2StrToSameTypeUUID2(entity.asString)
+                    uuid2ArrayList.add(uuid2)
+                }
+
+            } catch (e: Exception) {
+                throw RuntimeException("Error deserializing UUID2 ArrayList JSON", e)
+            }
+
+            return uuid2ArrayList
+        }
+    }
+
+    // Note: Deserializes all JSON Numbers to Longs for all Entity Number JSON values.
+    // - For consistent number deserialization due to GSON defaulting to convert numbers to Doubles.
+    class Uuid2MapJsonDeserializer: JsonDeserializer<MutableMap<UUID2<*>, *>?> {
 
         @Throws(JsonParseException::class)
         override fun deserialize(
@@ -188,31 +244,51 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
             jsonDeserializationContext: JsonDeserializationContext?
         ): MutableMap<UUID2<*>, *> {
 
-            val uuid2ToUuidMap: MutableMap<UUID2<*>, Any> = mutableMapOf()
+            val uuid2ToEntityMap: MutableMap<UUID2<*>, Any> = mutableMapOf()
             try {
 
+                val uuid2MapJsonEntrySet =
+                    json?.asJsonObject?.entrySet()
+
                 // Rebuild the UUID2<*> to Entity
-                json?.asJsonObject?.entrySet()?.forEach { entry ->
+                uuid2MapJsonEntrySet?.forEach { entry ->
                     val uuid2Key = UUID2.fromUUID2StrToSameTypeUUID2(entry.key)
                     val entity = entry.value
                         ?: throw RuntimeException("Uuid2HashMapGsonDeserializer.deserialize(): entity is null, uuid2Key=$uuid2Key")
 
-                    // Convert any Numbers to Longs
+                    // Convert any JSON Numbers to Longs (instead of gson default Doubles)
                     @Suppress("IMPLICIT_CAST_TO_ANY")
-                    val entityValue = if (entity.isJsonPrimitive && entity.asJsonPrimitive.isNumber) {
-                        entity.asLong
-                    } else {
-                        entity
-                    }
+                    val entityValue =
+                        when(true) {
+                            (entity.isJsonPrimitive && entity.asJsonPrimitive.isNumber) ->
+                                entity.asLong
+                            entity.isJsonArray -> {
+                                val jsonArray = entity.asJsonArray
+                                val jsonArraySize = jsonArray.size()
 
-                    uuid2ToUuidMap[uuid2Key] = entityValue
+                                val mutableListValues = mutableListOf<Any>()
+                                for (i in 0 until jsonArraySize) {
+                                    val jsonArrayValue = jsonArray[i]
+                                    if (jsonArrayValue.isJsonPrimitive && jsonArrayValue.asJsonPrimitive.isNumber) {
+                                        mutableListValues.add(jsonArrayValue.asLong)
+                                    } else {
+                                        mutableListValues.add(jsonArrayValue)
+                                    }
+                                }
+
+                                mutableListValues
+                            }
+                            else -> entity
+                        }
+
+                    uuid2ToEntityMap[uuid2Key] = entityValue
                 }
             } catch (e: IllegalArgumentException) {
                 System.err.println(e.message)
                 throw RuntimeException(e)
             }
 
-            return uuid2ToUuidMap
+            return uuid2ToEntityMap
         }
     }
 
@@ -222,12 +298,12 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
         fun <TUUID2: IUUID2> fromUUID2String(uuid2FormattedString: String): UUID2<TUUID2> {
             // format example:
             //
-            // UUID2:Object.Role.User@00000000-0000-0000-0000-000000000001
+            // UUID2:Role.User@00000000-0000-0000-0000-000000000001
             // ▲▲▲▲▲-- Always prefixed with `UUID2`
-            //      ▲-- `:` divides between Prefix and Type
-            //       ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲-- UUID2Type
-            //                       ▲-- `@` divides the Type block and Value
-            //                        ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲-- UUID Value
+            //      ▲-- `:` divides between Prefix and UUID2Type
+            //       ▲▲▲▲▲▲▲▲▲-- UUID2Type
+            //                ▲-- `@` divides the UUID2Type and UUID Value
+            //                 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲-- UUID Value
 
             val segments =
                 uuid2FormattedString
@@ -244,7 +320,7 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
             require(typeSegments[0] == "UUID2") { "Invalid UUID2 formatted string, no `UUID2` prefix: $uuid2FormattedString" }
 
             val uuid2TypeStr = typeSegments[1] // ie: Model.DomainInfo.BookInfo
-            val uuidStr = segments[1] // ie: 00000000-0000-0000-0000-000000000001
+            val uuidStr = segments[1]          // ie: 00000000-0000-0000-0000-000000000001
 
             return UUID2(UUID.fromString(uuidStr), uuid2TypeStr)
         }
@@ -254,22 +330,19 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
             val uuid2 = fromUUID2String<IUUID2>(uuid2Str)
             val typeStr = uuid2.uuid2TypeStr()
 
-            fun lastUUID2TypeStrPathItem(uuidTypeStr: String): String {
+            fun lastPathItemOfUUID2TypeStr(uuidTypeStr: String): String {
                 val segments = uuidTypeStr.split(".")
                 return segments[segments.size - 1]
             }
 
-//            // Check if it's in the White-listed UUID2 types // todo make this a config option?
-//            // Create a UUID2 using generic type from the clazz
-//            when(typeStr) {
-//                "Role.Book" -> return fromUUID2String<Book>(uuid2Str)
-//                "Role.User" -> return fromUUID2String<User>(uuid2Str)
-//
-//                // LEAVE FOR WHITE-LISTED UUID2 TYPES
-//                //    "Role.Library" -> return fromUUID2String<Library>(uuid2Str)
-//                //    "Role.PrivateLibrary" -> return fromUUID2String<PrivateLibrary>(uuid2Str)
-//                //    "Role.Account" -> return fromUUID2String<Account>(uuid2Str)
-//            }
+            // Check if it's in the White-listed UUID2 types // todo make this a config option?
+            when(typeStr) {
+                "Role.Book" -> return fromUUID2String<Book>(uuid2Str)
+                "Role.User" -> return fromUUID2String<User>(uuid2Str)
+                "Role.Library" -> return fromUUID2String<Library>(uuid2Str)
+                "Role.PrivateLibrary" -> return fromUUID2String<PrivateLibrary>(uuid2Str)
+                "Role.Account" -> return fromUUID2String<Account>(uuid2Str)
+            }
 
             ///////////////////////////////////////////////////////////////////
             // The UUID2Type is NOT in the White-listed UUID2 types.         //
@@ -279,9 +352,9 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
 
             // Find all the implementations of IUUID2
             val iuuid2SubTypeClazzList =
-                Reflections("com.realityexpander").getSubTypesOf(IUUID2::class.java)
+                Reflections("domain").getSubTypesOf(IUUID2::class.java)
             val uuid2TypeClazz = iuuid2SubTypeClazzList.find { clazz ->
-                    clazz.simpleName == lastUUID2TypeStrPathItem(typeStr)
+                    clazz.simpleName == lastPathItemOfUUID2TypeStr(typeStr)
                 } ?: throw RuntimeException("Unknown UUID2 type: $typeStr")
 
             val uuid2DomainParameterizedType = object : ParameterizedType {
@@ -424,3 +497,10 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
         }
     }
 }
+
+////fun <TRole : IUUID2> TRole.uuid2TypeStr(): String {
+//fun Any.uuid2TypeStr(): String {
+////    return UUID2.calcUUID2TypeStr(this.javaClass)
+//    println(this)
+//    return UUID2.calcUUID2TypeStr(this::class.java)
+//}

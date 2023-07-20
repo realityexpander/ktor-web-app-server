@@ -10,10 +10,12 @@ import domain.book.data.local.EntityBookInfo
 /**
  * BookInfoApi encapsulates an in-memory API database simulation for the DTOBookInfo.
  *
+ * Note: Use Domain-specific language to define the API methods.
+ *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12
  */
-// Note: Use Domain-specific language to define the API
+
 class BookInfoApi internal constructor(api: InMemoryAPI<Book, DTOBookInfo>) {
     private val api: InMemoryAPI<Book, DTOBookInfo>
 

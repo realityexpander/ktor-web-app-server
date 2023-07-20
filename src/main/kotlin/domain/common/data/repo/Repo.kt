@@ -13,7 +13,7 @@ import common.log.ILog
  * @since 0.11
  */
 open class Repo protected constructor(log: ILog) : IRepo {
-    protected val log: ILog
+    protected open val log: ILog
 
     init {
         this.log = log

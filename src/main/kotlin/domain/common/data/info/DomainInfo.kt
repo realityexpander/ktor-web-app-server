@@ -10,6 +10,7 @@ import domain.common.data.Model
  * Domain object encapsulate this DomainInfo class to provide mutable information about the domain object.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 Kotlin conversion`
  */
-open class DomainInfo protected constructor(id: UUID2<IUUID2>) : Model(id)
+
+open class DomainInfo protected constructor(id: UUID2<*>) : Model(id)

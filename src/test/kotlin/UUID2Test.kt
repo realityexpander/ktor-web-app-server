@@ -1,13 +1,12 @@
 import com.google.gson.GsonBuilder
-import com.realityexpander.Book
-import com.realityexpander.User
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
-import org.junit.Assert
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.fail
 import java.util.*
-import kotlin.test.assertEquals
 
 /**
  * UUID2Test - Unit tests for UUID2 class.
@@ -40,9 +39,18 @@ class Book(
     }
 }
 
+class Library(
+    override val id: UUID2<Library>,
+    val name: String,
+) : Role(id), IUUID2 {
+    override fun uuid2TypeStr(): String {
+        return UUID2.calcUUID2TypeStr(this.javaClass)
+    }
+}
+
 class UUID2Test {
 
-    @Before
+    @BeforeEach
     fun setUp() {
         // no-op - not every test requires setup
     }
@@ -57,9 +65,10 @@ class UUID2Test {
         val book1200Uuid2Str: String = book1200Id.toString()
 
         // • ASSERT
-        Assert.assertEquals(
+        assertEquals(
+            expectedUUID2Str,
+            book1200Uuid2Str,
             "UUID2 String not serialized correctly",
-            book1200Uuid2Str, expectedUUID2Str
         )
     }
 
@@ -101,8 +110,8 @@ class UUID2Test {
         val isNotEqual: Boolean = book1200Id.isOnlyUUIDEqual(user9999Id)
 
         // • ASSERT
-        Assert.assertTrue(isEqual)
-        Assert.assertFalse(isNotEqual)
+        assertTrue(isEqual)
+        assertFalse(isNotEqual)
     }
 
     @Test
@@ -123,15 +132,12 @@ class UUID2Test {
         // • ACT
         try {
             val book1200aId: UUID2<Book> = UUID2.fromUUID2String<Book>(invalidUUID2Str)
-            Assert.fail("Expected IllegalArgumentException")
-
-            // This is only here to satisfy the compiler warnings.  It should never be reached.
-            System.err.printf("SHOULD NEVER SEE THIS - book1200aId=%s", book1200aId)
+            fail(Exception("Expected IllegalArgumentException"))
         } catch (e: IllegalArgumentException) {
             // • ASSERT
-            Assert.assertTrue(true)
+            assertTrue(true)
         } catch (e: Exception) {
-            Assert.fail(e.message)
+            fail(e.message)
         }
     }
 
@@ -146,12 +152,12 @@ class UUID2Test {
 
             // This is only here to satisfy the compiler warnings.  It should never be reached.
             System.err.printf("SHOULD NEVER SEE THIS - book1200aId=%s", book1200aId)
-            Assert.fail("Expected IllegalArgumentException")
+            fail("Expected IllegalArgumentException")
         } catch (e: IllegalArgumentException) {
             // • ASSERT
-            Assert.assertTrue(true)
+            assertTrue(true)
         } catch (e: Exception) {
-            Assert.fail(e.message)
+            fail(e.message)
         }
     }
 
@@ -176,15 +182,12 @@ class UUID2Test {
         // • ACT
         try {
             val book1200aId: UUID2<Book> = UUID2.fromUUID2String<Book>(invalidUUID2Str)
-            Assert.fail("Expected IllegalArgumentException")
-
-            // This is only here to satisfy the compiler warnings.  It should never be reached.
-            System.err.printf("SHOULD NEVER SEE THIS - book1200aId=%s", book1200aId)
+            fail("Expected IllegalArgumentException")
         } catch (e: IllegalArgumentException) {
             // • ASSERT
-            Assert.assertTrue(true)
+            assertTrue(true)
         } catch (e: Exception) {
-            Assert.fail(e.message)
+            fail(e.message)
         }
     }
 
@@ -197,7 +200,7 @@ class UUID2Test {
         val book1200aId: UUID2<Book> = UUID2.fromUUID(book1200uuid)
 
         // • ASSERT
-        assertEquals(expected = book1200uuid, actual = book1200aId.uuid())
+        assertEquals(book1200uuid,book1200aId.uuid())
     }
 
     @Test
@@ -208,15 +211,12 @@ class UUID2Test {
         // • ACT
         try {
             val book1200aId: UUID2<Book> = UUID2.fromUUID2String<Book>(invalidUUID2Str)
-            Assert.fail("Expected IllegalArgumentException")
-
-            // This is only here to satisfy the compiler warnings.  It should never be reached.
-            System.err.printf("SHOULD NEVER SEE THIS - book1200aId=%s", book1200aId)
+            fail("Expected IllegalArgumentException")
         } catch (e: IllegalArgumentException) {
             // • ASSERT
-            Assert.assertTrue(true)
+            assertTrue(true)
         } catch (e: Exception) {
-            Assert.fail(e.message)
+            fail(e.message)
         }
     }
 
@@ -241,15 +241,12 @@ class UUID2Test {
         // • ACT
         try {
             val book1200aId: UUID2<Book> = UUID2.fromUUIDString<Book>(invalidUUIDStr)
-            Assert.fail("Expected IllegalArgumentException")
-
-            // This is only here to satisfy the compiler warnings.  It should never be reached.
-            System.err.printf("SHOULD NEVER SEE THIS - book1200aId=%s", book1200aId)
+            fail("Expected IllegalArgumentException")
         } catch (e: IllegalArgumentException) {
             // • ASSERT
-            Assert.assertTrue(true)
+            assertTrue(true)
         } catch (e: Exception) {
-            Assert.fail(e.message)
+            fail(e.message)
         }
     }
 
@@ -267,9 +264,9 @@ class UUID2Test {
             }
         )
 
-        // create a Gson instance with the Uuid2MutableMapJsonDeserializer registered
+        // create a Gson instance with the Uuid2MapJsonDeserializer registered
         val gson = GsonBuilder()
-                .registerTypeAdapter(MutableMap::class.java, UUID2.Uuid2MutableMapJsonDeserializer())
+                .registerTypeAdapter(MutableMap::class.java, UUID2.Uuid2MapJsonDeserializer())
                 .setPrettyPrinting()
                 .create()
         val user01Json: String = gson.toJson(user01)
@@ -289,7 +286,7 @@ class UUID2Test {
 
     class UnknownUUID2TypeEntity(val id: UUID2<*>) : IUUID2 {
         override fun uuid2TypeStr(): String {
-            return "UnknownUUID2Type"
+            return UUID2.calcUUID2TypeStr(this.javaClass)
         }
     }
 
@@ -306,14 +303,14 @@ class UUID2Test {
             }
         )
 
-        // create a Gson instance with the Uuid2MutableMapJsonDeserializer registered
+        // create a Gson instance with the Uuid2MapJsonDeserializer registered
         val gson = GsonBuilder()
-                .registerTypeAdapter(MutableMap::class.java, UUID2.Uuid2MutableMapJsonDeserializer())
+                .registerTypeAdapter(MutableMap::class.java, UUID2.Uuid2MapJsonDeserializer())
                 .setPrettyPrinting()
                 .create()
         val user01Json: String = gson.toJson(user01)
 
-        Assert.assertThrows(RuntimeException::class.java) {
+        assertThrows(RuntimeException::class.java) {
             // • ACT
             val user01a: User = gson.fromJson(user01Json, User::class.java)
 

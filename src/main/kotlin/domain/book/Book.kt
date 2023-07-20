@@ -13,7 +13,6 @@ import domain.library.Library
 import domain.library.PrivateLibrary
 import domain.library.data.LibraryInfo
 import domain.user.User
-import java.awt.SystemColor.info
 
 /**
  * Book Role Object - Only interacts with its own repository, Context, and other Role Objects<br></br>
@@ -22,7 +21,7 @@ import java.awt.SystemColor.info
  * Look at **`Book.pickSourceLibrary()`** for more information.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 Kotlin conversion
  */
 
 class Book : Role<BookInfo>, IUUID2 {
@@ -37,7 +36,7 @@ class Book : Role<BookInfo>, IUUID2 {
         repo = context.bookInfoRepo
         this.sourceLibrary = pickSourceLibrary(sourceLibrary, id(), context)
 
-        context.log.d(this, "Book (" + infoId() + ") created from Info")
+        context.log.d(this, "Book (" + id() + ") created from Info")
     }
 
     constructor(
@@ -49,19 +48,19 @@ class Book : Role<BookInfo>, IUUID2 {
         repo = context.bookInfoRepo
         this.sourceLibrary = pickSourceLibrary(sourceLibrary, id, context)
 
-        context.log.d(this, "Book (" + infoId() + ") created using id with no Info")
+        context.log.d(this, "Book (" + id() + ") created using id with no Info")
     }
 
     constructor(
-        json: String,
+        bookInfoJson: String,
         clazz: Class<BookInfo>,
         sourceLibrary: Library?,
         context: Context
-    ) : super(json, clazz, context) {
+    ) : super(bookInfoJson, clazz, context) {
         repo = context.bookInfoRepo
         this.sourceLibrary = pickSourceLibrary(sourceLibrary, id(), context)
 
-        context.log.d(this, "Book (" + infoId() + ") created from JSON using class:" + clazz.name)
+        context.log.d(this, "Book (" + id() + ") created from JSON using class:" + clazz.name)
     }
 
     constructor(
@@ -72,18 +71,17 @@ class Book : Role<BookInfo>, IUUID2 {
         repo = context.bookInfoRepo
         this.sourceLibrary = pickSourceLibrary(sourceLibrary, id, context)
 
-        context.log.d(this, "Book (" + infoId() + ") created using id with no Info")
+        context.log.d(this, "Book (" + id() + ") created using id with no Info")
     }
 
-    constructor(json: String, sourceLibrary: Library?, context: Context) : this(
-        json,
+    constructor(bookInfoJson: String, sourceLibrary: Library?, context: Context) : this(
+        bookInfoJson,
         BookInfo::class.java,
         sourceLibrary,
         context
     )
 
-    constructor(json: String, context: Context) : this(json, BookInfo::class.java, null, context)
-    constructor(context: Context) : this(BookInfo(UUID2.randomUUID2(Book::class.java)), null, context)
+    constructor(bookInfoJson: String, context: Context) : this(bookInfoJson, BookInfo::class.java, null, context)
 
     /////////////////////////////////////////
     // Entity 🡒 Domain 🡐 DTO        //
@@ -91,14 +89,14 @@ class Book : Role<BookInfo>, IUUID2 {
     //   separate from Domain layer        //
     /////////////////////////////////////////
 
-    constructor(infoDTO: DTOBookInfo, sourceLibrary: Library?, context: Context) : this(
-        BookInfo(infoDTO),
+    constructor(bookInfoDTO: DTOBookInfo, sourceLibrary: Library?, context: Context) : this(
+        BookInfo(bookInfoDTO),
         sourceLibrary,
         context
     )
 
-    constructor(infoEntity: EntityBookInfo, sourceLibrary: Library, context: Context) : this(
-        BookInfo(infoEntity),
+    constructor(bookInfoEntity: EntityBookInfo, sourceLibrary: Library, context: Context) : this(
+        BookInfo(bookInfoEntity),
         sourceLibrary,
         context
     )
@@ -107,17 +105,10 @@ class Book : Role<BookInfo>, IUUID2 {
     // Published Getters  //
     ////////////////////////
 
-//    // Convenience method to get the Type-safe id from the Class
-//    override fun infoId(): UUID2<Book> {
-//        return super.infoId() as UUID2<Book>
-//    }
     // Convenience method to get the Type-safe id from the Class
-    fun id(): UUID2<Book> {
+    override fun id(): UUID2<Book> {
+        @Suppress("UNCHECKED_CAST")
         return super.id as UUID2<Book>
-    }
-
-    override fun infoId(): UUID2<IUUID2> {
-        return super.id as UUID2<IUUID2>
     }
 
     fun sourceLibrary(): Library {
@@ -131,9 +122,10 @@ class Book : Role<BookInfo>, IUUID2 {
     /////////////////////////////////////
     // IRole/UUID2 Required Overrides  //
     /////////////////////////////////////
+
     override fun fetchInfoResult(): Result<BookInfo> {
         // context.log.d(this,"Book (" + this.id.toString() + ") - fetchInfoResult"); // LEAVE for debugging
-//        return repo.fetchBookInfo(infoId())
+        @Suppress("UNCHECKED_CAST")
         return repo.fetchBookInfo(id as UUID2<Book>)
     }
 
@@ -162,12 +154,8 @@ class Book : Role<BookInfo>, IUUID2 {
             return Result.success(this)
         }
 
-        if (isBookFromPrivateLibrary) {
-            return library.transferBookSourceLibraryToThisLibrary(this)
-        }
-
         if (sourceLibrary.isBookCheckedOutByAnyUser(this)) {
-            val userResult: Result<User> = sourceLibrary.getUserOfCheckedOutBook(this)
+            val userResult: Result<User> = sourceLibrary.findUserOfCheckedOutBook(this)
             if (userResult.isFailure) return Result.failure(userResult.exceptionOrNull() ?: Exception("Unknown Error"))
             val user: User = userResult.getOrNull()
                 ?: return Result.failure(Exception("Unknown Error"))
@@ -180,17 +168,20 @@ class Book : Role<BookInfo>, IUUID2 {
     }
 
     fun updateAuthor(author: String): Result<BookInfo> {
-        val updatedInfo: BookInfo = this.info().withAuthor(author)
+        val updatedInfo: BookInfo = this.info()?.withAuthor(author)
+            ?: return Result.failure(Exception("BookInfo is null"))
         return updateInfo(updatedInfo) // delegate to Info Object
     }
 
     fun updateTitle(title: String): Result<BookInfo> {
-        val updatedInfo: BookInfo = this.info().withTitle(title)
+        val updatedInfo: BookInfo = this.info()?.withTitle(title)
+            ?: return Result.failure(Exception("BookInfo is null"))
         return updateInfo(updatedInfo) // delegate to Info Object
     }
 
     fun updateDescription(description: String): Result<BookInfo> {
-        val updatedInfo: BookInfo = this.info().withDescription(description)
+        val updatedInfo: BookInfo = this.info()?.withDescription(description)
+            ?: return Result.failure(Exception("BookInfo is null"))
         return updateInfo(updatedInfo) // delegate to Info Object
     }
 
@@ -239,6 +230,7 @@ class Book : Role<BookInfo>, IUUID2 {
     }
 
     companion object {
+
         /////////////////////////
         // Static constructors //
         /////////////////////////
@@ -250,9 +242,11 @@ class Book : Role<BookInfo>, IUUID2 {
         ): Result<Book> {
             val repo: BookInfoRepo = context.bookInfoRepo
             val infoResult: Result<BookInfo> = repo.fetchBookInfo(uuid2)
-            if (infoResult.isFailure) return Result.failure(infoResult.exceptionOrNull() ?: Exception("Unknown Error"))
+            if (infoResult.isFailure) return Result.failure(infoResult.exceptionOrNull()
+                ?: Exception("Error fetching BookInfo, BookId: " + uuid2.uuid()))
 
-            val info: BookInfo = infoResult.getOrNull() ?: return Result.failure(Exception("Unknown Error"))
+            val info: BookInfo = infoResult.getOrNull()
+                ?: return Result.failure(Exception("Error fetching BookInfo, BookId: " + uuid2.uuid()))
 
             return Result.success(Book(info, sourceLibrary, context))
         }

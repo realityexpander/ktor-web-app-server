@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 val ktor_version: String by project
 val kotlin_version: String by project
 val logback_version: String by project
@@ -13,13 +15,22 @@ tasks.register("watch") {
     }
 }
 
-// Remove this warning:
+// config JVM target to 1.8 for kotlin compilation tasks
+tasks.withType<KotlinCompile>().configureEach {
+    kotlinOptions.jvmTarget = "1.8"
+}
+
+// For tests
 // 'compileJava' task (current target is 11) and 'compileKotlin' task (current target is 1.8) jvm target compatibility should be set to the same Java version.
 kotlin {
     jvmToolchain {
         languageVersion.set(JavaLanguageVersion.of("11"))
     }
 }
+//// For tests to run, the JVM target must be set to 1.8
+//tasks.withType<JavaCompile>().configureEach {
+//    options.release.set(8)
+//}
 
 plugins {
     application
@@ -49,8 +60,6 @@ dependencies {
     implementation("io.ktor:ktor-server-core:$ktor_version")
     implementation("io.ktor:ktor-server-netty:$ktor_version")
     implementation("ch.qos.logback:logback-classic:1.4.6")
-    testImplementation("io.ktor:ktor-server-test-host:$ktor_version")
-    testImplementation("org.jetbrains.kotlin:kotlin-test")
 
     // ktor client
     implementation("io.ktor:ktor-client-core:$ktor_version")
@@ -65,7 +74,7 @@ dependencies {
     implementation("io.ktor:ktor-server-content-negotiation:$ktor_version")
 
     // Gson's serialization - For UUID's and other custom types
-    implementation("com.google.code.gson:gson:2.7")
+    implementation("com.google.code.gson:gson:2.8.9")
 
     // Logging
     implementation("io.ktor:ktor-client-logging:$ktor_version")
@@ -108,12 +117,25 @@ dependencies {
 
     // Reflections for importing JSON Object using type safety
     implementation("org.reflections:reflections:0.10.2")
+    implementation(kotlin("reflect"))
+
+    // Testing
+//    testImplementation("io.ktor:ktor-server-test-host:$ktor_version") // needed? for junit4
+//    testImplementation("org.jetbrains.kotlin:kotlin-test")
+
+    // For JUnit5 Parameterized tests
+    testImplementation(platform("org.junit:junit-bom:5.9.3"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.1.0")
 
 }
 
-//tasks.test {
-//    useJUnitPlatform()
-//}
+tasks.test {
+    useJUnitPlatform()
+    testLogging {
+        events("passed", "skipped", "failed")
+    }
+}
 
 //kotlin {
 //    jvmToolchain(8)

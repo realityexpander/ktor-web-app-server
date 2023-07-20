@@ -10,7 +10,7 @@ import domain.common.data.info.local.EntityInfo
  * This class should be wrapped and use domain-specific language for the EntityInfo class.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 Kotlin conversion
  */
 
 interface IDatabase<TUUID2 : IUUID2, TEntity : EntityInfo> {

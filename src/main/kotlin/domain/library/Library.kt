@@ -3,6 +3,7 @@ package domain.library
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.Context
+import domain.account.data.AccountInfo
 import domain.book.Book
 import domain.common.Role
 import domain.library.data.LibraryInfo
@@ -18,8 +19,9 @@ import okhttp3.internal.toImmutableMap
  * *ONLY* interacts with its own Repo, Context, and other Role Objects
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 Kotlin conversion
  */
+
 open class Library : Role<LibraryInfo>, IUUID2 {
     private val repo: LibraryInfoRepo
 
@@ -28,16 +30,18 @@ open class Library : Role<LibraryInfo>, IUUID2 {
         context: Context
     ) : super(info, context) {
         repo = context.libraryInfoRepo
-        context.log.d(this, "Library (" + id() + ") created from Info")
+
+        context.log.d("Library<Init>", "Library (" + id() + ") created from Info")
     }
 
     constructor(
-        json: String,
+        libraryInfoJson: String,
         clazz: Class<LibraryInfo>,
         context: Context
-    ) : super(json, clazz, context) {
+    ) : super(libraryInfoJson, clazz, context) {
         repo = context.libraryInfoRepo
-        context.log.d(this, "Library (" + id() + ") created from Json with class: " + clazz.name)
+
+        context.log.d("Library<Init>", "Library (" + id() + ") created from Json with class: " + clazz.name)
     }
 
     constructor(
@@ -45,10 +49,11 @@ open class Library : Role<LibraryInfo>, IUUID2 {
         context: Context
     ) : super(id, context) {
         repo = context.libraryInfoRepo
-        context.log.d(this, "Library (" + id() + ") created using id with no Info")
+
+        context.log.d("Library<Init>", "Library (" + id() + ") created using id with no Info")
     }
 
-    constructor(json: String, context: Context) : this(json, LibraryInfo::class.java, context)
+    constructor(libraryInfoJson: String, context: Context) : this(libraryInfoJson, LibraryInfo::class.java, context)
     constructor(context: Context) : this(UUID2.randomUUID2(Library::class.java), context)
 
     ////////////////////////////////
@@ -56,12 +61,9 @@ open class Library : Role<LibraryInfo>, IUUID2 {
     ////////////////////////////////
 
     // Convenience method to get the Type-safe id from the Class
-    fun id(): UUID2<Library> {
+    final override fun id(): UUID2<Library> {
+        @Suppress("UNCHECKED_CAST")
         return super.id as UUID2<Library>
-    }
-
-    override fun infoId(): UUID2<IUUID2> { // todo remove and use id() instead
-        return super.id as UUID2<IUUID2>
     }
 
     /////////////////////////////////////
@@ -81,6 +83,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
 
         // Update the Repo
         return repo.updateLibraryInfo(updatedInfo)
+        // return repo.upsertLibraryInfo(updateInfo) // todo should allow insert when updating? And Log a warning?
     }
 
     override fun uuid2TypeStr(): String {
@@ -96,7 +99,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
 
     open fun checkOutBookToUser(book: Book, user: User): Result<Book> {
         context.log.d(this, "Library (" + id() + ") - bookId: " + book.id() + ", userId: " + user.id())
-        if (fetchInfoFailureReason() != null) return Result.failure(Exception(fetchInfoFailureReason()))
+        fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
         if (isUnableToFindOrRegisterUser(user)) return Result.failure(Exception("User is not known, userId: " + user.id()))
 
         // Note: this calls a wrapper to the User's Account Role object
@@ -111,11 +114,12 @@ open class Library : Role<LibraryInfo>, IUUID2 {
             ?: return Result.failure(Exception("User AccountInfo is null, userId: " + user.id()))
 
         // Check User fines are not exceeded
-        if (userAccountInfo.isMaxFineExceeded()) return Result.failure(Exception("User has exceeded maximum fines, userId: " + user.id()))
+        if (userAccountInfo.isMaxFineExceeded) return Result.failure(Exception("User has exceeded maximum fines, userId: " + user.id()))
 
         // Check out Book to User
         val checkOutBookResult: Result<Book> = this.info()?.checkOutPublicLibraryBookToUser(book, user) ?: return Result.failure(Exception("LibraryInfo is null, libraryId: " + id()))
         if (checkOutBookResult.isFailure) return Result.failure(checkOutBookResult.exceptionOrNull() ?: Exception("Unknown failure checking out Book, userId: " + user.id() + ", bookId: " + book.id()))
+        val checkedOutBook: Book = checkOutBookResult.getOrThrow()
 
         // Update Info, since we modified data for this Library
         val updateInfoResult: Result<LibraryInfo> = updateInfo(this.info()
@@ -123,41 +127,67 @@ open class Library : Role<LibraryInfo>, IUUID2 {
         return if (updateInfoResult.isFailure)
             Result.failure((updateInfoResult.exceptionOrNull() ?: Exception("Unknown failure updating LibraryInfo, libraryId: " + id())))
         else
-            Result.success(book)
+            Result.success(checkedOutBook)
     }
 
     open fun checkInBookFromUser(book: Book, user: User): Result<Book> {
-        context.log.d(
-            this,
-            "Library (${id()}) - bookId ${book.id()} from userID ${user.id()}")
-        )
-        if (fetchInfoFailureReason() != null) return Result.failure(Exception(fetchInfoFailureReason()))
-        if (isUnableToFindOrRegisterUser(user)) return Result.failure(Exception("User is not known, id: " + user.id()))
-        val checkInBookResult: Result<Book> = this.info().checkInPublicLibraryBookFromUser(book, user)
-        if (checkInBookResult.isFailure) return Result.failure((checkInBookResult.exceptionOrNull() ?: Exception("Unknown failure checking in Book, userId: " + user.id() + ", bookId: " + book.id())))
+        context.log.d(this, "Library (${id()}) - bookId ${book.id()} from userID ${user.id()}")
+        fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
+
+        if(book.isBookFromPublicLibrary) {
+            if(isUnableToFindOrRegisterUser(user))
+                return Result.failure(Exception("User is not known, id: " + user.id()))
+
+            val checkInBookResult: Result<Book> = this.info()?.checkInPublicLibraryBookFromUser(book, user)
+                ?: return Result.failure(Exception("LibraryInfo is null, libraryId: " + id()))
+            if (checkInBookResult.isFailure)
+                return Result.failure((checkInBookResult.exceptionOrNull()
+                        ?: Exception("Unknown failure checking in Book, userId: " + user.id() + ", bookId: " + book.id())))
+        } else {
+            val checkInBookResult: Result<Book> = this.info()?.checkInPrivateLibraryBookFromUser(book, user)
+                ?: return Result.failure(Exception("LibraryInfo is null, libraryId: " + id()))
+            if (checkInBookResult.isFailure)
+                return Result.failure(
+                    (checkInBookResult.exceptionOrNull()
+                        ?: Exception("Unknown failure checking in Book, userId: " + user.id() + ", bookId: " + book.id()))
+                )
+        }
 
         // Update Info, since we modified data for this Library
-        val updateInfoResult: Result<LibraryInfo> = updateInfo(this.info())
+        val updateInfoResult: Result<LibraryInfo> = updateInfo(
+            this.info() ?: return Result.failure(Exception("LibraryInfo is null, libraryId: " + id())))
         return if (updateInfoResult.isFailure)
-            Result.failure((updateInfoResult.exceptionOrNull() ?: Exception("Unknown failure updating LibraryInfo, libraryId: " + id())))
+            Result.failure((updateInfoResult.exceptionOrNull()
+                ?: Exception("Unknown failure updating LibraryInfo, libraryId: " + id())))
         else
             Result.success(book)
     }
 
     fun transferCheckedOutBookSourceLibraryToThisLibrary(bookToTransfer: Book, user: User): Result<Book> {
         context.log.d(this, "Library (${id()}) - bookId ${bookToTransfer.id()} from userID ${user.id()}")
-        if (fetchInfoFailureReason() != null) return Result.failure(Exception(fetchInfoFailureReason()))
+        fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
-        // Check in Book to current Source Library
-        val checkInBookResult: Result<Book> = checkInBookFromUser(bookToTransfer, user)
-        if (checkInBookResult.isFailure) return Result.failure((checkInBookResult.exceptionOrNull()
-            ?: Exception("Unknown failure checking in Book, userId: " + user.id() + ", bookId: " + bookToTransfer.id())))
+
+        // Todo fix this - test that it uses the correct library (even if it's not the current library)
+        // If book is checked out by any user, check it in first.
+        val bookSourceLibrary = bookToTransfer.sourceLibrary()
+        val curBookUserResult = bookSourceLibrary.findUserOfCheckedOutBook(bookToTransfer)
+        if(curBookUserResult.isFailure) return Result.failure(curBookUserResult.exceptionOrNull()
+            ?: Exception("Error getting user of checked out book, bookId: " + bookToTransfer.id()))
+        val curBookToTransferUser = curBookUserResult.getOrThrow()
+
+        val returnedBookResult: Result<Book> = bookSourceLibrary.checkInBookFromUser(bookToTransfer, curBookToTransferUser)
+        if (returnedBookResult.isFailure) return Result.failure(returnedBookResult.exceptionOrNull()
+            ?: Exception("Error checking in book, bookId: " + bookToTransfer.id()))
 
         // Transfer Book to this Library
         val transferBookResult: Result<Book> = transferBookSourceLibraryToThisLibrary(bookToTransfer)
+        if (transferBookResult.isFailure) return Result.failure((transferBookResult.exceptionOrNull()
+            ?: Exception("Unknown failure transferring Book, userId: " + user.id() + ", bookId: " + bookToTransfer.id())))
+        val transferredBook = transferBookResult.getOrThrow()
 
         // Check out Book to User from this Library
-        val checkOutBookResult: Result<Book> = checkOutBookToUser(bookToTransfer, user)
+        val checkOutBookResult: Result<Book> = checkOutBookToUser(transferredBook, user)
         if (checkOutBookResult.isFailure) return Result.failure((checkOutBookResult.exceptionOrNull()
             ?: Exception("Unknown failure checking out Book, userId: " + user.id() + ", bookId: " + bookToTransfer.id())))
 
@@ -168,55 +198,54 @@ open class Library : Role<LibraryInfo>, IUUID2 {
             Result.failure((updateInfoResult.exceptionOrNull()
                 ?: Exception("Unknown failure updating LibraryInfo, libraryId: " + id())))
         else
-            Result.success(bookToTransfer)
+            Result.success(transferredBook)
     }
 
-    // Note: this does not change the Checkout status of the User
+    // Note: this retains the Checkout status of the User
     fun transferBookSourceLibraryToThisLibrary(bookToTransfer: Book): Result<Book> {
         context.log.d(this, "Library (${id()}) - bookId ${bookToTransfer.id()}")
-        if (fetchInfoFailureReason() != null) return Result.failure(Exception(fetchInfoFailureReason()))
+        fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
         // Get the Book's Source Library
         val fromSourceLibrary: Library = bookToTransfer.sourceLibrary()
-            ?: return Result.failure(Exception("Book's Source Library is null, bookId: " + bookToTransfer.id()))
 
         // Check `from` Source Library is same as this Library
         if (fromSourceLibrary.id() == id())
-            return Result.failure(Exception("Book's Source Library is the same as this Library, bookId: " + bookToTransfer.id()))
+            return Result.failure(Exception("Book's Source Library is the same as this Library, bookId: " + bookToTransfer.id() + ", libraryId: " + id()))
 
         // Check if `from` Source Library is known
-        if (fromSourceLibrary.fetchInfoFailureReason() != null) return Result.failure(Exception("Book's Source Library is not known, bookId: " + bookToTransfer.id()))
+        if (fromSourceLibrary.fetchInfoFailureReason() != null)
+            return Result.failure(Exception("Book's Source Library is not known, bookId: " + bookToTransfer.id() + ", libraryId: " + id()))
 
         // Check if Book is known at `from` Source Library
         val fromSourceLibraryInfo: LibraryInfo = fromSourceLibrary.info()
             ?: return Result.failure(Exception("LibraryInfo is null, libraryId: " + fromSourceLibrary.id()))
         if ( !fromSourceLibraryInfo.isKnownBook(bookToTransfer) )
-            return Result.failure(Exception("Book is not known at from Source Library, bookId: " + bookToTransfer.id()))
+            return Result.failure(Exception("Book is not known at from Source Library, bookId: " + bookToTransfer.id() + ", libraryId: " + fromSourceLibrary.id()))
 
 
         // Remove Book from Library Inventory of Books at `from` Source Library
         val removeBookResult: Result<UUID2<Book>> =
-            fromSourceLibraryInfo.removeTransferringBookFromInventory(bookToTransfer)
+            fromSourceLibraryInfo.removeTransferringBookFromBooksAvailableMap(bookToTransfer)
         if (removeBookResult.isFailure)
             return Result.failure((removeBookResult.exceptionOrNull()
-                ?: Exception("Unknown failure removing Book from Library Inventory of Books, bookId: " + bookToTransfer.id())))
+                ?: Exception("Unknown failure removing Book from Library Inventory of Books, bookId: " + bookToTransfer.id() + ", libraryId: " + fromSourceLibrary.id())))
 
         // Update `from` Source Library Info, bc data was modified for `from` Source Library
         val updateFromSourceLibraryInfoResult: Result<LibraryInfo> = fromSourceLibrary.updateInfo(fromSourceLibraryInfo)
         if (updateFromSourceLibraryInfoResult.isFailure) return Result.failure((updateFromSourceLibraryInfoResult.exceptionOrNull()
-            ?: Exception("Unknown failure updating LibraryInfo, libraryId: " + fromSourceLibrary.id())))
+            ?: Exception("Unknown failure updating LibraryInfo, libraryId: " + fromSourceLibrary.id() + ", bookId: " + bookToTransfer.id())))
 
 
         // Add Book to this Library's Inventory of Books
-        val addBookResult: Result<UUID2<Book>> = this.info()?.addTransferringBookToInventory(bookToTransfer)
+        val addBookResult: Result<UUID2<Book>> = this.info()?.addTransferringBookToBooksAvailableMap(bookToTransfer)
             ?: return Result.failure(Exception("LibraryInfo is null, libraryId: " + id()))
         if (addBookResult.isFailure) return Result.failure((addBookResult.exceptionOrNull()
-            ?: Exception("Unknown failure adding Book to Library Inventory of Books, bookId: " + bookToTransfer.id())))
+            ?: Exception("Unknown failure adding Book to Library Inventory of Books, bookId: " + bookToTransfer.id() + ", libraryId: " + id())))
 
 
         // • Transfer Book's Source Library to this Library
-        val transferredBookResult: Result<Book> =
-            bookToTransfer.updateSourceLibrary(this) // note: this only modifies the Book Role object, not the BookInfo.
+        val transferredBookResult: Result<Book> = bookToTransfer.updateSourceLibrary(this) // note: this only modifies the Book Role object, not the BookInfo.
         if (transferredBookResult.isFailure) return Result.failure((transferredBookResult.exceptionOrNull()
             ?: Exception("Unknown failure updating Book's Source Library, bookId: " + bookToTransfer.id())))
 
@@ -226,7 +255,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
         return if (updateInfoResult2.isFailure)
             Result.failure((updateInfoResult2.exceptionOrNull() ?: Exception("Unknown failure updating LibraryInfo, libraryId: " + id())))
         else
-            Result.success(bookToTransfer)
+            transferredBookResult
     }
 
     /////////////////////////////////
@@ -285,6 +314,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
 
     fun isBookCheckedOutByAnyUser(book: Book): Boolean {  // todo return Result<>?
         context.log.d(this, "Library(${id()}) - bookId ${book.id()}")
+
         return if (fetchInfoFailureReason() != null)
             false
         else
@@ -292,21 +322,24 @@ open class Library : Role<LibraryInfo>, IUUID2 {
                 ?: false
     }
 
-    fun getUserOfCheckedOutBook(book: Book): Result<User> {
+    fun findUserOfCheckedOutBook(book: Book): Result<User> {
         context.log.d(this, "Library(${id()}) - bookId ${book.id()}")
-        if (fetchInfoFailureReason() != null) return Result.failure(Exception(fetchInfoFailureReason()))
+        fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
         // get the User's id from the Book checkout record
         val userIdResult: Result<UUID2<User>> = this.info()?.findUserIdOfCheckedOutBook(book)
             ?: return Result.failure(Exception("LibraryInfo is null, libraryId: " + id()))
         if (userIdResult.isFailure) return Result.failure((userIdResult.exceptionOrNull()
             ?: Exception("Unknown failure finding User id of checked out Book, bookId: " + book.id())))
+
         val userId: UUID2<User> = userIdResult.getOrNull()
             ?: return Result.failure(Exception("User id is null, bookId: " + book.id()))
+
         val fetchUserResult: Result<User> = User.fetchUser(userId, context)
         if (fetchUserResult.isFailure) return Result.failure((fetchUserResult.exceptionOrNull()
             ?: Exception("Unknown failure fetching User, userId: $userId")))
-        val user: User = fetchUserResult.exceptionOrNull()
+
+        val user: User = fetchUserResult.getOrNull()
             ?: return Result.failure(Exception("User is null, userId: $userId"))
         return Result.success(user)
     }
@@ -317,7 +350,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
 
     fun findBooksCheckedOutByUser(user: User): Result<ArrayList<Book>> {
         context.log.d(this, "Library(${id()}) - userId ${user.id()}")
-        if (fetchInfoFailureReason() != null) return Result.failure(Exception(fetchInfoFailureReason()))
+        fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
         // Make sure User is Known
         if (isUnableToFindOrRegisterUser(user)) {
@@ -343,7 +376,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
 
     fun calculateAvailableBookIdToNumberAvailableList(): Result<Map<Book, Long>> {
         context.log.d(this, "Library (" + id() + ")")
-        if (fetchInfoFailureReason() != null) return Result.failure(Exception(fetchInfoFailureReason()))
+        fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
         val entriesResult: Result<MutableMap<UUID2<Book>, Long>> =
             this.info()?.calculateAvailableBookIdToCountOfAvailableBooksMap()
@@ -368,6 +401,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
     /////////////////////////////////////////
     // Published Testing Helper Methods    //
     /////////////////////////////////////////
+
     // Intention revealing method name
     fun addTestBookToLibrary(book: Book, count: Int): Result<Book> {
         context.log.d(this, "Library (" + id() + ") book: " + book + ", count: " + count)
@@ -376,7 +410,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
 
     fun addBookToLibrary(book: Book, count: Int): Result<Book> {
         context.log.d(this, "Library (" + id() + ") book: " + book + ", count: " + count)
-        if (fetchInfoFailureReason() != null) return Result.failure(Exception(fetchInfoFailureReason()))
+        fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
         val addBookResult: Result<UUID2<Book>> = this.info()?.addTestBook(book.id(), count)
             ?: return Result.failure(Exception("LibraryInfo is null, libraryId: " + id()))
@@ -393,7 +427,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
             Result.success(book)
     }
 
-    fun DumpDB(context: Context) {
+    fun dumpDB(context: Context) {
         context.log.d(this, "Dumping Library DB:")
         context.log.d(this, this.toJson())
         println()
@@ -401,7 +435,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
 
     fun transferBookAndCheckOutFromUserToUser(book: Book, fromUser: User, toUser: User): Result<Book> {
         context.log.d(this, "Library (" + id() + ") book: " + book + ", fromUser: " + fromUser + ", toUser: " + toUser)
-        if (fetchInfoFailureReason() != null) return Result.failure(Exception(fetchInfoFailureReason()))
+        fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
         val transferResult: Result<Book> = this.info()?.transferCheckedOutBookFromUserToUser(book, fromUser, toUser)
             ?: return Result.failure(Exception("LibraryInfo is null, libraryId: " + id()))
@@ -419,6 +453,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
     }
 
     companion object {
+
         /////////////////////////
         // Static constructors //
         /////////////////////////

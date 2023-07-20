@@ -1,8 +1,8 @@
 package domain.book.data
 
 import common.HumanDate
-import common.uuid2.IUUID2
 import common.uuid2.UUID2
+import domain.account.Account
 import domain.book.Book
 import domain.book.data.local.EntityBookInfo
 import domain.book.data.network.DTOBookInfo
@@ -23,20 +23,14 @@ class BookInfo(
     val title: String,
     val author: String,
     val description: String,
-    creationTimeMillis: Long,
-    lastModifiedTimeMillis: Long,
-    isDeleted: Boolean
-) : DomainInfo(id.toDomainUUID2()), Model.ToEntityInfo<EntityBookInfo>, Model.ToDTOInfo<DTOBookInfo>, Model.ToDomainInfo<BookInfo> {
-    var creationTimeMillis: Long = 0
-    var lastModifiedTimeMillis: Long = 0
-    var isDeleted = false
-
-    init {
-        this.creationTimeMillis = creationTimeMillis
-        this.lastModifiedTimeMillis = lastModifiedTimeMillis
-        this.isDeleted = isDeleted
-    }
-
+    val creationTimeMillis: Long = System.currentTimeMillis(),
+    val lastModifiedTimeMillis: Long = creationTimeMillis,
+    val isDeleted: Boolean = false
+) : DomainInfo(id),
+    Model.ToEntityInfo<EntityBookInfo>,
+    Model.ToDTOInfo<DTOBookInfo>,
+    Model.ToDomainInfo<BookInfo>
+{
     constructor(
         uuid: UUID,
         title: String,
@@ -54,17 +48,12 @@ class BookInfo(
         lastModifiedTimeMillis,
         isDeleted
     )
-
-    constructor(id: String, title: String, author: String, description: String) : this(
-        UUID.fromString(id),
+    constructor(uuidStr: String, title: String, author: String, description: String) : this(
+        UUID2.fromUUIDString(uuidStr),
         title,
         author,
         description,
-        0,
-        0,
-        false
     )
-
     constructor(bookInfo: BookInfo) : this(
         bookInfo.id(),
         bookInfo.title,
@@ -75,15 +64,12 @@ class BookInfo(
         bookInfo.isDeleted
     )
 
-    constructor(id: UUID) : this(id, "", "", "", 0, 0, false)
-    constructor(uuid2: UUID2<IUUID2>) : this(uuid2.uuid(), "", "", "", 0, 0, false)
-    constructor(uuid2: UUID2<Book>) : this(uuid2.uuid(), "", "", "", 0, 0, false)
-
     ////////////////////////////////////////////////////////
     // DomainInfo objects Must:                           //
     // - Accept both `DTO.BookInfo` and `Entity.BookInfo` //
     // - Convert to Domain.BookInfo                       //
     ////////////////////////////////////////////////////////
+
     constructor(dtoBookInfo: DTOBookInfo) : this(
         UUID2<Book>(dtoBookInfo.id().uuid(), Book::class.java),  // change id to domain UUID2<Book> type
         dtoBookInfo.title,
@@ -101,7 +87,6 @@ class BookInfo(
     }
 
     constructor(entityBookInfo: EntityBookInfo) : this(
-//        UUID2<Book>(entityBookInfo.id()),  // change to the Domain UUID2 type
         UUID2<Book>(entityBookInfo.id().uuid(), Book::class.java),  // change id to domain UUID2<Book> type
         entityBookInfo.title,
         entityBookInfo.author,
@@ -113,7 +98,7 @@ class BookInfo(
         // Converts from EntityInfo to DomainInfo
 
         // Basic Validation - Domain decides what to include from the Entities
-        // - must be done after contruction
+        // - must be done after construction
         validateBookInfo()
     }
 
@@ -131,7 +116,8 @@ class BookInfo(
 
     // Convenience method to get the Type-safe id from the Class
     override fun id(): UUID2<Book> {
-        return super.id() as UUID2<Book>
+        @Suppress("UNCHECKED_CAST")
+        return id as UUID2<Book>
     }
 
     override fun toString(): String {
@@ -147,6 +133,7 @@ class BookInfo(
     // BookInfo Business Logic Methods             //
     // - All Info manipulation logic is done here. //
     /////////////////////////////////////////////////
+
     fun withTitle(title: String): BookInfo {
         return BookInfo(id(), title, author, description, creationTimeMillis, System.currentTimeMillis(), isDeleted)
     }
@@ -162,6 +149,7 @@ class BookInfo(
     /////////////////////////////////////
     // ToEntity / ToDTO implementation //
     /////////////////////////////////////
+
     override fun toInfoDTO(): DTOBookInfo {
         return DTOBookInfo(this)
     }

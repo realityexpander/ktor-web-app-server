@@ -8,8 +8,9 @@ import domain.common.data.repo.IRepo
  * IBookInfoRepo is an interface for the BookInfoRepo class.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 Kotlin conversion
  */
+
 interface IBookInfoRepo : IRepo {
     fun fetchBookInfo(id: UUID2<Book>): Result<BookInfo>
     fun addBookInfo(bookInfo: BookInfo): Result<BookInfo>

@@ -3,12 +3,13 @@ package domain.user
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.Context
+import domain.account.Account
+import domain.account.data.AccountInfo
 import domain.book.Book
 import domain.common.Role
 import domain.library.Library
 import domain.user.data.UserInfo
 import domain.user.data.UserInfoRepo
-import java.util.*
 
 /**
  * User Role Object<br></br>
@@ -16,7 +17,7 @@ import java.util.*
  * Only interacts with its own Repo, the Context, and other Role Objects
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 Kotlin conversion
  */
 
 class User : Role<UserInfo>, IUUID2 {
@@ -31,7 +32,7 @@ class User : Role<UserInfo>, IUUID2 {
         context: Context
     ) : super(info.id(), context) {
         this.account = account
-        repo = context.userInfoRepo()
+        repo = context.userInfoRepo
         context.log.d(this, "User (" + id().toString() + ") created from Info")
     }
 
@@ -41,7 +42,7 @@ class User : Role<UserInfo>, IUUID2 {
         context: Context
     ) : super(id, context) {
         this.account = account
-        repo = context.userInfoRepo()
+        repo = context.userInfoRepo
         context.log.d(this, "User (" + id().toString() + ") created from id with no Info")
     }
 
@@ -52,7 +53,7 @@ class User : Role<UserInfo>, IUUID2 {
         context: Context
     ) : super(json, clazz, context) {
         this.account = account
-        repo = context.userInfoRepo()
+        repo = context.userInfoRepo
         context.log.d(this, "User (" + id().toString() + ") created Json with class: " + clazz.getName())
     }
 
@@ -64,7 +65,8 @@ class User : Role<UserInfo>, IUUID2 {
     /////////////////////////
 
     // Convenience method to get the Type-safe id from the Class
-    fun id(): UUID2<User> {
+    override fun id(): UUID2<User> {
+        @Suppress("UNCHECKED_CAST")
         return super.id as UUID2<User>
     }
 
@@ -73,10 +75,6 @@ class User : Role<UserInfo>, IUUID2 {
         str += if (null != this.info()) "info=" + this.info()?.toPrettyJson(context) else "info=null"
         str += ", account=$account"
         return str
-    }
-
-    override fun infoId(): UUID2<IUUID2> {
-        return id as UUID2<IUUID2>
     }
 
     override fun toJson(): String {
@@ -93,14 +91,14 @@ class User : Role<UserInfo>, IUUID2 {
         return repo.fetchUserInfo(id())
     }
 
-    override fun updateInfo(updatedUserInfo: UserInfo): Result<UserInfo> {
-        context.log.d(this, "User (" + id() + "),  userInfo: " + updatedUserInfo)
+    override fun updateInfo(updatedInfo: UserInfo): Result<UserInfo> {
+        context.log.d(this, "User (" + id() + "),  userInfo: " + updatedInfo)
 
         // Optimistically Update the cached UserInfo
-        super.updateFetchInfoResult(Result.success(updatedUserInfo))
+        super.updateFetchInfoResult(Result.success(updatedInfo))
 
         // Update the Repo
-        return repo.updateUserInfo(updatedUserInfo)
+        return repo.updateUserInfo(updatedInfo)
     }
 
     override fun uuid2TypeStr(): String {
@@ -112,6 +110,7 @@ class User : Role<UserInfo>, IUUID2 {
     // - Methods to modify it's UserInfo   //
     // - Interacts with other Role objects //
     /////////////////////////////////////////
+
     // Note: This delegates to its internal Account Role object.
     // - User has no intimate knowledge of the AccountInfo object, other than
     //   its public methods.
@@ -121,7 +120,7 @@ class User : Role<UserInfo>, IUUID2 {
     //   number of books has reached the max.
     fun acceptBook(book: Book): Result<ArrayList<Book>> {
         context.log.d(this, "User (" + id() + "),  bookId: " + book.id())
-        if (fetchInfoFailureReason() != null) return Result.failure(Exception(fetchInfoFailureReason()))
+        fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
         if (hasReachedMaxAmountOfAcceptedPublicLibraryBooks())
             return Result.failure(Exception("User (" + id() + ") has reached maximum amount of accepted Library Books"))
@@ -142,7 +141,7 @@ class User : Role<UserInfo>, IUUID2 {
 
     fun unacceptBook(book: Book): Result<ArrayList<UUID2<Book>>> {
         context.log.d(this, "User (" + id() + "), bookId: " + book.id())
-        if (fetchInfoFailureReason() != null) return Result.failure(Exception(fetchInfoFailureReason()))
+        fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
         val unacceptResult: Result<ArrayList<UUID2<Book>>> = this.info()?.unacceptBook(book.id())
             ?: Result.failure(Exception("Error finding user info"))
@@ -158,44 +157,54 @@ class User : Role<UserInfo>, IUUID2 {
             unacceptResult
     }
 
-    fun accountInfo(): AccountInfo {
+    fun accountInfo(): AccountInfo? {
         return account.info()
     }
 
-    val isAccountInGoodStanding: Boolean
+    fun isAccountInGoodStanding(): Boolean {
         // Note: This delegates to this User's internal Account Role object.
-        get() {
-            context.log.d(this, "User (" + id() + ")")
-            val accountinfo: AccountInfo = accountInfo()
-            if (accountinfo == null) {
-                context.log.e(this, "User (" + id() + ") - AccountInfo is null")
-                return false
-            }
-            return accountinfo.isAccountInGoodStanding()
+        context.log.d(this, "User (" + id() + ")")
+        
+        accountInfo()?.let { accountInfo ->
+            return accountInfo.isAccountInGoodStanding
         }
+
+        context.log.e(this, "User (" + id() + ") - AccountInfo is null")
+        return false
+    }
 
     // Note: This delegates to this User's internal Account Role object.
     fun hasReachedMaxAmountOfAcceptedPublicLibraryBooks(): Boolean {
         context.log.d(this, "User (" + id() + ")")
-        val accountInfo: AccountInfo = accountInfo()
-        if (accountInfo == null) {
-            context.log.e(this, "User (" + id() + ") - AccountInfo is null")
+        
+        accountInfo()?.let { accountInfo ->
+            this.info()?.let { userInfo ->
+                val numPublicLibraryBooksAccepted: Int = userInfo.calculateAmountOfAcceptedPublicLibraryBooks()
+
+                // Note: This User Role Object delegates to its internal Account Role Object.
+                return accountInfo.hasReachedMaxAmountOfAcceptedLibraryBooks(numPublicLibraryBooksAccepted)
+            }
+            
+            context.log.e(this, "User (" + id() + ") - UserInfo is null")
             return false
         }
-        val numPublicLibraryBooksAccepted: Int = this.info().calculateAmountOfAcceptedPublicLibraryBooks()
-
-        // Note: This User Role Object delegates to its internal Account Role Object.
-        return accountInfo.hasReachedMaxAmountOfAcceptedLibraryBooks(numPublicLibraryBooksAccepted)
+        
+        context.log.e(this, "User (" + id() + ") - AccountInfo is null")
+        return false
     }
 
     fun hasAcceptedBook(book: Book): Boolean {
         context.log.d(this, "User (" + id() + "), book: " + book.id())
-        return if (fetchInfoFailureReason() != null) false else this.info().isBookIdAcceptedByThisUser(book.id())
+        return if (fetchInfoFailureReason() != null) 
+            false 
+        else 
+            this.info()?.isBookIdAcceptedByThisUser(book.id()) 
+                ?: false
     }
 
     fun findAllAcceptedBooks(): Result<ArrayList<Book>> {
         context.log.d(this, "User (" + id() + ")")
-        if (fetchInfoFailureReason() != null) return Result.failure(Exception(fetchInfoFailureReason()))
+        fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
         // Create the list of Domain Books from the list of Accepted Book ids
         val books: ArrayList<Book> = ArrayList<Book>()
@@ -221,7 +230,7 @@ class User : Role<UserInfo>, IUUID2 {
     // - All Role interactions are SOLELY directed via the Role object's public methods. (No access to references)
     fun giveBookToUser(book: Book, receivingUser: User): Result<ArrayList<Book>> {
         context.log.d(this, "User (" + id() + ") - book: " + book.id() + ", to receivingUser: " + receivingUser.id())
-        if (fetchInfoFailureReason() != null) return Result.failure(Exception(fetchInfoFailureReason()))
+        fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
         this.info()?.let { userInfo ->
             // Check this User has the Book
@@ -257,7 +266,7 @@ class User : Role<UserInfo>, IUUID2 {
     //   I'm siding with yes, since it just delegates to the Library Role Object.
     fun checkOutBookFromLibrary(book: Book, library: Library): Result<UUID2<Book>> {
         context.log.d(this, "User (" + id() + "), book: " + book.id() + ", library: " + library.id())
-        if (fetchInfoFailureReason() != null) return Result.failure(Exception(fetchInfoFailureReason()))
+        fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
         // Note: Simply delegating to the Library Role Object
         val checkoutBookResult: Result<Book> = library.checkOutBookToUser(book, this)
@@ -265,8 +274,9 @@ class User : Role<UserInfo>, IUUID2 {
             return Result.failure(checkoutBookResult.exceptionOrNull() ?: Exception("Error checking out book"))
         }
 
-        // Update Info, since we modified data for this Library // todo is this update needed here?
-        val updateInfoResult: Result<UserInfo> = updateInfo(this.info() ?: return Result.failure(Exception("Error updating user info")))
+        // Update Info, since we modified data for this User // todo - is this needed?
+        val updateInfoResult: Result<UserInfo> = updateInfo(this.info()
+            ?: return Result.failure(Exception("Error updating user info")))
         return if (updateInfoResult.isFailure)
             Result.failure(updateInfoResult.exceptionOrNull() ?: Exception("Error updating user info"))
         else
@@ -280,7 +290,7 @@ class User : Role<UserInfo>, IUUID2 {
     //   I'm siding with yes, since it just delegates to the Library Role Object.
     fun checkInBookToLibrary(book: Book, library: Library): Result<UUID2<Book>> {
         context.log.d(this, "User (" + id() + "), book: " + book.id() + ", library: " + library.id())
-        if (fetchInfoFailureReason() != null) return Result.failure(Exception(fetchInfoFailureReason()))
+        fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
         // Note: Simply delegating to the Library Role Object
         val bookResult: Result<Book> = library.checkInBookFromUser(book, this)
@@ -306,7 +316,7 @@ class User : Role<UserInfo>, IUUID2 {
         fun fetchUser(id: UUID2<User>, context: Context): Result<User> {
 
             // get the User's UserInfo
-            val userInfoResult: Result<UserInfo> = context.userInfoRepo().fetchUserInfo(id)
+            val userInfoResult: Result<UserInfo> = context.userInfoRepo.fetchUserInfo(id)
             if (userInfoResult.isFailure)
                 return Result.failure(userInfoResult.exceptionOrNull() ?: Exception("Error fetching user info"))
             val userInfo: UserInfo = (userInfoResult.getOrNull() ?:
@@ -314,12 +324,13 @@ class User : Role<UserInfo>, IUUID2 {
 
             // get the User's Account id
             val accountId: UUID2<Account> =
-                UUID2.fromUUID2(id, Account::class.java) as UUID2<Account> // accountId is the same as userId
-            val accountInfo: Result<AccountInfo> = context.accountInfoRepo().fetchAccountInfo(accountId)
+                UUID2.fromUUID2(id.toDomainUUID2(), Account::class.java) // accountId is the same as userId
+            val accountInfo: Result<AccountInfo> = context.accountInfoRepo.fetchAccountInfo(accountId)
             if (accountInfo.isFailure) return Result.failure(accountInfo.exceptionOrNull() ?: Exception("Error fetching account info"))
 
             // Get the User's Account
-            val accountInfo1: AccountInfo = (accountInfo as Result.Success<AccountInfo?>).value()
+            val accountInfo1: AccountInfo = (accountInfo.getOrNull() ?:
+                return Result.failure(Exception("Error fetching account info")))
             val account = Account(accountInfo1, context)
 
             // Create the User

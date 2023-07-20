@@ -8,8 +8,9 @@ import domain.user.User
  * IUserInfoRepo is an interface for the UserInfoRepo class.<br></br>
  * <br></br>
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 Kotlin conversion
  */
+
 interface IUserInfoRepo : IRepo {
     fun fetchUserInfo(id: UUID2<User>): Result<UserInfo?>?
     fun updateUserInfo(userInfo: UserInfo): Result<UserInfo?>?

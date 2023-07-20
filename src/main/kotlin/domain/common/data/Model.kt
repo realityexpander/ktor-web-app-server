@@ -1,6 +1,7 @@
 package domain.common.data
 
 import com.google.gson.GsonBuilder
+import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.Context
 import domain.common.data.info.DomainInfo
@@ -32,38 +33,42 @@ import domain.common.data.info.network.DTOInfo
  *    a DomainInfo object.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 Kotlin conversion
  */
-open class Model protected constructor(id: UUID2<*>) {
-    var _id: UUID2<*> // Can't make final due to need to set it during JSON deserialization. 🫤
 
-    // Also can't make it private due to Gson's need to access it during deserialization. 🫤
-    // todo Is there a better way to do this? (maybe another JSON library?)
-    init {
-        _id = UUID2(id)
-    }
+open class Model constructor(
+    open val id: UUID2<*>  // <-- prolly correct? 2
+) {
 
     ////////////////////////
     // Simple getters     //
     ////////////////////////
+
     open fun id(): UUID2<*> {
-        return _id
+        return id;
     }
 
     // EXCEPTIONAL CASE:
     // - This method is for JSON deserialization purposes & should only be used for such.
     // - It is not intended to be used for any other purpose.
     // - todo Is there a better way to do this?
-    fun _setIdFromImportedJson(_id: UUID2<*>) {
-        this._id = _id
+    @Suppress("FunctionName")
+    fun _setIdFromImportedJson(id: UUID2<*>) {
+//        this._id = _id
+//        this.id = id
+        // todo can we do a no-op?
     }
 
     fun toPrettyJson(): String {
-        return GsonBuilder().setPrettyPrinting().create().toJson(this)
+        return GsonBuilder().setPrettyPrinting().create().toJson(this) // cant use general case, need to add the adapters for the UUID2 maps?
     }
 
     fun toPrettyJson(context: Context): String {
         return context.gson.toJson(this)
+    }
+
+    interface HasId<TDomain : IUUID2> {
+        fun id(): UUID2<TDomain>
     }
 
     ///////////////////////////
@@ -72,15 +77,19 @@ open class Model protected constructor(id: UUID2<*>) {
     // - Entity.{Domain}Info //
     // - DTO.{Domain}Info    //
     ///////////////////////////
+
     interface ToDomainInfo<TDomainInfo : DomainInfo> {
         // *MUST* override
         // - Overridden method should return `id` with the correct type of UUID2 for the domain
         //   ie: `UUID2<User>` for the `User`, `UUID2<UserInfo>` for the UserInfo, etc.
-        abstract fun id(): UUID2<*>
+//        fun id(): UUID2<*>
 
-        val domainInfo: TDomainInfo  // Return reference to TDomainInfo, used when importing JSON
-            get() =
-                this as TDomainInfo
+//        val domainInfo: TDomainInfo  // Return reference to TDomainInfo, used when importing JSON
+//            get() =
+//                this as TDomainInfo
+        fun domainInfo(): TDomainInfo {
+            return this as TDomainInfo
+        }
 
         fun toDeepCopyDomainInfo(): TDomainInfo {    // **MUST** override, method should return a DEEP copy (& no original references)
             throw RuntimeException("DomainInfo:ToDomainInfo:toDeepCopyDomainInfo(): Must override this method")

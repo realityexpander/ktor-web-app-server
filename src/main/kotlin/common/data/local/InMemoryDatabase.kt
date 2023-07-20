@@ -13,11 +13,10 @@ import domain.common.data.info.local.EntityInfo
  * In a real implementation, this class would use a database driver to connect to a database for CRUD operations.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 Kotlin conversion
  */
 
-
-class InMemoryDatabase <TEntity : EntityInfo, TUUID2 : IUUID2> (  // todo reverse the type parameters to <TEntity : EntityInfo, TUUID2 : IUUID2>
+class InMemoryDatabase<TUUID2 : IUUID2, TEntity : EntityInfo> (
     fakeUrl: FakeURL,
     user: String,
     password: String
@@ -40,7 +39,7 @@ class InMemoryDatabase <TEntity : EntityInfo, TUUID2 : IUUID2> (  // todo revers
 
     override fun fetchEntityInfo(id: UUID2<TUUID2>): Result<TEntity> {
         // Simulate the request
-        val infoResult: TEntity = database.get(id)
+        val infoResult: TEntity = database[id]
             ?: return Result.failure(Exception("DB: Failed to get entityInfo, id: $id"))
         return Result.success(infoResult)
     }
@@ -57,6 +56,7 @@ class InMemoryDatabase <TEntity : EntityInfo, TUUID2 : IUUID2> (  // todo revers
     override fun updateEntityInfo(entityInfo: TEntity): Result<TEntity> {
         // Simulate the request
         try {
+            @Suppress("UNCHECKED_CAST")
             database[entityInfo.id() as UUID2<TUUID2>] = entityInfo
         } catch (e: Exception) {
             return Result.failure(e)
@@ -66,14 +66,17 @@ class InMemoryDatabase <TEntity : EntityInfo, TUUID2 : IUUID2> (  // todo revers
 
     override fun addEntityInfo(entityInfo: TEntity): Result<TEntity> {
         // Simulate the request
+        @Suppress("UNCHECKED_CAST")
         if (database.containsKey(entityInfo.id() as UUID2<TUUID2>)) {
             return Result.failure(Exception("DB: Entity already exists, did you mean update?, entityInfo: $entityInfo"))
         }
+        @Suppress("UNCHECKED_CAST")
         database[entityInfo.id() as UUID2<TUUID2>] = entityInfo
         return Result.success(entityInfo)
     }
 
     override fun upsertEntityInfo(entityInfo: TEntity): Result<TEntity> {
+        @Suppress("UNCHECKED_CAST")
         return if (database.containsKey(entityInfo.id() as UUID2<TUUID2>)) {
             updateEntityInfo(entityInfo)
         } else {
@@ -82,6 +85,7 @@ class InMemoryDatabase <TEntity : EntityInfo, TUUID2 : IUUID2> (  // todo revers
     }
 
     override fun deleteEntityInfo(entityInfo: TEntity): Result<TEntity> {
+        @Suppress("UNCHECKED_CAST")
         return if (database.remove(entityInfo.id() as UUID2<TUUID2>) == null) {
             Result.failure(Exception("DB: Failed to delete entityInfo, entityInfo: $entityInfo"))
         } else

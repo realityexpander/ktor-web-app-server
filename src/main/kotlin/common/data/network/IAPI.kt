@@ -6,10 +6,12 @@ import common.uuid2.UUID2
 /**
  * IAPI is an interface for the API class.
  *
+ * API uses Model.DTOs to transfer data to/from the Domain from API.
+ *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 Kotlin conversion
  */
-// API uses Model.DTOs
+
 interface IAPI<TUUID2 : IUUID2, TDTOInfo> {
     fun fetchDtoInfo(id: UUID2<TUUID2>): Result<TDTOInfo>
     fun fetchDtoInfo(uuidStr: String): Result<TDTOInfo>

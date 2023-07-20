@@ -1,13 +1,14 @@
 package common.log
 
 /**
- * Log Role<br></br>
- * <br></br>
+ * Log Role
+ *
  * Logs to the system console
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 Kotlin conversion
  */
+
 open class Log : ILog {
     // These could be swapped out for files or network calls.
     private fun debug(tag: String, msg: String) {

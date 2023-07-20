@@ -6,8 +6,9 @@ package common.data.network
  * This is a placeholder for a real FakeHttpClient class.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 Kotlin conversion
  */
+
 class FakeHttpClient {
     private val client: String
 

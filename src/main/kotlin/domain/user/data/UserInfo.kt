@@ -16,37 +16,29 @@ import java.util.*
  * Holds the information about a User, including the User's name, email, and the list of Books the User has accepted.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 Kotlin conversion
  */
+
 class UserInfo(
-    val id: UUID2<User>,  // note this is a UUID2<User> not a UUID2<UserInfo>, it is the id of the User.
+    id: UUID2<User>,  // note this is a UUID2<User> not a UUID2<UserInfo>, it is the id of the User.
     val name: String,
     val email: String,
     private val acceptedBookIdToSourceLibraryIdMap: MutableMap<UUID2<Book>, UUID2<Library>> = mutableMapOf()
-) : DomainInfo(id.toDomainUUID2()),
+) : DomainInfo(id),
     Model.ToDomainInfo<UserInfo>
 {
-//    private val acceptedBookIdToSourceLibraryIdMap // BookId -> LibraryId
-//            : MutableMap<UUID2<Book>, UUID2<Library>>
-//
-//    init {
-//        this.acceptedBookIdToSourceLibraryIdMap = acceptedBookIdToSourceLibraryIdMap
-//    }
-
     constructor(userInfo: UserInfo) : this(
         userInfo.id(),
         userInfo.name,
         userInfo.email,
         userInfo.acceptedBookIdToSourceLibraryIdMap
     )
-
     constructor(
         uuid: UUID,
         name: String,
         email: String,
         acceptedBookIdToSourceLibraryIdMap: MutableMap<UUID2<Book>, UUID2<Library>>
     ) : this(UUID2<User>(uuid, User::class.java), name, email, acceptedBookIdToSourceLibraryIdMap)
-
     constructor(uuid2: UUID2<User>, name: String, email: String) : this(uuid2, name, email, mutableMapOf())
     constructor(uuid: UUID, name: String, email: String) : this(UUID2<User>(uuid, User::class.java), name, email)
     constructor(uuid: String, name: String, email: String) : this(UUID.fromString(uuid), name, email)
@@ -57,17 +49,14 @@ class UserInfo(
 
     // Convenience method to get the Type-safe id from the Class
     override fun id(): UUID2<User> {
-//        return super.id() as UUID2<User>
-        return this.id
-    }
-
-    override fun toString(): String {
-        return this.toPrettyJson()
+        @Suppress("UNCHECKED_CAST")
+        return this.id as UUID2<User> // todo remove and use direct val access
     }
 
     ////////////////////////////////////////
     // User Info Business Logic Methods   //
     ////////////////////////////////////////
+
     fun isBookIdAcceptedByThisUser(bookId: UUID2<Book>): Boolean {
         return acceptedBookIdToSourceLibraryIdMap.containsKey(bookId)
     }
@@ -113,12 +102,12 @@ class UserInfo(
         return acceptedBookIdToSourceLibraryIdMap.toImmutableMap()
     }
 
-    fun findAllAcceptedPublicLibraryBookIds(): ArrayList<UUID2<Book>> {
+    private fun findAllAcceptedPublicLibraryBookIds(): ArrayList<UUID2<Book>> {
         val acceptedPublicLibraryBookIds: ArrayList<UUID2<Book>> = ArrayList<UUID2<Book>>()
 
         for (bookId in acceptedBookIdToSourceLibraryIdMap.keys) {
             if (acceptedBookIdToSourceLibraryIdMap[bookId]
-                    ?.uuid2TypeStr()
+                    ?.uuid2Type
                     .equals(UUID2.calcUUID2TypeStr(Library::class.java))
             ) {
                 acceptedPublicLibraryBookIds.add(bookId)
@@ -133,7 +122,7 @@ class UserInfo(
 
         for (bookId in acceptedBookIdToSourceLibraryIdMap.keys) {
             if (acceptedBookIdToSourceLibraryIdMap[bookId]
-                    ?.uuid2TypeStr()
+                    ?.uuid2Type
                     .equals(UUID2.calcUUID2TypeStr(PrivateLibrary::class.java))
             ) {
                 acceptedPrivateLibraryBookIds.add(bookId)

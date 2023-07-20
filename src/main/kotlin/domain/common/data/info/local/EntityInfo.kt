@@ -10,6 +10,7 @@ import domain.common.data.Model
  * "Dumb" Data Transfer Object for Database EntityBookInfo
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 Kotlin conversion
  */
-open class EntityInfo protected constructor(id: UUID2<IUUID2>) : Model(id)
+
+open class EntityInfo protected constructor(id: UUID2<*>) : Model(id)
