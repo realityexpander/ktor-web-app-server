@@ -1,5 +1,6 @@
 package domain.user.data
 
+import com.realityexpander.common.data.local.FileDatabase
 import common.uuid2.UUID2
 import domain.book.Book
 import domain.common.data.Model
@@ -7,6 +8,7 @@ import domain.common.data.info.DomainInfo
 import domain.library.Library
 import domain.library.PrivateLibrary
 import domain.user.User
+import kotlinx.serialization.Serializable
 import okhttp3.internal.toImmutableMap
 import java.util.*
 
@@ -42,6 +44,8 @@ class UserInfo(
     constructor(uuid2: UUID2<User>, name: String, email: String) : this(uuid2, name, email, mutableMapOf())
     constructor(uuid: UUID, name: String, email: String) : this(UUID2<User>(uuid, User::class.java), name, email)
     constructor(uuid: String, name: String, email: String) : this(UUID.fromString(uuid), name, email)
+
+    constructor() : this(UUID.randomUUID(), "", "")
 
     ///////////////////////////////
     // Published Simple Getters  //  // note: no setters, all changes are made through business logic methods.

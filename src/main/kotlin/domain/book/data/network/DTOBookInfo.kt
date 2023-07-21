@@ -1,5 +1,7 @@
 package domain.book.data.network
 
+import com.google.gson.Gson
+import com.realityexpander.common.data.local.FileDatabase
 import common.HumanDate
 import common.uuid2.UUID2
 import domain.Context
@@ -8,6 +10,14 @@ import domain.book.data.BookInfo
 import domain.common.data.Model
 import domain.common.data.info.Info
 import domain.common.data.info.network.DTOInfo
+import kotlinx.serialization.Contextual
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import java.util.*
 
 /**
  * DTOBookInfo
@@ -18,8 +28,23 @@ import domain.common.data.info.network.DTOInfo
  * @since 0.12 Kotlin conversion
  */
 
+// Uses custom Gson serializer, deprecated for kotlin serialization
+object DTOBookInfoSerializer : KSerializer<DTOBookInfo> {
+    override val descriptor = PrimitiveSerialDescriptor("DTOBookInfo", PrimitiveKind.STRING)
+
+    override fun deserialize(decoder: Decoder): DTOBookInfo {
+        // todo - use Context.gson, or kotlin serialization
+        return Gson().fromJson(decoder.decodeString(), DTOBookInfo::class.java)
+    }
+
+    override fun serialize(encoder: Encoder, value: DTOBookInfo) {
+        encoder.encodeString(value.toPrettyJson())
+    }
+}
+
+@Serializable
 class DTOBookInfo(
-    id: UUID2<Book>,
+    override val id: UUID2<@Contextual Book> = UUID2<Book>(UUID.randomUUID(), Book::class.java),
     val title: String,
     val author: String,
     val description: String,
@@ -31,9 +56,11 @@ class DTOBookInfo(
     Model.ToDomainInfo<BookInfo>,
     Model.ToDomainInfo.HasToDeepCopyDomainInfo<BookInfo>,
     Info.ToInfo<DTOBookInfo>,
-    Info.HasToDeepCopyInfo<DTOBookInfo>
+    Info.HasToDeepCopyInfo<DTOBookInfo>,
+    FileDatabase.HasId<UUID2<Book>>
 {
     constructor(json: String, context: Context) : this(context.gson.fromJson(json, DTOBookInfo::class.java))
+    constructor() : this(UUID2<Book>(UUID.randomUUID(), Book::class.java), "", "", "")
 
     /////////////////////////////////////////////////////////////////////
     // EntityInfo <-> DomainInfo conversion                            //
@@ -73,6 +100,11 @@ class DTOBookInfo(
                 description
     }
 
+    override fun id(): UUID2<Book> {
+        @Suppress("UNCHECKED_CAST")
+        return super.id() as UUID2<Book>
+    }
+
     ///////////////////////////////////////////
     // DTOs don't have any business logic    //
     // - All "Info" changes are done in the  //
@@ -91,6 +123,7 @@ class DTOBookInfo(
     /////////////////////////////
     // ToInfo implementation   //
     /////////////////////////////
+
     override fun toDeepCopyInfo(): DTOBookInfo {
         // note: implement deep copy (if class is not flat.)
         return DTOBookInfo(this)

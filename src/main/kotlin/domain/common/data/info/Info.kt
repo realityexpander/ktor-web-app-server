@@ -29,11 +29,11 @@ interface Info<TInfo : Model> {
     abstract val info: AtomicReference<TInfo>  // Holds the `Info` object for the Role.
     val isInfoFetched: Boolean                 // Return true if Info has been successfully fetched from server/DB.
 
-    fun fetchInfo(): TInfo?                           // Fetch data for the Info from server/DB.
-    fun fetchInfoResult(): Result<TInfo>              // Fetch Result<T> for the Info from server/DB.
-    fun updateInfo(updatedInfo: TInfo): Result<TInfo> // Update Info to server/DB.
-    fun refreshInfo(): Result<TInfo>                  // Set Info data to `null` and fetches Info from server/DB.
-    fun fetchInfoFailureReason(): String?             // Performs fetch for Info and returns failure reason, or `null` if successful.
+    suspend fun fetchInfo(): TInfo?                           // Fetch data for the Info from server/DB.
+    suspend fun fetchInfoResult(): Result<TInfo>              // Fetch Result<T> for the Info from server/DB.
+    suspend fun updateInfo(updatedInfo: TInfo): Result<TInfo> // Update Info to server/DB.
+    suspend fun refreshInfo(): Result<TInfo>                  // Set Info data to `null` and fetches Info from server/DB.
+    suspend fun fetchInfoFailureReason(): String?             // Performs fetch for Info and returns failure reason, or `null` if successful.
     fun cachedInfo(): AtomicReference<TInfo>          // Return thread-safe Info from cache.
 
     // Performs Atomic update of cachedInfo

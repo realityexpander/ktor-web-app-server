@@ -83,7 +83,7 @@ class LibraryInfo(
         return upsertUserIdIntoRegisteredUserCheckedOutBookMap(userId)
     }
 
-    fun checkOutPublicLibraryBookToUser(book: Book, user: User): Result<Book> {
+    suspend fun checkOutPublicLibraryBookToUser(book: Book, user: User): Result<Book> {
         //  if(!book.isBookFromPublicLibrary())   // todo - should only allow public library books to be checked out from public libraries?
         //    return new Result.Failure<>(new IllegalArgumentException("Book is not from a public library, bookId: " + book.id()));
 
@@ -115,7 +115,7 @@ class LibraryInfo(
         return Result.success(bookId)
     }
 
-    fun checkOutPrivateLibraryBookToUser(book: Book, user: User): Result<Book> {
+    suspend fun checkOutPrivateLibraryBookToUser(book: Book, user: User): Result<Book> {
         // Private library book check-outs skip Account checks.
         val checkOutBookResult = checkOutBookIdToUserId(book.id(), user.id())
         if (checkOutBookResult.isFailure) return Result.failure(checkOutBookResult.exceptionOrNull()
@@ -128,7 +128,7 @@ class LibraryInfo(
             Result.success(book)
     }
 
-    fun checkInPublicLibraryBookFromUser(book: Book, user: User): Result<Book> {
+    suspend fun checkInPublicLibraryBookFromUser(book: Book, user: User): Result<Book> {
         //    if(!book.isBookFromPublicLibrary()) // todo - should only allow public library books to be checked in?
         //        return new Result.Failure<>(new IllegalArgumentException("Book is not from a public library, bookId: " + book.id()));
 
@@ -143,7 +143,7 @@ class LibraryInfo(
             Result.success(book)
     }
 
-    fun checkInPrivateLibraryBookFromUser(book: Book, user: User): Result<Book> {
+    suspend fun checkInPrivateLibraryBookFromUser(book: Book, user: User): Result<Book> {
         //    if(!book.isBookFromPrivateLibrary()) // todo - should not allow private library books to be checked in from public library?
         //        return new Result.Failure<>(new IllegalArgumentException("Book is not from private library, bookId: " + book.id()));
 
@@ -179,7 +179,7 @@ class LibraryInfo(
             Result.success(bookId)
     }
 
-    fun transferCheckedOutBookFromUserToUser(
+    suspend fun transferCheckedOutBookFromUserToUser(
         book: Book,
         fromUser: User,
         toUser: User

@@ -68,12 +68,12 @@ open class Library : Role<LibraryInfo>, IUUID2 {
     // Role/UUID2 Required Overrides  //
     /////////////////////////////////////
 
-    override fun fetchInfoResult(): Result<LibraryInfo> {
+    override suspend fun fetchInfoResult(): Result<LibraryInfo> {
         // context.log.d(this,"Library (" + this.id.toString() + ") - fetchInfoResult"); // LEAVE for debugging
         return repo.fetchLibraryInfo(id())
     }
 
-    override fun updateInfo(updatedInfo: LibraryInfo): Result<LibraryInfo> {
+    override suspend fun updateInfo(updatedInfo: LibraryInfo): Result<LibraryInfo> {
         // context.log.d(this,"Library (" + this.id.toString() + ") - updateInfo, newInfo: " + newInfo.toString());  // LEAVE for debugging
 
         // Optimistically Update the Cached LibraryInfo
@@ -95,7 +95,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
     // - Communicate with other ROle objects //
     ///////////////////////////////////////////
 
-    open fun checkOutBookToUser(book: Book, user: User): Result<Book> {
+    open suspend fun checkOutBookToUser(book: Book, user: User): Result<Book> {
         context.log.d(this, "Library (" + id() + ") - bookId: " + book.id() + ", userId: " + user.id())
         fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
         if (isUnableToFindOrRegisterUser(user)) return Result.failure(Exception("User is not known, userId: " + user.id()))
@@ -128,7 +128,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
             Result.success(checkedOutBook)
     }
 
-    open fun checkInBookFromUser(book: Book, user: User): Result<Book> {
+    open suspend fun checkInBookFromUser(book: Book, user: User): Result<Book> {
         context.log.d(this, "Library (${id()}) - bookId ${book.id()} from userID ${user.id()}")
         fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
@@ -161,7 +161,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
             Result.success(book)
     }
 
-    fun transferCheckedOutBookSourceLibraryToThisLibrary(bookToTransfer: Book, user: User): Result<Book> {
+    suspend fun transferCheckedOutBookSourceLibraryToThisLibrary(bookToTransfer: Book, user: User): Result<Book> {
         context.log.d(this, "Library (${id()}) - bookId ${bookToTransfer.id()} from userID ${user.id()}")
         fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
@@ -200,7 +200,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
     }
 
     // Note: this retains the Checkout status of the User
-    fun transferBookSourceLibraryToThisLibrary(bookToTransfer: Book): Result<Book> {
+    suspend fun transferBookSourceLibraryToThisLibrary(bookToTransfer: Book): Result<Book> {
         context.log.d(this, "Library (${id()}) - bookId ${bookToTransfer.id()}")
         fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
@@ -265,7 +265,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
 
     // Note: This Library Role Object enforces the rule:
     //   - if a User is not known, they are added as a new user.   // todo change to Result<> return type
-    fun isUnableToFindOrRegisterUser(user: User): Boolean {
+    suspend fun isUnableToFindOrRegisterUser(user: User): Boolean {
         context.log.d(this, "Library(${id()}) - userId ${user.id()}")
         if (fetchInfoFailureReason() != null) return true
         if (isKnownUser(user)) {
@@ -282,7 +282,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
         return updateInfoResult.isFailure
     }
 
-    fun isKnownBook(book: Book): Boolean {
+    suspend fun isKnownBook(book: Book): Boolean {
         context.log.d(this, "Library(${id()}) - bookId ${book.id()}")
         return if (fetchInfoFailureReason() != null)
             false
@@ -291,11 +291,11 @@ open class Library : Role<LibraryInfo>, IUUID2 {
                 ?: false
     }
 
-    fun isUnknownBook(book: Book): Boolean {
+    suspend fun isUnknownBook(book: Book): Boolean {
         return !isKnownBook(book)
     }
 
-    fun isKnownUser(user: User): Boolean {
+    suspend fun isKnownUser(user: User): Boolean {
         context.log.d(this, "Library(${id()}) - userId ${user.id()}")
         return if (fetchInfoFailureReason() != null)
             false
@@ -304,7 +304,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
                 ?: false
     }
 
-    fun isBookAvailable(book: Book): Boolean {
+    suspend fun isBookAvailable(book: Book): Boolean {
         context.log.d(this, "Library(${id()}) - bookId ${book.id()}")
         return if (fetchInfoFailureReason() != null)
             false
@@ -313,7 +313,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
                 ?: false
     }
 
-    fun isBookCheckedOutByAnyUser(book: Book): Boolean {  // todo return Result<>?
+    suspend fun isBookCheckedOutByAnyUser(book: Book): Boolean {  // todo return Result<>?
         context.log.d(this, "Library(${id()}) - bookId ${book.id()}")
 
         return if (fetchInfoFailureReason() != null)
@@ -323,7 +323,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
                 ?: false
     }
 
-    fun findUserOfCheckedOutBook(book: Book): Result<User> {
+    suspend fun findUserOfCheckedOutBook(book: Book): Result<User> {
         context.log.d(this, "Library(${id()}) - bookId ${book.id()}")
         fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
@@ -349,7 +349,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
     // Published Role Reporting Methods    //
     /////////////////////////////////////////
 
-    fun findBooksCheckedOutByUser(user: User): Result<ArrayList<Book>> {
+    suspend fun findBooksCheckedOutByUser(user: User): Result<ArrayList<Book>> {
         context.log.d(this, "Library(${id()}) - userId ${user.id()}")
         fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
@@ -375,7 +375,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
         return Result.success(books)
     }
 
-    fun calculateAvailableBookIdToNumberAvailableList(): Result<Map<Book, Long>> {
+    suspend fun calculateAvailableBookIdToNumberAvailableList(): Result<Map<Book, Long>> {
         context.log.d(this, "Library (" + id() + ")")
         fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
@@ -404,12 +404,12 @@ open class Library : Role<LibraryInfo>, IUUID2 {
     /////////////////////////////////////////
 
     // Intention revealing method name
-    fun addTestBookToLibrary(book: Book, count: Int): Result<Book> {
+    suspend fun addTestBookToLibrary(book: Book, count: Int): Result<Book> {
         context.log.d(this, "Library (" + id() + ") book: " + book + ", count: " + count)
         return addBookToLibrary(book, count)
     }
 
-    fun addBookToLibrary(book: Book, count: Int): Result<Book> {
+    suspend fun addBookToLibrary(book: Book, count: Int): Result<Book> {
         context.log.d(this, "Library (" + id() + ") book: " + book + ", count: " + count)
         fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
@@ -434,7 +434,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
         println()
     }
 
-    fun transferBookAndCheckOutFromUserToUser(book: Book, fromUser: User, toUser: User): Result<Book> {
+    suspend fun transferBookAndCheckOutFromUserToUser(book: Book, fromUser: User, toUser: User): Result<Book> {
         context.log.d(this, "Library (" + id() + ") book: " + book + ", fromUser: " + fromUser + ", toUser: " + toUser)
         fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 

@@ -1,12 +1,13 @@
 package domain.common.data
 
 import com.google.gson.GsonBuilder
-import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.Context
 import domain.common.data.info.DomainInfo
 import domain.common.data.info.local.EntityInfo
 import domain.common.data.info.network.DTOInfo
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 /**
  * **Model** - Top of data "Info" hierarchy
@@ -36,8 +37,10 @@ import domain.common.data.info.network.DTOInfo
  * @since 0.12 Kotlin conversion
  */
 
+@Serializable
 open class Model constructor(
-    open val id: UUID2<*>  // <-- prolly correct? 2
+    @Transient
+    open val id: UUID2<*> = UUID2(UUID2.randomUUID2(UUID2::class.java))
 ) {
 
     ////////////////////////
@@ -53,7 +56,7 @@ open class Model constructor(
     // - It is not intended to be used for any other purpose.
     // - todo Is there a better way to do this?
     @Suppress("FunctionName")
-    fun _setIdFromImportedJson(id: UUID2<*>) {
+    fun _setIdFromImportedJson(id: UUID2<*>) { // todo test - is this necessary anymore? remove?
 //        this._id = _id
 //        this.id = id
         // todo can we do a no-op?
@@ -67,8 +70,12 @@ open class Model constructor(
         return context.gson.toJson(this)
     }
 
-    interface HasId<TDomain : IUUID2> {
-        fun id(): UUID2<TDomain>
+//    interface HasId1<TDomain : IUUID2> {
+//        fun id(): UUID2<TDomain>
+//    }
+
+    interface HasId<TKey : UUID2<*>> {
+        abstract val id: TKey
     }
 
     ///////////////////////////
@@ -82,7 +89,7 @@ open class Model constructor(
         // *MUST* override
         // - Overridden method should return `id` with the correct type of UUID2 for the domain
         //   ie: `UUID2<User>` for the `User`, `UUID2<UserInfo>` for the UserInfo, etc.
-//        fun id(): UUID2<*>
+        fun id(): UUID2<*>
 
 //        val domainInfo: TDomainInfo  // Return reference to TDomainInfo, used when importing JSON
 //            get() =

@@ -10,8 +10,6 @@ import domain.common.Role
 import domain.library.Library
 import domain.user.data.UserInfo
 import domain.user.data.UserInfoRepo
-import kotlinx.serialization.Contextual
-import kotlinx.serialization.Serializable
 
 /**
  * User Role Object
@@ -23,7 +21,7 @@ import kotlinx.serialization.Serializable
  */
 
 class User : Role<UserInfo>, IUUID2 {
-    private val repo: UserInfoRepo
+    private val repo: UserInfoRepo  // convenience reference to the UserInfoRepo in the Context
 
     // User's Account Role Object
     private val account: Account
@@ -37,7 +35,6 @@ class User : Role<UserInfo>, IUUID2 {
         repo = context.userInfoRepo
         context.log.d(this, "User (" + id().toString() + ") created from Info")
     }
-
     constructor(
         id: UUID2<User>,
         account: Account,
@@ -47,7 +44,6 @@ class User : Role<UserInfo>, IUUID2 {
         repo = context.userInfoRepo
         context.log.d(this, "User (" + id().toString() + ") created from id with no Info")
     }
-
     constructor(
         json: String,
         clazz: Class<UserInfo>,  // class type of json object
@@ -58,7 +54,6 @@ class User : Role<UserInfo>, IUUID2 {
         repo = context.userInfoRepo
         context.log.d(this, "User (" + id().toString() + ") created Json with class: " + clazz.getName())
     }
-
     constructor(json: String, account: Account, context: Context) : this(json, UserInfo::class.java, account, context)
     constructor(account: Account, context: Context) : this(UUID2.randomUUID2(), account, context)
 
@@ -66,7 +61,7 @@ class User : Role<UserInfo>, IUUID2 {
     // Simple Getters      //
     /////////////////////////
 
-    // Convenience method to get the Type-safe id from the Class
+    // Gets the Type-safe id from this Class
     override fun id(): UUID2<User> {
         @Suppress("UNCHECKED_CAST")
         return super.id as UUID2<User>
@@ -74,13 +69,13 @@ class User : Role<UserInfo>, IUUID2 {
 
     override fun toString(): String {
         var str = "User (" + id().toString() + ") - "
-        str += if (null != this.info()) "info=" + this.info()?.toPrettyJson(context) else "info=null"
+        str += if (null != this.info.get()) "info=" + this.info.get()?.toPrettyJson(context) else "info=null"
         str += ", account=$account"
         return str
     }
 
     override fun toJson(): String {
-        val pair: Pair<UserInfo, AccountInfo> = Pair(info() as UserInfo, account.info() as AccountInfo)
+        val pair: Pair<UserInfo, AccountInfo> = Pair(info.get() as UserInfo, account.info.get() as AccountInfo)
         return context.gson.toJson(pair)
     }
 
@@ -88,12 +83,12 @@ class User : Role<UserInfo>, IUUID2 {
     // IRole/UUID2 Required Overrides  //
     /////////////////////////////////////
 
-    override fun fetchInfoResult(): Result<UserInfo> {
+    override suspend fun fetchInfoResult(): Result<UserInfo> {
         // context.log.d(this,"User (" + this.id.toString() + ") - fetchInfoResult"); // LEAVE for debugging
         return repo.fetchUserInfo(id())
     }
 
-    override fun updateInfo(updatedInfo: UserInfo): Result<UserInfo> {
+    override suspend fun updateInfo(updatedInfo: UserInfo): Result<UserInfo> {
         context.log.d(this, "User (" + id() + "),  userInfo: " + updatedInfo)
 
         // Optimistically Update the cached UserInfo
@@ -120,7 +115,7 @@ class User : Role<UserInfo>, IUUID2 {
     // - This method uses the UserInfo object to calculate the number of books the user has
     //   and then delegates to the AccountInfo object to determine if the
     //   number of books has reached the max.
-    fun acceptBook(book: Book): Result<ArrayList<Book>> {
+    suspend fun acceptBook(book: Book): Result<ArrayList<Book>> {
         context.log.d(this, "User (" + id() + "),  bookId: " + book.id())
         fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
@@ -141,7 +136,7 @@ class User : Role<UserInfo>, IUUID2 {
             findAllAcceptedBooks()
     }
 
-    fun unacceptBook(book: Book): Result<ArrayList<UUID2<Book>>> {
+    suspend fun unacceptBook(book: Book): Result<ArrayList<UUID2<Book>>> {
         context.log.d(this, "User (" + id() + "), bookId: " + book.id())
         fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
@@ -159,11 +154,11 @@ class User : Role<UserInfo>, IUUID2 {
             unacceptResult
     }
 
-    fun accountInfo(): AccountInfo? {
+    suspend fun accountInfo(): AccountInfo? {
         return account.info()
     }
 
-    fun isAccountInGoodStanding(): Boolean {
+    suspend fun isAccountInGoodStanding(): Boolean {
         // Note: This delegates to this User's internal Account Role object.
         context.log.d(this, "User (" + id() + ")")
         
@@ -176,7 +171,7 @@ class User : Role<UserInfo>, IUUID2 {
     }
 
     // Note: This delegates to this User's internal Account Role object.
-    fun hasReachedMaxAmountOfAcceptedPublicLibraryBooks(): Boolean {
+    suspend fun hasReachedMaxAmountOfAcceptedPublicLibraryBooks(): Boolean {
         context.log.d(this, "User (" + id() + ")")
         
         accountInfo()?.let { accountInfo ->
@@ -195,7 +190,7 @@ class User : Role<UserInfo>, IUUID2 {
         return false
     }
 
-    fun hasAcceptedBook(book: Book): Boolean {
+    suspend fun hasAcceptedBook(book: Book): Boolean {
         context.log.d(this, "User (" + id() + "), book: " + book.id())
         return if (fetchInfoFailureReason() != null) 
             false 
@@ -204,7 +199,7 @@ class User : Role<UserInfo>, IUUID2 {
                 ?: false
     }
 
-    fun findAllAcceptedBooks(): Result<ArrayList<Book>> {
+    suspend fun findAllAcceptedBooks(): Result<ArrayList<Book>> {
         context.log.d(this, "User (" + id() + ")")
         fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
@@ -230,7 +225,7 @@ class User : Role<UserInfo>, IUUID2 {
     // - Notice that we are politely asking each Role object to Accept and UnAccept a Book.
     // - No where are there any databases being accessed directly, nor knowledge of where the data comes from.
     // - All Role interactions are SOLELY directed via the Role object's public methods. (No access to references)
-    fun giveBookToUser(book: Book, receivingUser: User): Result<ArrayList<Book>> {
+    suspend fun giveBookToUser(book: Book, receivingUser: User): Result<ArrayList<Book>> {
         context.log.d(this, "User (" + id() + ") - book: " + book.id() + ", to receivingUser: " + receivingUser.id())
         fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
@@ -266,7 +261,7 @@ class User : Role<UserInfo>, IUUID2 {
     // Convenience method to Check Out a Book from a Library
     // - Is it OK to also have this method in the Library Role Object?
     //   I'm siding with yes, since it just delegates to the Library Role Object.
-    fun checkOutBookFromLibrary(book: Book, library: Library): Result<UUID2<Book>> {
+    suspend fun checkOutBookFromLibrary(book: Book, library: Library): Result<UUID2<Book>> {
         context.log.d(this, "User (" + id() + "), book: " + book.id() + ", library: " + library.id())
         fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
@@ -290,7 +285,7 @@ class User : Role<UserInfo>, IUUID2 {
     // Convenience method to Check In a Book to a Library
     // - Is it OK to also have this method in the Library Role Object?
     //   I'm siding with yes, since it just delegates to the Library Role Object.
-    fun checkInBookToLibrary(book: Book, library: Library): Result<UUID2<Book>> {
+    suspend fun checkInBookToLibrary(book: Book, library: Library): Result<UUID2<Book>> {
         context.log.d(this, "User (" + id() + "), book: " + book.id() + ", library: " + library.id())
         fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 

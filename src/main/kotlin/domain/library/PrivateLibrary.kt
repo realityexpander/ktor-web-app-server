@@ -103,7 +103,7 @@ class PrivateLibrary : Library, IUUID2 {
     // PrivateLibrary Domain Business Logic Methods //
     //////////////////////////////////////////////////
 
-    override fun checkOutBookToUser(book: Book, user: User): Result<Book> {
+    override suspend fun checkOutBookToUser(book: Book, user: User): Result<Book> {
         context.log.d(this, "checkOutBookToUser() called, bookId: " + book.id() + ", userId: " + user.id())
         fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
@@ -140,7 +140,7 @@ class PrivateLibrary : Library, IUUID2 {
             checkOutResult
     }
 
-    override fun checkInBookFromUser(book: Book, user: User): Result<Book> {
+    override suspend fun checkInBookFromUser(book: Book, user: User): Result<Book> {
         context.log.d(this, "checkInBookFromUser() called, bookId: " + book.id() + ", userId: " + user.id())
         fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
         if (!isForOnlyOneBook) {

@@ -28,7 +28,7 @@ class BookInfoRepo @JvmOverloads constructor(
     override val log: ILog = Log()
 ) : Repo(log), IBookInfoRepo {
 
-    override fun fetchBookInfo(id: UUID2<Book>): Result<BookInfo> {
+    override suspend fun fetchBookInfo(id: UUID2<Book>): Result<BookInfo> {
         log.d(this, "bookId $id")
 
         // Make the request to API
@@ -64,7 +64,7 @@ class BookInfoRepo @JvmOverloads constructor(
         return Result.success(bookInfo)
     }
 
-    override fun updateBookInfo(bookInfo: BookInfo): Result<BookInfo> {
+    override suspend fun updateBookInfo(bookInfo: BookInfo): Result<BookInfo> {
         log.d(this, "bookInfo: $bookInfo")
         val saveResult = saveBookInfoToApiAndDB(bookInfo, UPDATE)
 
@@ -75,7 +75,7 @@ class BookInfoRepo @JvmOverloads constructor(
         return saveResult
     }
 
-    override fun addBookInfo(bookInfo: BookInfo): Result<BookInfo> {
+    override suspend fun addBookInfo(bookInfo: BookInfo): Result<BookInfo> {
         log.d(this, "bookInfo: $bookInfo")
         val saveResult = saveBookInfoToApiAndDB(bookInfo, ADD)
 
@@ -86,7 +86,7 @@ class BookInfoRepo @JvmOverloads constructor(
         return saveResult
     }
 
-    override fun upsertBookInfo(bookInfo: BookInfo): Result<BookInfo> {
+    override suspend fun upsertBookInfo(bookInfo: BookInfo): Result<BookInfo> {
         log.d(this, "bookId: " + bookInfo.id())
         val saveResult = saveBookInfoToApiAndDB(bookInfo, UPSERT)
 
@@ -108,7 +108,7 @@ class BookInfoRepo @JvmOverloads constructor(
         DELETE
     }
 
-    private fun saveBookInfoToApiAndDB(
+    private suspend fun saveBookInfoToApiAndDB(
         bookInfo: BookInfo,
         updateKind: UpdateKind
     ): Result<BookInfo> {
@@ -151,7 +151,7 @@ class BookInfoRepo @JvmOverloads constructor(
         return Result.success(bookInfo)
     }
 
-    fun upsertTestEntityBookInfoToDB(entityBookInfo: EntityBookInfo): Result<BookInfo> {
+    suspend fun upsertTestEntityBookInfoToDB(entityBookInfo: EntityBookInfo): Result<BookInfo> {
         val upsertResult: Result<EntityBookInfo> = bookInfoDatabase.upsertBookInfo(entityBookInfo)
         if (upsertResult.isFailure) {
             return Result.failure(upsertResult.exceptionOrNull() ?: Exception("upsertBookInfo DB Error"))
@@ -159,7 +159,7 @@ class BookInfoRepo @JvmOverloads constructor(
         return Result.success(entityBookInfo.toDeepCopyDomainInfo())
     }
 
-    fun upsertTestDTOBookInfoToApi(dtoBookInfo: DTOBookInfo): Result<BookInfo> {
+    suspend fun upsertTestDTOBookInfoToApi(dtoBookInfo: DTOBookInfo): Result<BookInfo> {
         val upsertResult: Result<DTOBookInfo> = bookInfoApi.upsertBookInfo(dtoBookInfo)
         if (upsertResult.isFailure) {
             return Result.failure(upsertResult.exceptionOrNull() ?: Exception("upsertBookInfo API Error"))
@@ -178,8 +178,14 @@ class BookInfoRepo @JvmOverloads constructor(
         }
     }
 
-    fun printAPI() {
-        for ((key, value) in bookInfoApi.allBookInfos.entries) {
+    suspend fun printAPI() {
+        val entries = bookInfoApi.allBookInfos().getOrNull()?.entries
+        if (entries == null) {
+            log.d(this, "API is empty")
+            return
+        }
+
+        for ((key, value) in entries) {
             log.d(this, "$key = $value")
         }
     }

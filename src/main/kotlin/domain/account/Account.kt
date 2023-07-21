@@ -41,7 +41,7 @@ class Account : Role<AccountInfo>, IUUID2 {
         context: Context
     ) : super(json, clazz, context) {
         repo = context.accountInfoRepo
-        id = this.info()?.id() ?: throw Exception("AccountInfo id not found in Json")
+        id = this.info.get()?.id() ?: throw Exception("AccountInfo id not found in Json")
 
         context.log.d(this, "Account (" + id + ") created from Json with class: " + clazz.name)
     }
@@ -62,12 +62,12 @@ class Account : Role<AccountInfo>, IUUID2 {
     // IRole/UUID2 Required Overrides  //
     /////////////////////////////////////
 
-    override fun fetchInfoResult(): Result<AccountInfo> {
+    override suspend fun fetchInfoResult(): Result<AccountInfo> {
         // context.log.d(this, "Account(" + this.id.toString() + ") - fetchInfoResult"); // LEAVE for debugging
         return repo.fetchAccountInfo(id)
     }
 
-    override fun updateInfo(updatedInfo: AccountInfo): Result<AccountInfo> {
+    override suspend fun updateInfo(updatedInfo: AccountInfo): Result<AccountInfo> {
         // context.log.d(this,"Account (" + this.id.toString() + ") - updateInfo);  // LEAVE for debugging
 
         // Optimistically Update the cached Info

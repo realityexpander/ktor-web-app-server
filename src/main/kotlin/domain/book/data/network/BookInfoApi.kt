@@ -25,30 +25,31 @@ class BookInfoApi internal constructor(api: InMemoryAPI<Book, DTOBookInfo>) {
         this.api = api
     }
 
-    fun fetchBookInfo(id: String): Result<DTOBookInfo> {
+    suspend fun fetchBookInfo(id: String): Result<DTOBookInfo> {
         return api.fetchDtoInfo(id)
     }
 
-    fun fetchBookInfo(id: UUID2<Book>): Result<DTOBookInfo> {
+    suspend fun fetchBookInfo(id: UUID2<Book>): Result<DTOBookInfo> {
         return api.fetchDtoInfo(id)
     }
 
-    fun addBookInfo(bookInfo: DTOBookInfo): Result<DTOBookInfo> {
+    suspend fun addBookInfo(bookInfo: DTOBookInfo): Result<DTOBookInfo> {
         return api.addDtoInfo(bookInfo)
     }
 
-    fun updateBookInfo(bookInfo: DTOBookInfo): Result<DTOBookInfo> {
+    suspend fun updateBookInfo(bookInfo: DTOBookInfo): Result<DTOBookInfo> {
         return api.updateDtoInfo(bookInfo)
     }
 
-    fun upsertBookInfo(bookInfo: DTOBookInfo): Result<DTOBookInfo> {
+    suspend fun upsertBookInfo(bookInfo: DTOBookInfo): Result<DTOBookInfo> {
         return api.upsertDtoInfo(bookInfo)
     }
 
-    fun deleteBookInfo(bookInfo: DTOBookInfo): Result<DTOBookInfo> {
+    suspend fun deleteBookInfo(bookInfo: DTOBookInfo): Result<DTOBookInfo> {
         return api.deleteDtoInfo(bookInfo)
     }
 
-    val allBookInfos: Map<UUID2<Book>, DTOBookInfo>
-        get() = api.findAllUUID2ToDtoInfoMap()
+    suspend fun allBookInfos(): Result<Map<UUID2<Book>, DTOBookInfo>> {
+        return api.findAllUUID2ToDtoInfoMap()
+    }
 }

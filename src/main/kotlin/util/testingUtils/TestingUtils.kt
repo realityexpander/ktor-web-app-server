@@ -28,12 +28,12 @@ class TestingUtils(val context: Context) {
     // Book Repo, DB and API //
     ///////////////////////////
 
-    fun populateFakeBookInfoInBookRepoDBandAPI() {
+    suspend fun populateFakeBookInfoInBookRepoDBandAPI() {
         populateDBWithFakeBookInfo()
         populateApiWithFakeBookInfo()
     }
 
-    fun populateDBWithFakeBookInfo() {
+    suspend fun populateDBWithFakeBookInfo() {
         for (i in 0..9) {
             val id = 1000 + i * 100
             val result: Result<BookInfo> = context.bookInfoRepo
@@ -55,7 +55,7 @@ class TestingUtils(val context: Context) {
         }
     }
 
-    fun populateApiWithFakeBookInfo() {
+    suspend fun populateApiWithFakeBookInfo() {
         for (i in 0..9) {
             val id = 1000 + i * 100
             val result: Result<BookInfo> = context.bookInfoRepo.upsertTestDTOBookInfoToApi(
@@ -76,7 +76,7 @@ class TestingUtils(val context: Context) {
         }
     }
 
-    fun printBookInfoDBandAPIEntries() {
+    suspend fun printBookInfoDBandAPIEntries() {
         print("\n")
         context.log.d(this, "DB Dump")
         context.bookInfoRepo.printDB()
@@ -86,7 +86,7 @@ class TestingUtils(val context: Context) {
         print("\n")
     }
 
-    fun addFakeBookInfoToBookInfoRepo(id: Int?): Result<BookInfo> {
+    suspend fun addFakeBookInfoToBookInfoRepo(id: Int?): Result<BookInfo> {
         val bookInfo: BookInfo = createFakeBookInfo(id)
         return context.bookInfoRepo.upsertBookInfo(bookInfo)
     }

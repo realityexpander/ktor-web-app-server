@@ -1,0 +1,3 @@
+[
+    "{\n  \"title\": \"The Hobbit\",\n  \"author\": \"J.R.R. Tolkien\",\n  \"description\": \"The Hobbit, or There and Back Again is a children\\u0027s fantasy novel by English author J. R. R. Tolkien. It was published on 21 September 1937 to wide critical acclaim, being nominated for the Carnegie Medal and awarded a prize from the New York Herald Tribune for best juvenile fiction. The book remains popular and is recognized as a classic in children\\u0027s literature.\",\n  \"extraFieldToShowThisIsADTO\": \"This is a DTO\",\n  \"creationTimeMillis\": 0,\n  \"lastModifiedTimeMillis\": 0,\n  \"isDeleted\": false,\n  \"id\": {\n    \"uuid\": \"00000000-0000-0000-0000-000000000100\",\n    \"uuid2Type\": \"UUID\"\n  }\n}"
+]

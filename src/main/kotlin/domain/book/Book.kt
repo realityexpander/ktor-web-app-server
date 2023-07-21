@@ -110,20 +110,20 @@ class Book : Role<BookInfo>, IUUID2 {
     }
 
     override fun toString(): String {
-        return this.info()?.toPrettyJson(this.context) ?: "Book (null)"
+        return this.info.get()?.toPrettyJson(this.context) ?: "Book (null)"
     }
 
     /////////////////////////////////////
     // IRole/UUID2 Required Overrides  //
     /////////////////////////////////////
 
-    override fun fetchInfoResult(): Result<BookInfo> {
+    override suspend fun fetchInfoResult(): Result<BookInfo> {
         // context.log.d(this,"Book (" + this.id.toString() + ") - fetchInfoResult"); // LEAVE for debugging
         @Suppress("UNCHECKED_CAST")
         return repo.fetchBookInfo(id as UUID2<Book>)
     }
 
-    override fun updateInfo(updatedInfo: BookInfo): Result<BookInfo> {
+    override suspend fun updateInfo(updatedInfo: BookInfo): Result<BookInfo> {
         // context.log.d(this,"Book (" + this.id.toString() + ") - updateInfo"); // LEAVE for debugging
 
         // Optimistically Update the Cached Book
@@ -143,7 +143,7 @@ class Book : Role<BookInfo>, IUUID2 {
     val isBookFromPublicLibrary: Boolean
         get() = !isBookFromPrivateLibrary
 
-    fun transferToLibrary(library: Library): Result<Book> {
+    suspend fun transferToLibrary(library: Library): Result<Book> {
         if (sourceLibrary === library) {
             return Result.success(this)
         }
@@ -161,26 +161,26 @@ class Book : Role<BookInfo>, IUUID2 {
         return library.transferBookSourceLibraryToThisLibrary(this)
     }
 
-    fun updateAuthor(author: String): Result<BookInfo> {
+    suspend fun updateAuthor(author: String): Result<BookInfo> {
         val updatedInfo: BookInfo = this.info()?.withAuthor(author)
             ?: return Result.failure(Exception("BookInfo is null"))
         return updateInfo(updatedInfo) // delegate to Info Object
     }
 
-    fun updateTitle(title: String): Result<BookInfo> {
+    suspend fun updateTitle(title: String): Result<BookInfo> {
         val updatedInfo: BookInfo = this.info()?.withTitle(title)
             ?: return Result.failure(Exception("BookInfo is null"))
         return updateInfo(updatedInfo) // delegate to Info Object
     }
 
-    fun updateDescription(description: String): Result<BookInfo> {
+    suspend fun updateDescription(description: String): Result<BookInfo> {
         val updatedInfo: BookInfo = this.info()?.withDescription(description)
             ?: return Result.failure(Exception("BookInfo is null"))
         return updateInfo(updatedInfo) // delegate to Info Object
     }
 
     // Role Role-specific business logic in a Role Object.
-    fun updateSourceLibrary(sourceLibrary: Library): Result<Book> {
+    suspend fun updateSourceLibrary(sourceLibrary: Library): Result<Book> {
         // NOTE: This method is primarily used by the Library Role Object when moving a Book from one Library
         //   to another Library.
         // This info is *NOT* saved with the Book's BookInfo, as it only applies to the Book Role Object.
@@ -214,7 +214,7 @@ class Book : Role<BookInfo>, IUUID2 {
             // Add this Book to the new ORPHAN PrivateLibrary
             @Suppress("UNUSED_VARIABLE")
             val ignoreThisResult: Result<UUID2<Book>> =
-                privateLibrary.info()?.addPrivateBookIdToInventory(bookId, 1)
+                privateLibrary.info.get()?.addPrivateBookIdToInventory(bookId, 1)
                     ?: throw Exception("Error adding Book to PrivateLibrary")
 
             return privateLibrary
@@ -229,7 +229,7 @@ class Book : Role<BookInfo>, IUUID2 {
         // Static constructors //
         /////////////////////////
 
-        fun fetchBook(
+        suspend fun fetchBook(
             uuid2: UUID2<Book>,
             sourceLibrary: Library?,  // `null` means use default (ie: Orphan PrivateLibrary)
             context: Context
@@ -245,7 +245,7 @@ class Book : Role<BookInfo>, IUUID2 {
             return Result.success(Book(info, sourceLibrary, context))
         }
 
-        fun fetchBook(
+        suspend fun fetchBook(
             uuid2: UUID2<Book>,
             context: Context
         ): Result<Book> {

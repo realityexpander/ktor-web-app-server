@@ -7,6 +7,7 @@ import domain.Context
 import domain.common.data.Model
 import domain.common.data.info.DomainInfo
 import domain.common.data.info.Info
+import kotlinx.coroutines.runBlocking
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.util.*
@@ -106,7 +107,7 @@ abstract class Role<TDomainInfo : DomainInfo> (
         return infoResult.get()
     }
 
-    fun updateInfoFromJson(json: String): Result<TDomainInfo> {
+    suspend fun updateInfoFromJson(json: String): Result<TDomainInfo> {
         context.log.d(
             this, "Updating Info from JSON for " +
                     "class: " + this.javaClass.name + ", " +
@@ -167,7 +168,7 @@ abstract class Role<TDomainInfo : DomainInfo> (
 
     // Defines how to fetch info from server
     // - REQUIRED - *MUST* be overridden/implemented in subclasses
-    override fun fetchInfoResult(): Result<TDomainInfo> {
+    override suspend fun fetchInfoResult(): Result<TDomainInfo> {
         return Result.failure(Exception("Not Implemented, should be implemented in subclass."))
     }
 
@@ -175,15 +176,18 @@ abstract class Role<TDomainInfo : DomainInfo> (
     // - REQUIRED - *MUST* be overridden/implemented in subclasses
     // - Call `super.updateFetchInfoResult(newInfo)` to update the info<TDomainInfo> object
     //   (caller decides when appropriate, ie: optimistic updates, or after server confirms update)
-    abstract override fun updateInfo(updatedInfo: TDomainInfo): Result<TDomainInfo> // **MUST** Override in subclasses
+    abstract override suspend fun updateInfo(updatedInfo: TDomainInfo): Result<TDomainInfo> // **MUST** Override in subclasses
 
     // NOTE: Should be Implemented by subclasses but not required
     override fun toString(): String {
 
         // default toString() implementation
-        val infoString = if (info() == null) "null" else info().toString()
-        val nameOfClass = this.javaClass.name
-        return nameOfClass + ": " + id() + ", info=" + infoString
+        return runBlocking {
+            val infoString = if (info() == null) "null" else info().toString()
+            val nameOfClass = this.javaClass.name
+
+            nameOfClass + ": " + id() + ", info=" + infoString
+        }
     }
 
     /////////////////////////////////
@@ -191,14 +195,14 @@ abstract class Role<TDomainInfo : DomainInfo> (
     /////////////////////////////////
 
     // Shorter named wrapper for fetchInfo()
-    fun info(): TDomainInfo? {
+    suspend fun info(): TDomainInfo? {
         return fetchInfo()
     }
 
     // Returns the Info<T> object if it has been fetched, otherwise fetches and returns Result.
     // Used to access the Info object without having to handle the Result<T> object.
     // NOTE: A cached Info<T> object is returned if it has been fetched, otherwise a new Info<T> object is fetched.
-    override fun fetchInfo(): TDomainInfo? {
+    override suspend fun fetchInfo(): TDomainInfo? {
         if (isInfoFetched) {
             return cachedInfo().get()
         }
@@ -225,7 +229,7 @@ abstract class Role<TDomainInfo : DomainInfo> (
     // - Used as a convenient error guard for methods that require the {Domain}Info to be loaded.
     // - If `Info` is not fetched, it attempts to fetch it.
     // - BOOP Exception: The "returning null" behavior is to make the call site error handling code smaller.
-    override fun fetchInfoFailureReason(): String? {
+    override suspend fun fetchInfoFailureReason(): String? {
         if (!isInfoFetched) {
             if (fetchInfoResult().isFailure) {
                 return fetchInfoResult().exceptionOrNull()?.message
@@ -238,7 +242,7 @@ abstract class Role<TDomainInfo : DomainInfo> (
         get() = cachedInfo().get() != null
 
     // Forces refresh of Info from server
-    override fun refreshInfo(): Result<TDomainInfo> {
+    override suspend fun refreshInfo(): Result<TDomainInfo> {
         context.log.d(
             this, "Refreshing info for " +
                     "class: " + this.javaClass.name + ", " +

@@ -101,9 +101,7 @@ val applicationConfig =
         ApplicationProperties()
     }
 
-/////////////////////////
-// SETUP USER SERVICE  //
-/////////////////////////
+// Load the Users database
 val userRepository = UserRepository()
 
 fun Application.module() {
@@ -121,7 +119,7 @@ fun Application.module() {
         }
 
         register(RateLimitName("auth-routes")) {
-            rateLimiter(limit = 5, refillPeriod = 60.seconds)
+            rateLimiter(limit = 15, refillPeriod = 60.seconds)
         }
     }
     installServer(StatusPages) {
@@ -332,8 +330,6 @@ fun Application.module() {
                             val passwordHash = passwordService.getSaltedPepperedPasswordHash(password)
 
                             val newUser = UserEntity(
-//                                id = UUID.randomUUID().toString(),
-//                                id = UUID.randomUUID(),
                                 id = UUID2(User::class.java),
                                 email = email,
                                 password = passwordHash,

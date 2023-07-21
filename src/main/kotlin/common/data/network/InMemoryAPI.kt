@@ -8,6 +8,8 @@ import okhttp3.internal.toImmutableMap
 /**
  * InMemoryAPI is an implementation of the IAPI interface for the DTOInfo.
  *
+ * Uses type-safe UUID2 for the id.
+ *
  * @param <TUUID2> The type of the UUID2
  * @param <TDTOInfo> The type of the DTOInfo
  * @since 0.12 Kotlin conversion
@@ -17,24 +19,25 @@ class InMemoryAPI<TUUID2 : IUUID2, TDTOInfo : DTOInfo> (
     private val fakeUrl: FakeURL,
     private val client: FakeHttpClient
 ) : IAPI<TUUID2, TDTOInfo> {
+
     // Simulate a database accessed via a network API
-    private val database: MutableMap<UUID2<TUUID2>, TDTOInfo> = mutableMapOf()
+    private val remoteDatabase: MutableMap<UUID2<TUUID2>, TDTOInfo> = mutableMapOf()
 
     internal constructor() : this(
-        FakeURL("http://localhost:8080"),
+        FakeURL("fakeHttp://fakeHost:22222"),
         FakeHttpClient()
     )
 
-    override fun fetchDtoInfo(id: UUID2<TUUID2>): Result<TDTOInfo> {
+    override suspend fun fetchDtoInfo(id: UUID2<TUUID2>): Result<TDTOInfo> {
         // Simulate the network request
-        return if (!database.containsKey(id)) {
+        return if (!remoteDatabase.containsKey(id)) {
             Result.failure(Exception("API: DTOInfo not found, id=$id"))
-        } else Result.success(database[id]
+        } else Result.success(remoteDatabase[id]
             ?: return Result.failure(Exception("API: DTOInfo null, id=$id"))
         )
     }
 
-    override fun fetchDtoInfo(uuidStr: String): Result<TDTOInfo> {
+    override suspend fun fetchDtoInfo(uuidStr: String): Result<TDTOInfo> {
         return try {
             val uuid: UUID2<TUUID2> = UUID2.fromUUIDString<TUUID2>(uuidStr)
             fetchDtoInfo(uuid)
@@ -43,55 +46,54 @@ class InMemoryAPI<TUUID2 : IUUID2, TDTOInfo : DTOInfo> (
         }
     }
 
-    override fun updateDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
+    override suspend fun updateDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
         try {
             // Simulate Network
             @Suppress("UNCHECKED_CAST")
-            database[dtoInfo.id() as UUID2<TUUID2>] = dtoInfo
+            remoteDatabase[dtoInfo.id() as UUID2<TUUID2>] = dtoInfo
         } catch (e: Exception) {
             return Result.failure(e)
         }
         return Result.success(dtoInfo)
     }
 
-    override fun addDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
+    override suspend fun addDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
         // Simulate Network
         @Suppress("UNCHECKED_CAST")
-        if (database.containsKey(dtoInfo.id() as UUID2<TUUID2>)) {
+        if (remoteDatabase.containsKey(dtoInfo.id() as UUID2<TUUID2>)) {
             return Result.failure(Exception("API: DtoInfo already exists, use UPDATE, id=" + dtoInfo.id()))
         }
         @Suppress("UNCHECKED_CAST")
-        database[dtoInfo.id() as UUID2<TUUID2>] = dtoInfo
+        remoteDatabase[dtoInfo.id() as UUID2<TUUID2>] = dtoInfo
         return Result.success(dtoInfo)
     }
 
-    override fun upsertDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
+    override suspend fun upsertDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
         // Simulate Network
         @Suppress("UNCHECKED_CAST")
-        return if (database.containsKey(dtoInfo.id() as UUID2<TUUID2>)) {
+        return if (remoteDatabase.containsKey(dtoInfo.id() as UUID2<TUUID2>)) {
             updateDtoInfo(dtoInfo)
         } else {
             addDtoInfo(dtoInfo)
         }
     }
 
-    override fun deleteDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
+    override suspend fun deleteDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
         // Simulate Network
         @Suppress("UNCHECKED_CAST")
-        return if (database.remove(dtoInfo.id() as UUID2<TUUID2>) == null) {
+        return if (remoteDatabase.remove(dtoInfo.id() as UUID2<TUUID2>) == null) {
             Result.failure(Exception("API: Failed to delete DtoInfo"))
         } else Result.success(dtoInfo)
     }
 
-    override fun findAllUUID2ToDtoInfoMap(): Map<UUID2<TUUID2>, TDTOInfo> {
+    override suspend fun findAllUUID2ToDtoInfoMap(): Result<Map<UUID2<TUUID2>, TDTOInfo>> {
         val map: MutableMap<UUID2<TUUID2>, TDTOInfo> = mutableMapOf()
 
         // Simulate Network
-        for ((key, value) in database.entries) {
+        for ((key, value) in remoteDatabase.entries) {
             map[UUID2(key)] = value
         }
 
-            return map.toImmutableMap()
-//        return map.toMap()
+        return Result.success(map.toImmutableMap())
     }
 }

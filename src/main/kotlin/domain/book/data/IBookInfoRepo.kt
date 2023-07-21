@@ -12,8 +12,8 @@ import domain.common.data.repo.IRepo
  */
 
 interface IBookInfoRepo : IRepo {
-    fun fetchBookInfo(id: UUID2<Book>): Result<BookInfo>
-    fun addBookInfo(bookInfo: BookInfo): Result<BookInfo>
-    fun updateBookInfo(bookInfo: BookInfo): Result<BookInfo>
-    fun upsertBookInfo(bookInfo: BookInfo): Result<BookInfo>
+    suspend fun fetchBookInfo(id: UUID2<Book>): Result<BookInfo>
+    suspend fun addBookInfo(bookInfo: BookInfo): Result<BookInfo>
+    suspend fun updateBookInfo(bookInfo: BookInfo): Result<BookInfo>
+    suspend fun upsertBookInfo(bookInfo: BookInfo): Result<BookInfo>
 }
