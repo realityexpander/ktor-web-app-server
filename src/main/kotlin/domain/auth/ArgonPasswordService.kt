@@ -22,9 +22,9 @@ class ArgonPasswordService(
         // Generate hash
         val passwordCharArray = (passwordPeppered).toCharArray()
         val saltedPepperedPasswordHash: String = argon2.hash(
-            3,  // Number of iterations
-            64 * 1024,  // 64mb
-            1,  // how many parallel threads to use
+            3,          // Number of iterations
+            64 * 1024,   // 64mb
+            1,         // how many parallel threads to use
             passwordCharArray
         )
 

@@ -10,10 +10,12 @@ import domain.common.Role
 import domain.library.Library
 import domain.user.data.UserInfo
 import domain.user.data.UserInfoRepo
+import kotlinx.serialization.Contextual
+import kotlinx.serialization.Serializable
 
 /**
- * User Role Object<br></br>
- * <br></br>
+ * User Role Object
+ *
  * Only interacts with its own Repo, the Context, and other Role Objects
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)

@@ -4,7 +4,6 @@ import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.interfaces.DecodedJWT
-import com.realityexpander.domain.auth.UserEntity
 import java.util.*
 
 class JwtService(
@@ -26,7 +25,8 @@ class JwtService(
             .withSubject("Authentication")
             .withIssuer(issuer)
             .withAudience("$audience/api/login")
-            .withClaim("id", user.id)
+//            .withClaim("id", user.id)
+            .withClaim("id", user.id.toString())
             .withClaim("email", user.email)
             .withClaim("clientIpAddress", clientIpAddress)
             .withExpiresAt(expiresAtDate)
@@ -45,7 +45,8 @@ class JwtService(
             .withIssuer(issuer)
             .withAudience("$audience/api/password-reset")
             .withClaim("type", "passwordReset")
-            .withClaim("id", user.id)
+//            .withClaim("id", user.id)
+            .withClaim("id", user.id.toString())
             .withClaim("email", user.email)
             .withExpiresAt(expiresAtDate)
             .sign(Algorithm.HMAC512(secret))

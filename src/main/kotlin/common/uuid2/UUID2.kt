@@ -3,12 +3,15 @@
 package common.uuid2
 
 import com.google.gson.*
+import com.realityexpander.common.uuid2.UUIDSerializer
 import domain.account.Account
 import domain.book.Book
 import domain.library.Library
 import domain.library.PrivateLibrary
 import domain.user.User
 import io.ktor.util.reflect.*
+import kotlinx.serialization.Contextual
+import kotlinx.serialization.Serializable
 import org.bson.json.JsonParseException
 import org.reflections.Reflections
 import java.lang.reflect.ParameterizedType
@@ -63,7 +66,10 @@ import kotlin.reflect.*
  * @since 0.12 Kotlin Conversion
  */
 
+@Serializable
 open class UUID2<TUUID2 : IUUID2> : IUUID2 {
+
+    @Serializable(with = UUIDSerializer::class)
     private val uuid: UUID
 
     // NOT final due to need for it to be set for creating objects via JSON deserialization. :(
@@ -92,8 +98,9 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
         uuid2Type = getNormalizedUuid2TypeString(uuid2TypeStr)
     }
     constructor(uuid: UUID, clazz: Class<TUUID2>?) : this(uuid, calcUUID2TypeStr(clazz))
+    constructor(clazz: Class<TUUID2>) : this(UUID.randomUUID(), clazz)
+    constructor(uuid2TypeStr: String = "UUID") : this(UUID.randomUUID(), uuid2TypeStr)
     constructor() : this(UUID.randomUUID(), "UUID")
-
 
     ///////////////////////
     // Published Methods //
@@ -174,7 +181,8 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
     }
 
     // Note: Should only be used when importing JSON
-    @Suppress("FunctionName") // for leading underscore  // todo - is there a better way to do this in kotlin?
+    // todo - is there a better way to do this in kotlin?
+    @Suppress("FunctionName") // for leading underscore
     fun _setUUID2TypeStr(uuid2TypeStr: String?): Boolean {
         uuid2Type = getNormalizedUuid2TypeString(uuid2TypeStr)
         return true // always return `true` instead of a `void` return type
@@ -497,10 +505,3 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
         }
     }
 }
-
-////fun <TRole : IUUID2> TRole.uuid2TypeStr(): String {
-//fun Any.uuid2TypeStr(): String {
-////    return UUID2.calcUUID2TypeStr(this.javaClass)
-//    println(this)
-//    return UUID2.calcUUID2TypeStr(this::class.java)
-//}

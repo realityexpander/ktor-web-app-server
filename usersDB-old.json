@@ -1,0 +1,34 @@
+[
+    {
+        "id": "c4d45889-9f5a-4e89-bc6b-feb012fc5fbc",
+        "email": "chris.athanas.now@gmail.com",
+        "password": "$argon2id$v=19$m=65536,t=3,p=1$kyyaYb4bz9jL/z2jdwz/3Q$sp7IYQJ6O49wTET3+KTSTjp6xhM67ShMrYPR5jXKWNYJJxOReXy2yoE6zPr7Gh23VSKPhUgOE51yHypbes8/oA",
+        "authToken": "6389d552-7256-4824-99e9-f343e0c8b3b3",
+        "authJwtToken": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJjbGllbnRJcEFkZHJlc3MiOiI2MzdiN2YyNS1iNTBjLTQ5N2QtODBmNS0zMjI4OTU5YzFkZGYiLCJzdWIiOiJBdXRoZW50aWNhdGlvbiIsImF1ZCI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODA4MS8vYXBpL2xvZ2luIiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo4MDgxLyIsImlkIjoiYzRkNDU4ODktOWY1YS00ZTg5LWJjNmItZmViMDEyZmM1ZmJjIiwiZXhwIjoxNjgxOTgyNjM5LCJlbWFpbCI6ImNocmlzLmF0aGFuYXMubm93QGdtYWlsLmNvbSJ9.Xf5h-2x5i6PSqZyzi3sV-85aA3hehkuFnfbgoEmxJanW9vj1_pw1OEcCnJJV9RKWaYxYVrzHPtpKBzpl47CrTQ",
+        "clientIpAddressWhiteList": [
+            "187.214.137.88",
+            "af978772-1301-4854-b755-850930f1a598",
+            "827506e4-58ae-43fd-acf7-1432bff147b3",
+            "c17cfe1a-0e64-4cb3-9d8d-d9f3748c7d45",
+            "637b7f25-b50c-497d-80f5-3228959c1ddf",
+            "123.456.789.012"
+        ],
+        "passwordResetToken": "31dac9e7-0007-4715-bea1-2270cd13ec98",
+        "passwordResetJwtToken": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJBdXRoZW50aWNhdGlvbiIsImF1ZCI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODA4MS8vYXBpL3Bhc3N3b3JkLXJlc2V0IiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo4MDgxLyIsImlkIjoiYzRkNDU4ODktOWY1YS00ZTg5LWJjNmItZmViMDEyZmM1ZmJjIiwidHlwZSI6InBhc3N3b3JkUmVzZXQiLCJleHAiOjE2ODEwNDMxMzMsImVtYWlsIjoiY2hyaXMuYXRoYW5hcy5ub3dAZ21haWwuY29tIn0.eMxllO6W874kL8fS7qEZW-Td8OnFYB1uJ4nmYPMt5y_5KrqkDxAqRwMK0E4rL1dUY1Ecz5In3AOjmu_XMKq2Yw"
+    },
+    {
+        "id": "b36c6a82-229c-413c-9aa9-e7b0b7d91ff3",
+        "email": "a@b.c",
+        "password": "$argon2id$v=19$m=65536,t=3,p=1$4DRXtnoGnuFFsJby5FqDWw$2M8D/bIP1icbqtagcd0NfDPXsTbZ8OWdIQGUolguiG7eCgd5eYyW4EGpmgyfla9EqVtz9qKwevNt5NI0fmQZuQ",
+        "authToken": "84541aa2-be58-4dad-bdb7-e71c239c1c53",
+        "authJwtToken": "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJBdXRoZW50aWNhdGlvbiIsImlzcyI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODA4MS8iLCJhdWQiOiJodHRwOi8vbG9jYWxob3N0OjgwODEvL2FwaS9sb2dpbiIsImlkIjoiYjM2YzZhODItMjI5Yy00MTNjLTlhYTktZTdiMGI3ZDkxZmYzIiwiZW1haWwiOiJhQGIuYyIsImNsaWVudElwQWRkcmVzcyI6IjdjNjk5MTBmLWRmNjItNDRkNS1hOGJmLWIwMWE1YjBhZWU4YyIsImV4cCI6MTY5MDUwNTEzNH0.o6b-zwyunooG153jsqoNwqj8ESZwpK6eAtxD1qQoPYCzcScwkwHQ852C7QLUnEwNfB2tdCyjIpu9JRGTBoezWQ",
+        "clientIpAddressWhiteList": [
+            "3237ad5e-3145-494c-924e-3e58246ab0d8",
+            "5aafac3a-ee51-4f3e-a2f6-552882396c9f",
+            "b26d529d-8bd8-4686-9d2b-e95544e57bd5",
+            "7c69910f-df62-44d5-a8bf-b01a5b0aee8c"
+        ],
+        "passwordResetToken": null,
+        "passwordResetJwtToken": null
+    }
+]

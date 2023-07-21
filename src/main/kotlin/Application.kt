@@ -10,6 +10,8 @@ import com.realityexpander.domain.remote.emailer.sendPasswordResetEmail
 import com.realityexpander.domain.todo.TodoResponse
 import com.realityexpander.domain.remote.fileUpload.FileUploadResponse
 import com.realityexpander.domain.remote.fileUpload.save
+import common.uuid2.UUID2
+import domain.user.User
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.okhttp.*
@@ -102,7 +104,7 @@ val applicationConfig =
 /////////////////////////
 // SETUP USER SERVICE  //
 /////////////////////////
-val userService = UserService()
+val userRepository = UserRepository()
 
 fun Application.module() {
 
@@ -207,7 +209,7 @@ fun Application.module() {
                 val email = pl.getClaim("email").asString()
                 val clientIpAddress = pl.getClaim("clientIpAddress").asString()
 
-                val user = userService.getUserByEmail(email)
+                val user = userRepository.findUserByEmail(email)
                 if (user != null && user.clientIpAddressWhiteList.contains(clientIpAddress)) {
                     JWTPrincipal(pl)
                 } else {
@@ -242,7 +244,7 @@ fun Application.module() {
                     else
                         this.request.cookies["authenticationToken"]
 
-                val user = userService.getUserByAuthToken(authenticationToken)
+                val user = userRepository.findUserByAuthToken(authenticationToken)
                 user?.let {
                     if (user.clientIpAddressWhiteList.contains(clientIpAddress)) {
                         UserIdPrincipal(user.email)// success
@@ -293,13 +295,14 @@ fun Application.module() {
 
             // Generate a new session auth JWT token
             val jwtToken = jwtService.generateLoginAuthToken(user, clientIpAddress)
-            userService.updateUser(
+            userRepository.updateUser(
                 user.copy(
                     authJwtToken = jwtToken,
                     authToken = token
                 ))
 
             respondJson(mapOf(
+                "userId" to user.id.toString(),
                 "token" to token,
                 "jwtToken" to jwtToken,
                 "clientIpAddress" to clientIpAddress,
@@ -322,22 +325,28 @@ fun Application.module() {
                         call.getClientIpAddressFromRequest(suggestedClientIpAddress = clientIpAddressFromParams)
 
                     if (email != null && password != null) {
-                        userService.getUserByEmail(email) ?: run {
+
+                        // note: only allow one user per email address.
+                        userRepository.findUserByEmail(email) ?: run {
 
                             val passwordHash = passwordService.getSaltedPepperedPasswordHash(password)
 
                             val newUser = UserEntity(
+//                                id = UUID.randomUUID().toString(),
+//                                id = UUID.randomUUID(),
+                                id = UUID2(User::class.java),
                                 email = email,
                                 password = passwordHash,
                                 authToken = "",
                                 authJwtToken = "",
                                 clientIpAddressWhiteList = listOf(clientIpAddress),
                             )
-                            userService.addUser(newUser)
+                            userRepository.addUser(newUser)
 
                             call.login(clientIpAddress, newUser)
                             return@post
                         }
+
                         call.respondJson(mapOf("error" to "UserEntity already exists"), HttpStatusCode.Conflict)
                         return@post
                     }
@@ -361,9 +370,9 @@ fun Application.module() {
 
                     if (email != null && password != null) {
                         // check if the user exists
-                        var user = userService.getUserByEmail(email)
+                        var user = userRepository.findUserByEmail(email)
                         user ?: run {
-                            val error = mapOf("error" to "User does not exist") // todo change to generic error?
+                            val error = mapOf("error" to "User does not exist, please register.")
                             call.respondText(
                                 jsonConfig.encodeToString(error),
                                 status = HttpStatusCode.NotFound
@@ -390,7 +399,7 @@ fun Application.module() {
                             val newClientIpWhitelistAddresses = user.clientIpAddressWhiteList.toMutableList()
 
                             newClientIpWhitelistAddresses.add(clientIpAddress)
-                            user = userService.updateUser(user.copy(clientIpAddressWhiteList = newClientIpWhitelistAddresses))
+                            user = userRepository.updateUser(user.copy(clientIpAddressWhiteList = newClientIpWhitelistAddresses))
                         }
 
                         call.login(clientIpAddress, user)
@@ -413,9 +422,9 @@ fun Application.module() {
                     val token = params["jwtToken"] as JwtTokenStr?
 
                     token?.let {
-                        val user = userService.getUserByAuthJwtToken(token)
+                        val user = userRepository.findUserByAuthJwtToken(token)
                         user?.let {
-                            userService.updateUser(
+                            userRepository.updateUser(
                                 user.copy(
                                     authToken = "",
                                     authJwtToken = ""
@@ -443,7 +452,7 @@ fun Application.module() {
                 }
 
                 // check if the user exists
-                val user = userService.getUserByEmail(emailAddress)
+                val user = userRepository.findUserByEmail(emailAddress)
                 user ?: run {
                     call.respondJson(mapOf("error" to "User does not exist"), HttpStatusCode.BadRequest) // todo: Dont reveal this information
                     return@get
@@ -455,7 +464,7 @@ fun Application.module() {
 
                 // save the password reset token to the user's account
                 user.let {
-                    userService.updateUser(
+                    userRepository.updateUser(
                         user.copy(
                             passwordResetToken = passwordResetToken,
                             passwordResetJwtToken = passwordResetJwtToken
@@ -499,7 +508,7 @@ fun Application.module() {
 
                 // find the user with the password reset token
                 // val user = usersDb.values.find { it.passwordResetToken == passwordResetToken } // checks UUID old way - NOTE: LEAVE for reference
-                val user = userService.getUserByPasswordResetJwtToken(passwordResetToken)
+                val user = userRepository.findUserByPasswordResetJwtToken(passwordResetToken)
                 user?.let {
                     // validate the password reset token
                     // new way using JWT
@@ -534,7 +543,8 @@ fun Application.module() {
                         )
                         return@post
                     }
-                    if (passwordResetTokenClaims.claims["id"]?.asString() != user.id) {
+//                    if (passwordResetTokenClaims.claims["id"]?.asString() != user.id) {
+                    if (passwordResetTokenClaims.claims["id"]?.asString() != user.id.toString()) {
                         call.respondJson(
                             mapOf("error" to "Invalid user id in password reset token"),
                             HttpStatusCode.BadRequest
@@ -550,7 +560,7 @@ fun Application.module() {
                             passwordResetToken = "",
                             passwordResetJwtToken = ""
                         )
-                    userService.updateUser(updatedUser)
+                    userRepository.updateUser(updatedUser)
 
                     call.respondJson(map = mapOf("success" to "Password updated"))
                     return@post
