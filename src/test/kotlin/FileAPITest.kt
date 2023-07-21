@@ -40,8 +40,9 @@ class FileAPITest {
 
     @Test
     fun findAllEntities() {
-        // • ARRANGE
         val job = CoroutineScope(Dispatchers.IO).launch {
+
+            // • ARRANGE
             testApi.addDtoInfo(dtoBookInfo)
 
             // • ACT
@@ -56,8 +57,9 @@ class FileAPITest {
 
     @Test
     fun findEntityById() {
-        // • ARRANGE
         val job = CoroutineScope(Dispatchers.IO).launch {
+
+            // • ARRANGE
             testApi.addDtoInfo(dtoBookInfo)
 
             // • ACT
@@ -74,8 +76,9 @@ class FileAPITest {
 
     @Test
     fun addEntity() {
-        // • ARRANGE
         val job = CoroutineScope(Dispatchers.IO).launch {
+
+            // • ARRANGE
             testApi.addDtoInfo(dtoBookInfo)
 
             // • ACT
@@ -89,6 +92,7 @@ class FileAPITest {
 
     @Test
     fun updateEntity() {
+
         // • ARRANGE
         val updatedDTOBookInfo = DTOBookInfo(
             id = UUID2.fromUUIDString("00000000-0000-0000-0000-000000000100"),
@@ -114,8 +118,9 @@ class FileAPITest {
 
     @Test
     fun deleteEntity() {
-        // • ARRANGE
         val job = CoroutineScope(Dispatchers.IO).launch {
+
+            // • ARRANGE
             testApi.addDtoInfo(dtoBookInfo)
 
             // • ACT
@@ -130,8 +135,9 @@ class FileAPITest {
 
     @Test
     fun deleteEntityById() {
-        // • ARRANGE
         val job = CoroutineScope(Dispatchers.IO).launch {
+
+            // • ARRANGE
             testApi.addDtoInfo(dtoBookInfo)
 
             // • ACT
