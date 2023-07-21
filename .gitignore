@@ -44,3 +44,5 @@ bin/
 usersDB-old2.json
 application.properties
 
+/apiDB.json
+/usersDB.json
