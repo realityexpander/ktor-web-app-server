@@ -14,10 +14,12 @@ import java.util.*
 /**
  * **FileDatabase**
  *
- * - Performs simple key-value operations on a JSON file.
+ * - Performs simple key-value database operations on a JSON file.
  *
- * This is a simple file-based database that uses Kotlin Serialization to store data in a JSON formatted file.
- * It keeps the entire database in memory, and writes the entire database to disk after every CUD update.
+ * This implements a persistent database that uses Kotlinx Serialization to store data in a JSON formatted file.
+ * The entire database in kept memory, and writes the entire database to disk after every CUD change.
+ * Reads are very fast because the data is kept in RAM,, but writes are slower since the entire database
+ * is written to disk after every change.
  *
  * It's not meant to be a full-featured database, but it's a good starting point for small projects.
  *
@@ -31,6 +33,7 @@ import java.util.*
  * * **`TKey`** The type of the key used to identify the entities in the database.
  * * **`abstract class  Entity<TKey : Any>`** is a Marker interface for entities that will be stored in the database.
  *
+ * Note: It is possible to have multiple databases, but they must have different filenames.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.12 Kotlin conversion
