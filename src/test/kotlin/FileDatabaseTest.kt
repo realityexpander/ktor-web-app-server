@@ -155,7 +155,7 @@ class FileDatabaseTest {
     }
 
     @Test
-    fun updateLookupTables() {
+    fun `Subclassed method updateLookupTables() is called after every CUD change is Success`() {
         runBlocking {
 
             // • ARRANGE + ACT
