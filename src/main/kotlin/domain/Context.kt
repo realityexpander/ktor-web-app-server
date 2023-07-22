@@ -7,8 +7,8 @@ import common.log.Log
 import common.uuid2.UUID2
 import domain.account.data.AccountInfoRepo
 import domain.book.data.BookInfoRepo
-import domain.book.data.local.BookInfoDatabase
-import domain.book.data.network.BookInfoApi
+import domain.book.data.local.BookInfoInMemoryDatabase
+import domain.book.data.network.BookInfoInMemoryApi
 import domain.library.data.LibraryInfoRepo
 import domain.user.data.UserInfoRepo
 
@@ -69,8 +69,8 @@ class Context(
         private fun generateDefaultProductionContext(log: ILog): Context {
             return Context(
                 BookInfoRepo(
-                    BookInfoApi(),
-                    BookInfoDatabase(),
+                    BookInfoInMemoryApi(),
+                    BookInfoInMemoryDatabase(),
                     log
                 ),
                 UserInfoRepo(log),

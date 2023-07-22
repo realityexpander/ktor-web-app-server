@@ -5,9 +5,9 @@ import common.log.Log
 import common.uuid2.UUID2
 import domain.book.Book
 import domain.book.data.BookInfoRepo.UpdateKind.*
-import domain.book.data.local.BookInfoDatabase
+import domain.book.data.local.BookInfoInMemoryDatabase
 import domain.book.data.local.EntityBookInfo
-import domain.book.data.network.BookInfoApi
+import domain.book.data.network.BookInfoInMemoryApi
 import domain.book.data.network.DTOBookInfo
 import domain.common.data.repo.Repo
 
@@ -23,8 +23,8 @@ import domain.common.data.repo.Repo
  */
 
 class BookInfoRepo @JvmOverloads constructor(
-    val bookInfoApi: BookInfoApi = BookInfoApi(),
-    val bookInfoDatabase: BookInfoDatabase = BookInfoDatabase(),
+    val bookInfoInMemoryApi: BookInfoInMemoryApi = BookInfoInMemoryApi(),
+    val bookInfoInMemoryDatabase: BookInfoInMemoryDatabase = BookInfoInMemoryDatabase(),
     override val log: ILog = Log()
 ) : Repo(log), IBookInfoRepo {
 
@@ -32,11 +32,11 @@ class BookInfoRepo @JvmOverloads constructor(
         log.d(this, "bookId $id")
 
         // Make the request to API
-        val fetchBookApiResult: Result<DTOBookInfo> = bookInfoApi.fetchBookInfo(id)
+        val fetchBookApiResult: Result<DTOBookInfo> = bookInfoInMemoryApi.fetchBookInfo(id)
         if (fetchBookApiResult.isFailure) {
 
             // API failed, now try to get from cached DB
-            val fetchBookDBResult: Result<EntityBookInfo> = bookInfoDatabase.fetchBookInfo(id)
+            val fetchBookDBResult: Result<EntityBookInfo> = bookInfoInMemoryDatabase.fetchBookInfo(id)
             if (fetchBookDBResult.isFailure) {
                 return Result.failure(fetchBookDBResult.exceptionOrNull() ?: Exception("getBookInfo Error"))
             }
@@ -56,7 +56,7 @@ class BookInfoRepo @JvmOverloads constructor(
 
 
         // Cache to Local DB
-        val updateDBResult: Result<EntityBookInfo> = bookInfoDatabase.updateBookInfo(bookInfo.toInfoEntity())
+        val updateDBResult: Result<EntityBookInfo> = bookInfoInMemoryDatabase.updateBookInfo(bookInfo.toInfoEntity())
         if (updateDBResult.isFailure) {
             return Result.failure(updateDBResult.exceptionOrNull() ?: Exception("updateBookInfo Error"))
         }
@@ -117,14 +117,14 @@ class BookInfoRepo @JvmOverloads constructor(
         // Make the API request
         val apiChangeResult: Result<DTOBookInfo> = when (updateKind) {
             UPDATE -> {
-                val bookExistsResult: Result<DTOBookInfo> = bookInfoApi.fetchBookInfo(bookInfo.id())
+                val bookExistsResult: Result<DTOBookInfo> = bookInfoInMemoryApi.fetchBookInfo(bookInfo.id())
                 if (bookExistsResult.isFailure)
                     return Result.failure((bookExistsResult.exceptionOrNull() ?: Exception("fetchBookInfo Error")))
 
-                bookInfoApi.updateBookInfo(bookInfo.toInfoDTO())
+                bookInfoInMemoryApi.updateBookInfo(bookInfo.toInfoDTO())
             }
-            UPSERT -> bookInfoApi.upsertBookInfo(bookInfo.toInfoDTO())
-            ADD -> bookInfoApi.addBookInfo(bookInfo.toInfoDTO())
+            UPSERT -> bookInfoInMemoryApi.upsertBookInfo(bookInfo.toInfoDTO())
+            ADD -> bookInfoInMemoryApi.addBookInfo(bookInfo.toInfoDTO())
             else -> return Result.failure(Exception("UpdateType not supported: $updateKind"))
         }
         if (apiChangeResult.isFailure) {
@@ -134,14 +134,14 @@ class BookInfoRepo @JvmOverloads constructor(
         // Save to Local DB
         val dbChangeResult: Result<EntityBookInfo> = when (updateKind) {
             UPDATE -> {
-                val bookExistsResult: Result<EntityBookInfo> = bookInfoDatabase.fetchBookInfo(bookInfo.id())
+                val bookExistsResult: Result<EntityBookInfo> = bookInfoInMemoryDatabase.fetchBookInfo(bookInfo.id())
                 if (bookExistsResult.isFailure)
                     return Result.failure((bookExistsResult.exceptionOrNull() ?: Exception("getBookInfo Error")))
 
-                bookInfoDatabase.updateBookInfo(bookInfo.toInfoEntity())
+                bookInfoInMemoryDatabase.updateBookInfo(bookInfo.toInfoEntity())
             }
-            UPSERT -> bookInfoDatabase.upsertBookInfo(bookInfo.toInfoEntity())
-            ADD -> bookInfoDatabase.addBookInfo(bookInfo.toInfoEntity())
+            UPSERT -> bookInfoInMemoryDatabase.upsertBookInfo(bookInfo.toInfoEntity())
+            ADD -> bookInfoInMemoryDatabase.addBookInfo(bookInfo.toInfoEntity())
             else -> return Result.failure(Exception("UpdateType not supported: $updateKind"))
         }
         if (dbChangeResult.isFailure) {
@@ -152,7 +152,7 @@ class BookInfoRepo @JvmOverloads constructor(
     }
 
     suspend fun upsertTestEntityBookInfoToDB(entityBookInfo: EntityBookInfo): Result<BookInfo> {
-        val upsertResult: Result<EntityBookInfo> = bookInfoDatabase.upsertBookInfo(entityBookInfo)
+        val upsertResult: Result<EntityBookInfo> = bookInfoInMemoryDatabase.upsertBookInfo(entityBookInfo)
         if (upsertResult.isFailure) {
             return Result.failure(upsertResult.exceptionOrNull() ?: Exception("upsertBookInfo DB Error"))
         }
@@ -160,7 +160,7 @@ class BookInfoRepo @JvmOverloads constructor(
     }
 
     suspend fun upsertTestDTOBookInfoToApi(dtoBookInfo: DTOBookInfo): Result<BookInfo> {
-        val upsertResult: Result<DTOBookInfo> = bookInfoApi.upsertBookInfo(dtoBookInfo)
+        val upsertResult: Result<DTOBookInfo> = bookInfoInMemoryApi.upsertBookInfo(dtoBookInfo)
         if (upsertResult.isFailure) {
             return Result.failure(upsertResult.exceptionOrNull() ?: Exception("upsertBookInfo API Error"))
         }
@@ -172,14 +172,14 @@ class BookInfoRepo @JvmOverloads constructor(
     //  - not part of interface or used in production) //
     /////////////////////////////////////////////////////
 
-    fun printDB() {
-        for ((key, value) in bookInfoDatabase.allBookInfos.entries) {
+    suspend fun printDB() {
+        for ((key, value) in bookInfoInMemoryDatabase.allBookInfos().entries) {
             log.d(this, "$key = $value")
         }
     }
 
     suspend fun printAPI() {
-        val entries = bookInfoApi.allBookInfos().getOrNull()?.entries
+        val entries = bookInfoInMemoryApi.allBookInfos().getOrNull()?.entries
         if (entries == null) {
             log.d(this, "API is empty")
             return

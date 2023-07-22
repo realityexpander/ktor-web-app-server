@@ -2,6 +2,7 @@ package domain.book.data.network
 
 import com.google.gson.Gson
 import com.realityexpander.common.data.local.FileDatabase
+import com.realityexpander.jsonConfig
 import common.HumanDate
 import common.uuid2.UUID2
 import domain.Context
@@ -22,25 +23,13 @@ import java.util.*
 /**
  * DTOBookInfo
  *
+ * A Data Transfer Object (DTO) that is used to transfer data between the
+ *
  * "Dumb" Data Transfer Object for BookInfo
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.12 Kotlin conversion
  */
-
-// Uses custom Gson serializer, deprecated for kotlin serialization
-object DTOBookInfoSerializer : KSerializer<DTOBookInfo> {
-    override val descriptor = PrimitiveSerialDescriptor("DTOBookInfo", PrimitiveKind.STRING)
-
-    override fun deserialize(decoder: Decoder): DTOBookInfo {
-        // todo - use Context.gson, or kotlin serialization
-        return Gson().fromJson(decoder.decodeString(), DTOBookInfo::class.java)
-    }
-
-    override fun serialize(encoder: Encoder, value: DTOBookInfo) {
-        encoder.encodeString(value.toPrettyJson())
-    }
-}
 
 @Serializable
 class DTOBookInfo(
@@ -59,6 +48,8 @@ class DTOBookInfo(
     Info.HasToDeepCopyInfo<DTOBookInfo>,
     FileDatabase.HasId<UUID2<Book>>
 {
+
+    // todo use kotlinx serialization instead of gson
     constructor(json: String, context: Context) : this(context.gson.fromJson(json, DTOBookInfo::class.java))
     constructor() : this(UUID2<Book>(UUID.randomUUID(), Book::class.java), "", "", "")
 
@@ -78,7 +69,6 @@ class DTOBookInfo(
         bookInfo.lastModifiedTimeMillis,
         bookInfo.isDeleted
     )
-
     constructor(bookInfo: BookInfo) : this(
         bookInfo.id(),
         bookInfo.title,
@@ -89,7 +79,6 @@ class DTOBookInfo(
         bookInfo.lastModifiedTimeMillis,
         bookInfo.isDeleted
     )
-
     override fun toString(): String {
         return "Book (" + this.id() + ") : " +
                 title + " by " + author + ", created=" +
@@ -101,8 +90,7 @@ class DTOBookInfo(
     }
 
     override fun id(): UUID2<Book> {
-        @Suppress("UNCHECKED_CAST")
-        return super.id() as UUID2<Book>
+        return this.id
     }
 
     ///////////////////////////////////////////

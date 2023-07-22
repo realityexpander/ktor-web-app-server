@@ -4,7 +4,6 @@ import com.google.gson.JsonSyntaxException
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.Context
-import domain.common.data.Model
 import domain.common.data.info.DomainInfo
 import domain.common.data.info.Info
 import kotlinx.coroutines.runBlocking
@@ -12,6 +11,7 @@ import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.util.*
 import java.util.concurrent.atomic.AtomicReference
+import kotlinx.serialization.Transient
 
 /**
  * Domain Role - Common Domain Role Abstract class<br></br>
@@ -21,20 +21,22 @@ import java.util.concurrent.atomic.AtomicReference
  *  * Can also be used to implement caching.
  *
  * The Repo can easily accept fake APIs & Database for testing.
+ *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.12 Kotlin conversion
  */
 
 abstract class Role<TDomainInfo : DomainInfo> (
-    @Transient
+    @Transient            // prevent kotlinx serialization
+    @kotlin.jvm.Transient // prevent gson serialization
     open val id: UUID2<*> = UUID2.randomUUID2<IUUID2>(),
     override val info: AtomicReference<TDomainInfo> = AtomicReference<TDomainInfo>(null),
     protected val context: Context
 ) : Info<TDomainInfo>,
     IUUID2
 {
-    private val infoResult: AtomicReference<Result<TDomainInfo>> =
-        AtomicReference<Result<TDomainInfo>>(null) // Convenience for Repo Debugging and future UI use
+    // Convenience for Repo Debugging and future UI use
+    private val infoResult: AtomicReference<Result<TDomainInfo>> = AtomicReference<Result<TDomainInfo>>(null)
 
     // For Gson serialization - this is the Class of the Info<TDomain> object for the Role
     private val infoClazz =
@@ -60,13 +62,11 @@ abstract class Role<TDomainInfo : DomainInfo> (
     ) : this(id, AtomicReference<TDomainInfo>(info), context) {
         // this.id = id // intentionally NOT validating `id==info.id` bc need to be able to pass in `info` as null.
     }
-
     protected
     constructor(
         id: UUID2<*>,
         context: Context
     ) : this(id, AtomicReference<TDomainInfo>(null), context)
-
     protected
     constructor(
         domainInfoJson: String?,
@@ -77,7 +77,6 @@ abstract class Role<TDomainInfo : DomainInfo> (
             ?: throw Exception("Failed to create Info from JSON"),
         context
     )
-
     protected
     constructor(
         info: TDomainInfo?,
@@ -87,7 +86,6 @@ abstract class Role<TDomainInfo : DomainInfo> (
         AtomicReference<TDomainInfo>(info),
         context
     )
-
     private
     constructor(
         id: UUID,
@@ -133,11 +131,6 @@ abstract class Role<TDomainInfo : DomainInfo> (
                         "infoFromJson.id: " + infoFromJson.id()
                 ))
             }
-
-//            // Set Domain "Model" id to match id of imported Info // todo maybe use just one id?
-//            infoFromJson._setIdFromImportedJson(
-//                UUID2(infoFromJson.id(), UUID2.calcUUID2TypeStr(domainInfoClazz))
-//            )
 
             // Update the info object with the new info
             updateInfo(infoFromJson)
@@ -289,10 +282,8 @@ abstract class Role<TDomainInfo : DomainInfo> (
         //   to be implemented.
         // - Only imports JSON to Domain objects.
         //   The Domain.EntityInfo and Domain.DTOInfo layer are intentionally restricted to accept only Domain objects.
-        // - todo : Should change to a marker interface? instead of a constraining to the `DomainInfo` interface?
-        // for _setIdFromImportedJson() call
 
-        fun <TDomainInfo : DomainInfo>  // restrict to Domain subclasses, ie: Domain.BookInfo
+        fun <TDomainInfo : DomainInfo>  // restrict to Domain subclasses, ie: Model.DomainInfo.*
         createInfoFromJson(
             json: String?,  // todo remove nullability?
             domainInfoClazz: Class<TDomainInfo>,  // type of `Domain.TDomainInfo` object to create
@@ -310,22 +301,13 @@ abstract class Role<TDomainInfo : DomainInfo> (
                     ?.id()
                     ?._setUUID2TypeStr(domainInfoClazzName)
 
-                // todo is this necessary? Check if it's already set?
-                // Set `id` to match `id` of the Info
-                obj._setIdFromImportedJson(
-                    UUID2(
-                        obj.id(),
-                        domainInfoClazzName
-                    )
-                )
-
                 obj
             } catch (e: Exception) {
                 context.log.d(
                     "Role:createInfoFromJson()", "Failed to createInfoFromJson() for " +
-                            "class: " + domainInfoClazz.name + ", " +
-                            "json: " + json + ", " +
-                            "exception: " + e
+                        "class: " + domainInfoClazz.name + ", " +
+                        "json: " + json + ", " +
+                        "exception: " + e
                 )
 
                 null

@@ -33,7 +33,8 @@ class InMemoryAPI<TUUID2 : IUUID2, TDTOInfo : DTOInfo> (
         return if (!remoteDatabase.containsKey(id)) {
             Result.failure(Exception("API: DTOInfo not found, id=$id"))
         } else Result.success(remoteDatabase[id]
-            ?: return Result.failure(Exception("API: DTOInfo null, id=$id"))
+            ?:
+            return Result.failure(Exception("API: DTOInfo null, id=$id"))
         )
     }
 
@@ -63,6 +64,7 @@ class InMemoryAPI<TUUID2 : IUUID2, TDTOInfo : DTOInfo> (
         if (remoteDatabase.containsKey(dtoInfo.id() as UUID2<TUUID2>)) {
             return Result.failure(Exception("API: DtoInfo already exists, use UPDATE, id=" + dtoInfo.id()))
         }
+
         @Suppress("UNCHECKED_CAST")
         remoteDatabase[dtoInfo.id() as UUID2<TUUID2>] = dtoInfo
         return Result.success(dtoInfo)

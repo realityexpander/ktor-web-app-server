@@ -50,7 +50,6 @@ open class Library : Role<LibraryInfo>, IUUID2 {
 
         context.log.d("Library<Init>", "Library (" + id() + ") created using id with no Info")
     }
-
     constructor(libraryInfoJson: String, context: Context) : this(libraryInfoJson, LibraryInfo::class.java, context)
     constructor(context: Context) : this(UUID2.randomUUID2(Library::class.java), context)
 

@@ -8,7 +8,7 @@ import domain.account.data.AccountInfoRepo
 import domain.common.Role
 
 /**
- * Account Role Object<br></br>
+ * Account Role Object
  *
  * Only interacts with its own Repo, Context, and other Role Objects
  *

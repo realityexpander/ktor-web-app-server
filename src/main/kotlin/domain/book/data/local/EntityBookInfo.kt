@@ -8,18 +8,20 @@ import domain.book.data.BookInfo
 import domain.common.data.Model
 import domain.common.data.info.Info
 import domain.common.data.info.local.EntityInfo
+import domain.library.Library
+import kotlinx.serialization.Contextual
 
 /**
- * EntityBookInfo is a Data Transfer Object (DTO) that is used to transfer data between the
- * Domain Layer and the Data Layer.
+ * EntityBookInfo
+ *
+ * A Data Transfer Object (DTO) that is used to transfer data between the Domain Layer and the Data Layer.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.12 Kotlin conversion
  */
 
 class EntityBookInfo(
-    @Transient
-    override val id: UUID2<Book>,
+    override val id: UUID2<@Contextual Book>,
     val title: String,
     val author: String,
     val description: String,
@@ -76,6 +78,11 @@ class EntityBookInfo(
                 "modified=" + HumanDate(lastModifiedTimeMillis).toTimeAgoStr() + ", " +
                 "isDeleted=" + isDeleted + ", " +
                 description
+    }
+
+    // Convenience method to get the Type-safe id from the Class
+    override fun id(): UUID2<Book> {
+        return this.id
     }
 
     ////////////////////////////////////////////

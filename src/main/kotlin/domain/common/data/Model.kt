@@ -1,5 +1,6 @@
 package domain.common.data
 
+import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import common.uuid2.UUID2
 import domain.Context
@@ -38,8 +39,9 @@ import kotlinx.serialization.Transient
  */
 
 @Serializable
-open class Model constructor(
-    @Transient
+open class Model(
+    @Transient            // prevent kotlinx serialization
+    @kotlin.jvm.Transient // prevent gson serialization
     open val id: UUID2<*> = UUID2(UUID2.randomUUID2(UUID2::class.java))
 ) {
 
@@ -51,31 +53,24 @@ open class Model constructor(
         return id;
     }
 
-    // EXCEPTIONAL CASE:
-    // - This method is for JSON deserialization purposes & should only be used for such.
-    // - It is not intended to be used for any other purpose.
-    // - todo Is there a better way to do this?
-    @Suppress("FunctionName")
-    fun _setIdFromImportedJson(id: UUID2<*>) { // todo test - is this necessary anymore? remove?
-//        this._id = _id
-//        this.id = id
-        // todo can we do a no-op?
-    }
-
     fun toPrettyJson(): String {
-        return GsonBuilder().setPrettyPrinting().create().toJson(this) // cant use general case, need to add the adapters for the UUID2 maps?
+        return GsonBuilder()
+            .registerTypeAdapter(MutableMap::class.java, UUID2.Uuid2MapJsonDeserializer())
+            .registerTypeAdapter(ArrayList::class.java, UUID2.Uuid2ArrayListJsonDeserializer())
+            .registerTypeAdapter(ArrayList::class.java, UUID2.Uuid2ArrayListJsonSerializer())
+            .setPrettyPrinting()
+            .create()
+            .toJson(this) // cant use general case, need to add the adapters for the UUID2 maps?
     }
 
     fun toPrettyJson(context: Context): String {
         return context.gson.toJson(this)
     }
 
-//    interface HasId1<TDomain : IUUID2> {
-//        fun id(): UUID2<TDomain>
-//    }
-
+    // This interface enforces all Model objects to include an id() method
     interface HasId<TKey : UUID2<*>> {
-        abstract val id: TKey
+        //abstract val id: TKey  // todo is there a way to enforce this?
+        abstract fun id(): TKey
     }
 
     ///////////////////////////
@@ -86,30 +81,60 @@ open class Model constructor(
     ///////////////////////////
 
     interface ToDomainInfo<TDomainInfo : DomainInfo> {
-        // *MUST* override
-        // - Overridden method should return `id` with the correct type of UUID2 for the domain
-        //   ie: `UUID2<User>` for the `User`, `UUID2<UserInfo>` for the UserInfo, etc.
+        /**
+        * **MUST** override in subclass.
+        * * Overridden method should return `id` with the correct type of `UUID2` for the Domain
+        * * ie: `UUID2<User>` for the `User`, `UUID2<UserInfo>` for the `UserInfo`, etc.
+        **/
         fun id(): UUID2<*>
 
-//        val domainInfo: TDomainInfo  // Return reference to TDomainInfo, used when importing JSON
-//            get() =
-//                this as TDomainInfo
         fun domainInfo(): TDomainInfo {
+            @Suppress("UNCHECKED_CAST")
             return this as TDomainInfo
         }
 
-        fun toDeepCopyDomainInfo(): TDomainInfo {    // **MUST** override, method should return a DEEP copy (& no original references)
-            throw RuntimeException("DomainInfo:ToDomainInfo:toDeepCopyDomainInfo(): Must override this method")
+        /**
+        * **MUST** override, method in subclass.
+        * * Should return a DEEP copy (& no original references)
+        **/
+        open fun toDeepCopyDomainInfo(): TDomainInfo {
+
+            // todo remove this
+            // This method is a lazy convenience, and should really be overridden in each class.
+//            @Suppress("UNCHECKED_CAST")
+//            return Gson().toJson(this.domainInfo()).let {
+//                Gson().fromJson(it, this::class.java)
+//            } as TDomainInfo
+
+            // todo test this
+            @Suppress("UNCHECKED_CAST")
+            return GsonBuilder()
+                .registerTypeAdapter(MutableMap::class.java, UUID2.Uuid2MapJsonDeserializer())
+                .registerTypeAdapter(ArrayList::class.java, UUID2.Uuid2ArrayListJsonDeserializer())
+                .registerTypeAdapter(ArrayList::class.java, UUID2.Uuid2ArrayListJsonSerializer())
+                .create()
+                .toJson(this.domainInfo()).let {
+                    Gson().fromJson(it, this::class.java)
+                } as TDomainInfo
+
+            // todo - should this be an abstract method without a default implementation?
+            //throw RuntimeException("DomainInfo:ToDomainInfo:toDeepCopyDomainInfo(): Must override this method")
         }
 
-        // This interface enforces all DomainInfo objects to include a deepCopyDomainInfo() method
-        // - Just add "implements ToDomainInfo.deepCopyDomainInfo<ToDomainInfo<Domain>>" to the class
-        //   definition, and the deepCopy() method will be added.
+        /**
+        * This interface enforces all DomainInfo objects to include a deepCopyDomainInfo() method
+        * * Simply add implements **`ToDomainInfo.deepCopyDomainInfo<ToDomainInfo<{Domain}>>`** to the class
+        *   definition, and the default `deepCopy()` method will be added.
+        **/
         interface HasToDeepCopyDomainInfo<TToInfo : ToDomainInfo<out DomainInfo>> {
-            fun deepCopyDomainInfo(): DomainInfo // Requires method override, should return a deep copy (no original references)
+
+            // Should be overridden in subclass
+            // Here as a default flat-copy implementation.
+            // Should return a deep copy (no original references)
+            open fun deepCopyDomainInfo(): DomainInfo
             {
                 // This method is a lazy convenience, and should really be overridden in each class.
-                // This is a hack to get around the fact that Java doesn't allow you to call a generic method from a generic class
+                @Suppress("UNCHECKED_CAST")
                 return (this as TToInfo).toDeepCopyDomainInfo()
             }
         }

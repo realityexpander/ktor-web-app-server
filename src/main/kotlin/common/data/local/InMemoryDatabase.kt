@@ -37,14 +37,14 @@ class InMemoryDatabase<TUUID2 : IUUID2, TEntity : EntityInfo> (
 
     internal constructor() : this(FakeURL("memory://hash.map"), "admin", "password")
 
-    override fun fetchEntityInfo(id: UUID2<TUUID2>): Result<TEntity> {
+    override suspend fun fetchEntityInfo(id: UUID2<TUUID2>): Result<TEntity> {
         // Simulate the request
         val infoResult: TEntity = database[id]
             ?: return Result.failure(Exception("DB: Failed to get entityInfo, id: $id"))
         return Result.success(infoResult)
     }
 
-    override fun fetchEntityInfo(id: String): Result<TEntity> {
+    override suspend fun fetchEntityInfo(id: String): Result<TEntity> {
         return try {
             val uuid: UUID2<TUUID2> = UUID2.fromUUIDString<TUUID2>(id)
             fetchEntityInfo(uuid)
@@ -53,7 +53,7 @@ class InMemoryDatabase<TUUID2 : IUUID2, TEntity : EntityInfo> (
         }
     }
 
-    override fun updateEntityInfo(entityInfo: TEntity): Result<TEntity> {
+    override suspend fun updateEntityInfo(entityInfo: TEntity): Result<TEntity> {
         // Simulate the request
         try {
             @Suppress("UNCHECKED_CAST")
@@ -64,7 +64,7 @@ class InMemoryDatabase<TUUID2 : IUUID2, TEntity : EntityInfo> (
         return Result.success(entityInfo)
     }
 
-    override fun addEntityInfo(entityInfo: TEntity): Result<TEntity> {
+    override suspend fun addEntityInfo(entityInfo: TEntity): Result<TEntity> {
         // Simulate the request
         @Suppress("UNCHECKED_CAST")
         if (database.containsKey(entityInfo.id() as UUID2<TUUID2>)) {
@@ -75,7 +75,7 @@ class InMemoryDatabase<TUUID2 : IUUID2, TEntity : EntityInfo> (
         return Result.success(entityInfo)
     }
 
-    override fun upsertEntityInfo(entityInfo: TEntity): Result<TEntity> {
+    override suspend fun upsertEntityInfo(entityInfo: TEntity): Result<TEntity> {
         @Suppress("UNCHECKED_CAST")
         return if (database.containsKey(entityInfo.id() as UUID2<TUUID2>)) {
             updateEntityInfo(entityInfo)
@@ -84,7 +84,7 @@ class InMemoryDatabase<TUUID2 : IUUID2, TEntity : EntityInfo> (
         }
     }
 
-    override fun deleteEntityInfo(entityInfo: TEntity): Result<TEntity> {
+    override suspend fun deleteEntityInfo(entityInfo: TEntity): Result<TEntity> {
         @Suppress("UNCHECKED_CAST")
         return if (database.remove(entityInfo.id() as UUID2<TUUID2>) == null) {
             Result.failure(Exception("DB: Failed to delete entityInfo, entityInfo: $entityInfo"))
@@ -92,7 +92,7 @@ class InMemoryDatabase<TUUID2 : IUUID2, TEntity : EntityInfo> (
             Result.success(entityInfo)
     }
 
-    override fun findAllUUID2ToEntityInfoMap(): Map<UUID2<TUUID2>, TEntity> {
+    override suspend fun findAllUUID2ToEntityInfoMap(): Map<UUID2<TUUID2>, TEntity> {
         val map: MutableMap<UUID2<TUUID2>, TEntity> = java.util.HashMap<UUID2<TUUID2>, TEntity>()
         for ((key, value) in database.entries) {
             map[UUID2(key)] = value

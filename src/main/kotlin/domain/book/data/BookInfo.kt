@@ -18,8 +18,9 @@ import java.util.*
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.11
  */
+
 class BookInfo(
-    id: UUID2<Book>,  // Note: This is a UUID2<Book> not a UUID2<BookInfo>
+    override val id: UUID2<Book>,  // Note: This is a UUID2<Book> not a UUID2<BookInfo>
     val title: String,
     val author: String,
     val description: String,
@@ -116,8 +117,7 @@ class BookInfo(
 
     // Convenience method to get the Type-safe id from the Class
     override fun id(): UUID2<Book> {
-        @Suppress("UNCHECKED_CAST")
-        return id as UUID2<Book>
+        return this.id
     }
 
     override fun toString(): String {

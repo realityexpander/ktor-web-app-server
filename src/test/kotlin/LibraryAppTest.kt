@@ -7,11 +7,11 @@ import domain.book.data.network.DTOBookInfo
 import domain.library.Library
 import domain.user.User
 import domain.book.Book
+import domain.book.data.local.EntityBookInfo
 import domain.common.Role
 import domain.library.data.LibraryInfo
 import domain.user.data.UserInfo
 import kotlinx.coroutines.*
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import testFakes.common.util.log.TestLog
@@ -26,11 +26,29 @@ import java.time.Instant
  * @since 0.12 Kotlin Conversion
  */
 
-@OptIn(DelicateCoroutinesApi::class)
 class LibraryAppTest {
-    private val ctx: Context = setupDefaultTestContext()
-    private val testUtils: TestingUtils = TestingUtils(ctx)
-    
+    private val context: Context = setupDefaultTestContext()
+    private val testUtils: TestingUtils = TestingUtils(context)
+
+    companion object {
+        private const val shouldDisplayAllDebugLogs = false // Set to `true` to see all debug logs
+
+        fun setupDefaultTestContext(): Context {
+            val testLog = TestLog(!shouldDisplayAllDebugLogs) // false = print all logs to console, including info/debug
+            val prodContext = Context.setupProductionInstance(testLog)
+
+            // Modify the Production context into a Test context.
+            return Context(
+                prodContext.bookInfoRepo,
+                prodContext.userInfoRepo,
+                prodContext.libraryInfoRepo,
+                prodContext.accountInfoRepo,
+                prodContext.gson,
+                testLog  // <--- Using the test logger
+            )
+        }
+    }
+
     @BeforeEach
     fun setUp() {
         // no-op
@@ -45,9 +63,8 @@ class LibraryAppTest {
         val book1200: Book
     )
 
-    @OptIn(ExperimentalCoroutinesApi::class, DelicateCoroutinesApi::class)
     private fun setupDefaultRolesAndScenario(
-        ctx: Context,
+        context: Context,
         testUtils: TestingUtils
     ): TestRoles {
 
@@ -55,7 +72,7 @@ class LibraryAppTest {
         // Setup DB & API simulated resources //
         ////////////////////////////////////////
 
-        return GlobalScope.async {
+        return runBlocking {
 
             // • Put some fake BookInfo into the DB & API for BookInfo's
             testUtils.populateFakeBookInfoInBookRepoDBandAPI()
@@ -64,10 +81,9 @@ class LibraryAppTest {
             val libraryInfo = testUtils.createFakeLibraryInfoInLibraryInfoRepo(1)
             assertTrue(libraryInfo.isSuccess, "Create Library FAILURE --> $libraryInfo")
             val library1InfoId: UUID2<Library> = libraryInfo.getOrThrow().id()
-            ctx.log.d(
-                this,
-                "Library Created --> id: " + (libraryInfo.getOrNull() ?: fail("libraryInfo is null")).id
-                        + ", name: " + (libraryInfo.getOrNull() ?: fail("libraryInfo is null")).name
+            context.log.d(this,
+                "Library Created --> id: " + libraryInfo.getOrThrow().id()
+                        + ", name: " + libraryInfo.getOrThrow().name
             )
 
             // Populate the library with 10 books
@@ -76,61 +92,61 @@ class LibraryAppTest {
             /////////////////////////////////
             // • Create Accounts for Users //
             /////////////////////////////////
+
             val accountInfo1Result = testUtils.createFakeAccountInfoInAccountRepo(1)
             val accountInfo2Result = testUtils.createFakeAccountInfoInAccountRepo(2)
             assertNotNull(accountInfo1Result)
             assertNotNull(accountInfo2Result)
             assertTrue(accountInfo1Result.isSuccess)
-            Assertions.assertTrue(accountInfo2Result.isSuccess)
+            assertTrue(accountInfo2Result.isSuccess)
             val accountInfo1: AccountInfo = accountInfo1Result.getOrThrow()
             val accountInfo2: AccountInfo = accountInfo2Result.getOrThrow()
 
             // Create & populate User1 in the User Repo for the Context
             val user1InfoResult: Result<UserInfo> = testUtils.createFakeUserInfoInUserInfoRepo(1)
             assertNotNull(user1InfoResult)
-            Assertions.assertTrue(user1InfoResult.isSuccess)
-            val user1Info: UserInfo = (user1InfoResult?.getOrNull() ?: fail("user1InfoResult is null"))
+            assertTrue(user1InfoResult.isSuccess)
+            val user1Info: UserInfo = user1InfoResult.getOrThrow()
 
             ///////////////////////////
             // Create Default Roles  //
             ///////////////////////////
 
-            val account1 = Account(accountInfo1, ctx)
+            val account1: Account = Account(accountInfo1, context)
             assertNotNull(account1)
-            val library1: Library = Library(library1InfoId, ctx)
+            val library1: Library = Library(library1InfoId, context)
             assertNotNull(library1)
 
             // Create the Test Roles
             val testRoles = TestRoles(
                 account1,
-                Account(accountInfo2, ctx),
-                User(user1Info, account1, ctx),
+                Account(accountInfo2, context),
+                User(user1Info, account1, context),
                 library1,
-                domain.book.Book(UUID2.createFakeUUID2(1100, Book::class.java), null, ctx),  // create ORPHANED book
-                domain.book.Book(UUID2.createFakeUUID2(1200, Book::class.java), library1, ctx)
+                Book(UUID2.createFakeUUID2(1100, Book::class.java), null, context),  // create ORPHANED book
+                Book(UUID2.createFakeUUID2(1200, Book::class.java), library1, context)
             )
             assertNotNull(testRoles)
 
             // print User1
-            ctx.log.d(this, "User --> " + testRoles.user1.id + ", " + testRoles.user1.fetchInfo()?.toPrettyJson(ctx))
+            context.log.d(this, "User --> " + testRoles.user1.id + ", " + testRoles.user1.fetchInfo()?.toPrettyJson(context))
 
-            return@async testRoles
-        }.getCompleted()
-
+            return@runBlocking testRoles
+        }
     }
 
     @Test
     fun `Update BookInfo is Success`() {
-        GlobalScope.launch {
-            // • ARRANGE
+        runBlocking {
 
+            // • ARRANGE
             // Create fake book info in the DB & API
-            val bookId = 1100
-            testUtils.addFakeBookInfoToBookInfoRepo(bookId)
+            val book1100Id = 1100
+            testUtils.addFakeBookInfoToBookInfoRepo(book1100Id)
 
             // Create a book object (it only has an id)
-            val book = domain.book.Book(UUID2.createFakeUUID2(bookId, Book::class.java), null, ctx)
-            ctx.log.d(this, book.fetchInfoResult().toString())
+            val book = Book(UUID2.createFakeUUID2(book1100Id, Book::class.java), null, context)
+            context.log.d(this, book.fetchInfoResult().toString())
             val expectedUpdatedTitle = "The Updated Title"
             val expectedUpdatedAuthor = "The Updated Author"
             val expectedUpdatedDescription = "The Updated Description"
@@ -151,15 +167,13 @@ class LibraryAppTest {
                     expectedUpdatedIsDeleted
                 )
             )
-            assertTrue(
-                bookInfoResult.isSuccess,
-                "Update BookInfo FAILURE --> " + bookInfoResult.exceptionOrNull()?.message
-            )
+            assertTrue(bookInfoResult.isSuccess, "Update BookInfo FAILURE --> " +
+                    bookInfoResult.exceptionOrNull()?.message)
 
             // Get the bookInfo (null if not loaded)
-            val bookInfo3: BookInfo? = book.fetchInfo()
-            if (bookInfo3 == null) {
-                ctx.log.d(this, "Book Missing --> book id: " + book.id() + " >> " + " is null")
+            val bookInfo: BookInfo? = book.fetchInfo()
+            if (bookInfo == null) {
+                context.log.d(this, "Book Missing --> book id: " + book.id() + " >> " + " is null")
                 fail("Book Missing --> book id: " + book.id() + " >> " + " is null")
             }
 
@@ -171,82 +185,94 @@ class LibraryAppTest {
     }
 
     @Test
-    fun `Fetch NonExisting Book is Failure`() {
-        GlobalScope.launch {
+    fun `Fetch Non-Existing Book is Failure`() {
+        runBlocking {
 
             // • ARRANGE
+            val book99 = Book(UUID2.createFakeUUID2(99, Book::class.java), null, context)
 
             // • ACT
             // Try to get a book id that doesn't exist - SHOULD FAIL
-            val book2 = domain.book.Book(UUID2.createFakeUUID2(99, Book::class.java), null, ctx)
-            val bookInfoResult2: Result<BookInfo> = book2.fetchInfoResult()
+            val book99InfoResult: Result<BookInfo> = book99.fetchInfoResult()
 
             // • ASSERT
             assertTrue(
-                bookInfoResult2.isFailure,
-                "Book SHOULD NOT Exist, but does! --> " + book2.id()
+                book99InfoResult.isFailure,
+                "Book SHOULD NOT Exist, but does! --> " + book99.id()
+            )
+        }
+    }
+
+    @Test
+    fun `Fetch Existing Book is Success`() {
+        runBlocking {
+
+            // • ARRANGE
+            val roles = setupDefaultRolesAndScenario(context, testUtils)
+            val book1200 = Book(UUID2.createFakeUUID2(1200, Book::class.java), roles.library1, context)
+
+            // • ACT
+            // Try to get a book id that exists - SHOULD SUCCEED
+            val book1200InfoResult: Result<BookInfo> = book1200.fetchInfoResult()
+
+            // • ASSERT
+            assertTrue(
+                book1200InfoResult.isSuccess,
+                "Book SHOULD Exist, but doesn't! --> " + book1200.id()
             )
         }
     }
 
     @Test
     fun `CheckOut 2 Books to User is Success`() {
-        GlobalScope.launch {
+        runBlocking {
+
             // • ARRANGE
-            val roles = setupDefaultRolesAndScenario(ctx, testUtils)
+            val roles = setupDefaultRolesAndScenario(context, testUtils)
 
             // • ACT
-            val bookResult: Result<Book> = roles.library1.checkOutBookToUser(roles.book1100, roles.user1)
-            val bookResult2: Result<Book> = roles.library1.checkOutBookToUser(roles.book1200, roles.user1)
+            val book1100Result: Result<Book> = roles.library1.checkOutBookToUser(roles.book1100, roles.user1)
+            val book1200Result: Result<Book> = roles.library1.checkOutBookToUser(roles.book1200, roles.user1)
 
             // • ASSERT
-            assertTrue(bookResult.isSuccess, "Checked out book FAILURE, bookId: " + roles.book1100.id)
-            assertTrue(bookResult2.isSuccess, "Checked out book FAILURE, bookId: " + roles.book1200.id)
+            assertTrue(book1100Result.isSuccess, "Checked out book FAILURE, bookId: " + roles.book1100.id)
+            assertTrue(book1200Result.isSuccess, "Checked out book FAILURE, bookId: " + roles.book1200.id)
 
-            roles.library1.dumpDB(ctx) // LEAVE for debugging
+            roles.library1.dumpDB(context) // LEAVE for debugging
         }
     }
 
     @Test
     fun `Find Books checkedOut by User is Success`() {
-        GlobalScope.launch {
+            runBlocking {
+
             // • ARRANGE
-            val roles = setupDefaultRolesAndScenario(ctx, TestingUtils(ctx))
+            val roles = setupDefaultRolesAndScenario(context, TestingUtils(context))
 
             // Checkout 2 books to User
             val bookResult1: Result<Book> = roles.library1.checkOutBookToUser(roles.book1100, roles.user1)
             val bookResult2: Result<Book> = roles.library1.checkOutBookToUser(roles.book1200, roles.user1)
-            assertTrue(
-                bookResult1.isSuccess,
-                "Checked out book FAILURE, bookId: " + roles.book1100.id
-            )
-            assertTrue(
-                bookResult2.isSuccess,
-                "Checked out book FAILURE, bookId: " + roles.book1200.id
-            )
+            assertTrue(bookResult1.isSuccess, "Checked out book FAILURE, bookId: " + roles.book1100.id)
+            assertTrue(bookResult2.isSuccess, "Checked out book FAILURE, bookId: " + roles.book1200.id)
 
             // • ACT & ASSERT
 
             // Find books checked out by user
             val checkedOutBooksResult = roles.library1.findBooksCheckedOutByUser(roles.user1)
-            assertTrue(
-                checkedOutBooksResult.isSuccess,
+            assertTrue(checkedOutBooksResult.isSuccess,
                 "findBooksCheckedOutByUser FAILURE for userId" + roles.user1.id()
             )
             val checkedOutBooks = checkedOutBooksResult.getOrThrow()
 
             // List Books
-            ctx.log.d(
-                this, "Checked Out Books for User [" + roles.user1.fetchInfo()?.name + ", " +
+            context.log.d(this,
+                "Checked Out Books for User [" + roles.user1.fetchInfo()?.name + ", " +
                         roles.user1.id() + "]:"
             )
             for (book in checkedOutBooks) {
                 val bookInfoResult: Result<BookInfo> = book.fetchInfoResult()
-                assertTrue(
-                    bookInfoResult.isSuccess,
-                    "Book Error: bookId" + book.id()
-                )
-                ctx.log.d(this, bookInfoResult.getOrThrow().toPrettyJson(ctx))
+                assertTrue(bookInfoResult.isSuccess, "Book Error: bookId" + book.id())
+                context.log.d(this, bookInfoResult.getOrThrow().toPrettyJson(context))
             }
 
             val acceptedBookCount: Int =
@@ -261,9 +287,10 @@ class LibraryAppTest {
 
     @Test
     fun `Calculate availableBook To numAvailable Map is Success`() {
-        GlobalScope.launch {
+        runBlocking {
+
             // • ARRANGE
-            val roles = setupDefaultRolesAndScenario(ctx, TestingUtils(ctx))
+            val roles = setupDefaultRolesAndScenario(context, TestingUtils(context))
 
             // Checkout 2 books
             val bookResult1: Result<Book> = roles.library1.checkOutBookToUser(roles.book1100, roles.user1)
@@ -280,18 +307,14 @@ class LibraryAppTest {
             assertTrue(availableBooks.isNotEmpty())
 
             // Print out available books
-            println()
-            ctx.log.d(this, "Available Books in Library:")
+            context.log.d(this, "Available Books in Library:")
             for (key in availableBooks) {
                 val bookInfoResult: Result<BookInfo> = key.fetchInfoResult()
-                assertTrue(
-                    bookInfoResult.isSuccess,
-                    "Book Error: bookId" + key.id()
-                )
-                ctx.log.d(this, bookInfoResult.getOrThrow().toPrettyJson(ctx))
+                assertTrue(bookInfoResult.isSuccess, "Book Error: bookId" + key.id())
+                context.log.d(this, bookInfoResult.getOrThrow().toPrettyJson(context))
             }
 
-            ctx.log.d(this, "Total Available Books (unique UUIDs): " + availableBooks.size)
+            context.log.d(this, "Total Available Books (unique UUIDs): " + availableBooks.size)
             assertEquals(
                 availableBooks.size,
                 10,
@@ -302,21 +325,22 @@ class LibraryAppTest {
 
     @Test
     fun `CheckOut and CheckIn Book to Library is Success`() {
-        GlobalScope.launch {
+        runBlocking {
 
             // • ARRANGE
-            val roles = setupDefaultRolesAndScenario(ctx, TestingUtils(ctx))
+            val roles = setupDefaultRolesAndScenario(context, TestingUtils(context))
             val initialBookCount: Int = roles.user1.findAllAcceptedBooks().getOrThrow().size
 
             // • ACT & ASSERT
 
             // First check out book
             val checkoutResult: Result<UUID2<Book>> =
-                roles.user1.checkOutBookFromLibrary(roles.book1200, roles.library1)
-            assertTrue(
-                checkoutResult.isSuccess,
-                "Checked out book FAILURE --> book id:" + roles.book1200.id()
-            )
+                roles.user1.checkOutBookFromLibrary(
+                    roles.book1200,
+                    roles.library1
+                )
+            assertTrue(checkoutResult.isSuccess, "Checked out book FAILURE --> book id:" + roles.book1200.id())
+
             val afterCheckOutBookCount: Int = roles.user1.findAllAcceptedBooks().getOrThrow().size
             assertEquals(
                 afterCheckOutBookCount,
@@ -337,7 +361,7 @@ class LibraryAppTest {
                 "afterCheckInBookCount != initialBookCount",
             )
 
-            roles.library1.dumpDB(ctx)
+            roles.library1.dumpDB(context)
         }
     }
 
@@ -374,37 +398,63 @@ class LibraryAppTest {
 
     @Test
     fun `Update LibraryInfo by updateInfoFromJson is Success`() {
-        GlobalScope.launch {
+        runBlocking {
+
             // • ARRANGE
+            val roles = setupDefaultRolesAndScenario(context, TestingUtils(context))
             val json = ronaldReaganLibraryInfoJson
 
             // Create the "unknown" library with just an id.
-            val library99: Library = Library(UUID2.createFakeUUID2(99, Library::class.java), ctx)
-            val book1500 = Book(UUID2.createFakeUUID2(1500, Book::class.java), null, ctx)
+            val library99: Library = Library(UUID2.createFakeUUID2(99, Library::class.java), context)
+            val book1500 = Book(UUID2.createFakeUUID2(1500, Book::class.java), null, context)
 
-            val roles = setupDefaultRolesAndScenario(ctx, TestingUtils(ctx))
+            // • ACT & ASSERT
+            val library99InfoResult = library99.updateInfoFromJson(json)
+            assertTrue(library99InfoResult.isFailure, "LibraryInfo updateInfoFromJson() of unknown library succeeded unexpectedly")
+
+            val libraryInfo = library99.info() ?: fail("libraryInfo is null")
+            val library = Library(libraryInfo, context)
+            context.log.d(this, "Results of Library3 json load:" + library.toJson())
+
+            // • ASSERT
+            // check for same number of items
+            assertEquals(
+                library.calculateAvailableBookIdToNumberAvailableList().getOrThrow().size,
+                10,
+                "Library2 should have 10 books"
+            )
+            // check for same number of items
+            assertEquals(
+                library.calculateAvailableBookIdToNumberAvailableList().getOrThrow().size,
+                roles.library1.calculateAvailableBookIdToNumberAvailableList().getOrThrow().size,
+                "Library2 should have same number of books as Library1"
+            )
+
+            // check for book1500
+            val book1500Result = library.info()?.isBookAvailableToCheckout(book1500)
+            assertTrue(book1500Result == true, "Book1500 should be available to checkout")
         }
     }
 
     @Test fun `Create Library Role from createInfoFromJson is Success`() {
-        GlobalScope.launch {
+        runBlocking {
 
-        // • ARRANGE
-        val json = ronaldReaganLibraryInfoJson
-        val expectedBook1900 = Book(UUID2.createFakeUUID2(1900, Book::class.java), null, ctx)
+            // • ARRANGE
+            val json = ronaldReaganLibraryInfoJson
+            val expectedBook1900 = Book(UUID2.createFakeUUID2(1900, Book::class.java), null, context)
 
-        // Create a Library Domain Object from the Info
+            // Create a Library Domain Object from the Info
             try {
 
                 // • ACT
                 val libraryInfo: LibraryInfo? = Role.createInfoFromJson(
                     json,
                     LibraryInfo::class.java,
-                    ctx
+                    context
                 )
                 assertNotNull(libraryInfo)
-                val library = Library(libraryInfo!!, ctx)
-                ctx.log.d(this, "Results of Library3 json load:" + library.toJson())
+                val library = Library(libraryInfo!!, context)
+                context.log.d(this, "Results of Library3 json load:" + library.toJson())
 
                 // • ASSERT
                 // check for same number of items
@@ -420,7 +470,7 @@ class LibraryAppTest {
                     "Library2 should have known Book with id=" + expectedBook1900.id()
                 )
             } catch (e: Exception) {
-                ctx.log.e(this, "Exception: " + e.message)
+                context.log.e(this, "Exception: " + e.message)
                 fail(e.message)
             }
         }
@@ -440,8 +490,8 @@ class LibraryAppTest {
             """.trimIndent()
 
     @Test
-    fun `Create Book Role from DTOInfo Json`() {
-        GlobalScope.launch {
+    fun `Create Book Role from DTOInfo Json is Success`() {
+        runBlocking {
 
             // • ARRANGE
             val json = greatGatsbyDTOBookInfoJson
@@ -452,12 +502,12 @@ class LibraryAppTest {
 
             // • ACT & ASSERT
             try {
-                val dtoBookInfo3 = DTOBookInfo(json, ctx)
+                val dtoBookInfo3 = DTOBookInfo(json, context)
                 assertNotNull(dtoBookInfo3)
-                val book3 = domain.book.Book(BookInfo(dtoBookInfo3), null, ctx)
+                val book3 = Book(BookInfo(dtoBookInfo3), null, context)
                 assertNotNull(book3)
 
-                ctx.log.d(this, "Results of load BookInfo from DTO Json: " + book3.toJson())
+                context.log.d(this, "Results of load BookInfo from DTO Json: " + book3.toJson())
                 assertEquals(
                     expectedTitle,
                     book3.info()?.title,
@@ -479,7 +529,73 @@ class LibraryAppTest {
                     "Book3 should have UUID2 Type of:$expectedUuid2Type"
                 )
             } catch (e: Exception) {
-                ctx.log.e(this, "Exception: " + e.message)
+                context.log.e(this, "Exception: " + e.message)
+                fail(e.message)
+            }
+
+        }
+    }
+
+    private val greatGatsbyEntityBookInfoJson: String =
+        """{
+              "id": {
+                "uuid": "00000000-0000-0000-0000-000000000010",
+                "uuid2Type": "Model.EntityInfo.EntityBookInfo"
+              },
+              "title": "The Great Gatsby",
+              "author": "F. Scott Fitzgerald",
+              "description": "The Great Gatsby is a 1925 novel written by American author F. Scott Fitzgerald that follows a cast of characters living in the fictional towns of West Egg and East Egg on prosperous Long Island in the summer of 1922. The story primarily concerns the young and mysterious millionaire Jay Gatsby and his quixotic passion and obsession with the beautiful former debutante Daisy Buchanan. Considered to be Fitzgerald's magnum opus, The Great Gatsby explores themes of decadence, idealism, resistance to change, social upheaval, and excess, creating a portrait of the Jazz Age or the Roaring Twenties that has been described as a cautionary tale regarding the American Dream.",
+              "extraFieldToShowThisIsAnEntity": "Extra Unneeded Data from JSON payload load"
+            }
+            """.trimIndent()
+
+    @Test
+    fun `Create Book Role from EntityInfo Json is Success`() {
+        runBlocking {
+
+            // • ARRANGE
+            val json = greatGatsbyEntityBookInfoJson
+            val expectedTitle = "The Great Gatsby"
+            val expectedAuthor = "F. Scott Fitzgerald"
+            val expectedUUID2: UUID2<Book> = UUID2.createFakeUUID2(10, Book::class.java)
+            val expectedUuid2Type: String = expectedUUID2.uuid2Type
+            val expectedExtraFieldToShowThisIsAnEntity = "Extra Unneeded Data from JSON payload load"
+
+            // • ACT & ASSERT
+            try {
+                val entityBookInfo = EntityBookInfo(json, context)
+                assertNotNull(entityBookInfo)
+                val book10 = Book(BookInfo(entityBookInfo), null, context)
+                assertNotNull(book10)
+
+                context.log.d(this, "Results of load BookInfo from Entity Json: " + book10.toJson())
+                assertEquals(
+                    expectedTitle,
+                    book10.info()?.title,
+                    "Book should have title:$expectedTitle"
+                )
+                assertEquals(
+                    expectedAuthor,
+                    book10.info()?.author,
+                    "Book should have author:$expectedAuthor"
+                )
+                assertEquals(
+                    expectedUUID2,
+                    book10.id(),
+                    "Book should have id: $expectedUUID2"
+                )
+                assertEquals(
+                    expectedUuid2Type,
+                    book10.id().uuid2Type,
+                    "Book should have UUID2 Type of:$expectedUuid2Type"
+                )
+                assertEquals(
+                    expectedExtraFieldToShowThisIsAnEntity,
+                    entityBookInfo.extraFieldToShowThisIsAnEntity,
+                    "Book Entity info should have extraFieldToShowThisIsAnEntity: $expectedExtraFieldToShowThisIsAnEntity"
+                )
+            } catch (e: Exception) {
+                context.log.e(this, "Exception: " + e.message)
                 fail(e.message)
             }
 
@@ -488,141 +604,111 @@ class LibraryAppTest {
 
     @Test
     fun `Create new Book then CheckOut Book to User is Success`() {
-        GlobalScope.launch {
+        runBlocking {
+
             // • ARRANGE
-            val roles = setupDefaultRolesAndScenario(ctx, testUtils)
+            val roles = setupDefaultRolesAndScenario(context, testUtils)
             val user2InfoResult: Result<UserInfo> = testUtils.createFakeUserInfoInUserInfoRepo(2)
-            val user2 = User(user2InfoResult.getOrThrow(), roles.account2, ctx)
+            val user2 = User(user2InfoResult.getOrThrow(), roles.account2, context)
             assertNotNull(user2)
             val book12Result: Result<BookInfo> = testUtils.addFakeBookInfoToBookInfoRepo(12)
-            assertTrue(
-                book12Result.isSuccess,
-                "Book12 should have been added to Library1"
-            )
+            assertTrue(book12Result.isSuccess, "Book12 should have been added to Library1")
 
             // • ACT & ASSERT
 
             // Create new Book by id
             val book12id: UUID2<Book> = book12Result.getOrThrow().id()
-            val book12 = Book(book12id, null, ctx)
+            val book12 = Book(book12id, null, context)
             assertNotNull(book12)
 
             // Add Book to Library
             val book12UpsertResult: Result<Book> = roles.library1.addTestBookToLibrary(book12, 1)
-            assertTrue(
-                book12UpsertResult.isSuccess,
-                "Book12 should have been added to Library1",
-            )
+            assertTrue(book12UpsertResult.isSuccess, "Book12 should have been added to Library1",)
 
             // Check out Book from Library
-            ctx.log.d(this, "Check out book " + book12id + " to user " + roles.user1.id())
+            context.log.d(this, "Check out book " + book12id + " to user " + roles.user1.id())
             val checkedOutBookResult: Result<UUID2<Book>> = user2.checkOutBookFromLibrary(book12, roles.library1)
-            assertTrue(
-                checkedOutBookResult.isSuccess,
-                "Book12 should have been checked out by user2",
-            )
+            assertTrue(checkedOutBookResult.isSuccess, "Book12 should have been checked out by user2",)
         }
     }
 
     @Test
     fun `User Accepts Book and Gives Book to another User is Success`() {
-        GlobalScope.launch {
+        runBlocking {
+
             // • ARRANGE
-            val roles = setupDefaultRolesAndScenario(ctx, testUtils)
-            val user01InfoResult: Result<UserInfo> = testUtils.createFakeUserInfoInUserInfoRepo(1)
-            assertNotNull(user01InfoResult)
-            assertTrue(
-                user01InfoResult.isSuccess,
-                "User01 should have been added to UserInfoRepo"
-            )
-            val user01 = User(user01InfoResult.getOrThrow(), roles.account1, ctx)
-            assertNotNull(user01)
+            val roles = setupDefaultRolesAndScenario(context, testUtils)
+            val user1InfoResult: Result<UserInfo> = testUtils.createFakeUserInfoInUserInfoRepo(1)
+            assertNotNull(user1InfoResult)
+            assertTrue(user1InfoResult.isSuccess, "User01 should have been added to UserInfoRepo")
+            val user1 = User(user1InfoResult.getOrThrow(), roles.account1, context)
+            assertNotNull(user1)
 
             val user2InfoResult: Result<UserInfo> = testUtils.createFakeUserInfoInUserInfoRepo(2)
             assertNotNull(user2InfoResult)
-            assertTrue(
-                user2InfoResult.isSuccess,
-                "User2 should have been added to UserInfoRepo"
-            )
-            val user2 = User(user2InfoResult.getOrThrow(), roles.account2, ctx)
+            assertTrue(user2InfoResult.isSuccess, "User2 should have been added to UserInfoRepo")
+            val user2 = User(user2InfoResult.getOrThrow(), roles.account2, context)
             assertNotNull(user2)
 
             val book12InfoResult: Result<BookInfo> = testUtils.addFakeBookInfoToBookInfoRepo(12)
-            assertTrue(
-                book12InfoResult.isSuccess,
-                "Book12 should have been added to Library1"
-            )
+            assertTrue(book12InfoResult.isSuccess, "Book12 should have been added to Library1")
             val book12id: UUID2<Book> = book12InfoResult.getOrThrow().id()
-            val book12 = Book(book12id, null, ctx)
+            val book12 = Book(book12id, null, context)
             assertNotNull(book12)
 
             // • ACT & ASSERT
             val acceptBookResult: Result<ArrayList<Book>> = user2.acceptBook(book12) // no library involved.
-            assertTrue(
-                acceptBookResult.isSuccess,
-                "User2 should have accepted Book12"
-            )
-            ctx.log.d(this, "User (2):" + user2.id() + " Give Book:" + book12id + " to User(1):" + user01.id())
-            val giveBookToUserResult: Result<ArrayList<Book>> = user2.giveBookToUser(book12, user01)
-            assertTrue(
-                giveBookToUserResult.isSuccess,
-                "User2 should have given Book12 to User01",
-            )
+            assertTrue(acceptBookResult.isSuccess, "User2 should have accepted Book12")
+
+            context.log.d(this, "User (2):" + user2.id() + " Give Book:" + book12id + " to User(1):" + user1.id())
+            val giveBookToUserResult: Result<ArrayList<Book>> = user2.giveBookToUser(book12, user1)
+            assertTrue(giveBookToUserResult.isSuccess, "User2 should have given Book12 to User01",)
         }
     }
 
     @Test
     fun `Give CheckedOut Book From User To User is Success`() {
-        GlobalScope.launch {
+        runBlocking {
+
             // • ARRANGE
-            val roles = setupDefaultRolesAndScenario(ctx, testUtils)
-            val user01InfoResult: Result<UserInfo> = testUtils.createFakeUserInfoInUserInfoRepo(1)
-            val user01 = User(user01InfoResult.getOrThrow(), roles.account1, ctx)
+            val roles = setupDefaultRolesAndScenario(context, testUtils)
+            val user1InfoResult: Result<UserInfo> = testUtils.createFakeUserInfoInUserInfoRepo(1)
+            val user1 = User(user1InfoResult.getOrThrow(), roles.account1, context)
+
             val user2InfoResult: Result<UserInfo> = testUtils.createFakeUserInfoInUserInfoRepo(2)
-            val user2 = User(user2InfoResult.getOrThrow(), roles.account2, ctx)
+            val user2 = User(user2InfoResult.getOrThrow(), roles.account2, context)
+
             val book12InfoResult: Result<BookInfo> = testUtils.addFakeBookInfoToBookInfoRepo(12)
             val book12id: UUID2<Book> = book12InfoResult.getOrThrow().id()
-            val book12 = Book(book12id, roles.library1, ctx)
+            val book12 = Book(book12id, roles.library1, context)
 
             // • ACT & ASSERT
 
             // Add book12 to library1
             val book12UpsertResult: Result<Book> = roles.library1.addTestBookToLibrary(book12, 1)
-            assertTrue(
-                book12UpsertResult.isSuccess,
-                "Book12 should have been added to Library1"
-            )
+            assertTrue(book12UpsertResult.isSuccess, "Book12 should have been added to Library1")
 
             // Register user1 to library1
-            val user01UpsertResult: Result<UUID2<User>> = roles.library1.info()?.registerUser(user01.id())
+            val user01UpsertResult: Result<UUID2<User>> = roles.library1.info()?.registerUser(user1.id())
                 ?: Result.failure(Exception("Library1 should have been able to register user01"))
-            assertTrue(
-                user01UpsertResult.isSuccess,
-                "User01 should have been registered to Library1"
-            )
+            assertTrue(user01UpsertResult.isSuccess, "User01 should have been registered to Library1")
 
             // Make user2 checkout book12 from library1
             val checkedOutBookResult: Result<UUID2<Book>> = user2.checkOutBookFromLibrary(book12, roles.library1)
-            assertTrue(
-                checkedOutBookResult.isSuccess,
-                "Book12 should have been checked out by user2",
-            )
-            ctx.log.d(
+            assertTrue(checkedOutBookResult.isSuccess, "Book12 should have been checked out by user2",)
+            context.log.d(
                 this,
-                "User (2):" + user2.id() + " Transfer Checked-Out Book:" + book12id + " to User(1):" + user01.id()
+                "User (2):" + user2.id() + " Transfer Checked-Out Book:" + book12id + " to User(1):" + user1.id()
             )
 
             // Give book12 from user2 to user01
             // Note: The Library that the book is checked out from ALSO transfers the checkout to the new user.
             // - Will only allow the transfer to complete if the receiving user has an account in good standing (ie: no fines, etc.)
-            val transferBookToUserResult: Result<ArrayList<Book>> = user2.giveBookToUser(book12, user01)
-            assertTrue(
-                transferBookToUserResult.isSuccess,
-                "User2 should have given Book12 to User01"
-            )
-            ctx.log.d(
-                this,
-                "Transfer Book SUCCESS --> Book:" + transferBookToUserResult.getOrThrow()[0].id() + " to User:" + user01.id()
+            val transferBookToUserResult: Result<ArrayList<Book>> = user2.giveBookToUser(book12, user1)
+            assertTrue(transferBookToUserResult.isSuccess, "User2 should have given Book12 to User01")
+            context.log.d(this, "Transfer Book SUCCESS --> Book:" +
+                    transferBookToUserResult.getOrThrow()[0].id() +
+                    " to User:" + user1.id()
             )
 
             testUtils.printBookInfoDBandAPIEntries()
@@ -631,42 +717,39 @@ class LibraryAppTest {
 
     @Test
     fun `Give Book From User To User is Success`() {
-        GlobalScope.launch {
+        runBlocking {
+
             // • ARRANGE
-            val roles = setupDefaultRolesAndScenario(ctx, testUtils)
-            val user01InfoResult: Result<UserInfo> = testUtils.createFakeUserInfoInUserInfoRepo(1)
-            val user01 = User(user01InfoResult.getOrThrow(), roles.account1, ctx)
+            val roles = setupDefaultRolesAndScenario(context, testUtils)
+            val user1InfoResult: Result<UserInfo> = testUtils.createFakeUserInfoInUserInfoRepo(1)
+            val user1 = User(user1InfoResult.getOrThrow(), roles.account1, context)
+
             val user2InfoResult: Result<UserInfo> = testUtils.createFakeUserInfoInUserInfoRepo(2)
-            val user2 = User(user2InfoResult.getOrThrow(), roles.account2, ctx)
+            val user2 = User(user2InfoResult.getOrThrow(), roles.account2, context)
 
             val acceptBookResult: Result<ArrayList<Book>> = user2.acceptBook(roles.book1100)
-            assertTrue(
-                acceptBookResult.isSuccess,
-                "User2 should have accepted Book1100"
-            )
+            assertTrue(acceptBookResult.isSuccess, "User2 should have accepted Book1100")
 
-            val giveBookResult: Result<ArrayList<Book>> = user2.giveBookToUser(roles.book1100, user01)
-            assertTrue(
-                giveBookResult.isSuccess,
-                "User2 should have given Book1100 to User01"
-            )
-            ctx.log.d(this, "Give Book SUCCESS --> Book:" + giveBookResult.getOrThrow())
+            val giveBookResult: Result<ArrayList<Book>> = user2.giveBookToUser(roles.book1100, user1)
+            assertTrue(giveBookResult.isSuccess, "User2 should have given Book1100 to User01")
+            context.log.d(this, "Give Book SUCCESS --> Book:" + giveBookResult.getOrThrow())
         }
     }
 
     @Test
     fun `Transfer CheckedOut Book sourceLibrary to another Library is Success`() {
-        GlobalScope.launch {
+        runBlocking {
+
         // • ARRANGE
-        val roles = setupDefaultRolesAndScenario(ctx, testUtils)
+        val roles = setupDefaultRolesAndScenario(context, testUtils)
         val user2InfoResult: Result<UserInfo> = testUtils.createFakeUserInfoInUserInfoRepo(2)
-        val user2 = User(user2InfoResult.getOrThrow(), roles.account2, ctx)
+        val user2 = User(user2InfoResult.getOrThrow(), roles.account2, context)
 
         // Book13 represents a found book that is not in the library
         val book13InfoResult: Result<BookInfo> = testUtils.addFakeBookInfoToBookInfoRepo(13)
         val book13id: UUID2<Book> = book13InfoResult.getOrThrow().id()
-        val book13 = Book(book13id, null, ctx) // note: sourceLibrary is null, so this book comes from an ORPHAN Library
-        ctx.log.d(this, "OLD Source Library: name=" + book13.sourceLibrary().info()?.name)
+        val book13 = Book(book13id, null, context) // note: sourceLibrary is null, so this book comes from an ORPHAN Library
+        context.log.d(this, "OLD Source Library: name=" + book13.sourceLibrary().info()?.name)
 
         // Simulate a User "finding" a Book and checking it out from its ORPHAN Private Library (ie: itself)
         val checkoutResult: Result<UUID2<Book>> = user2.checkOutBookFromLibrary(book13, book13.sourceLibrary())
@@ -677,33 +760,14 @@ class LibraryAppTest {
         val transferResult1: Result<Book> = book13.transferToLibrary(roles.library1)
         assertTrue(transferResult1.isSuccess,
             "Book13 should have been transferred to Library1")
-        ctx.log.d(this, "Transfer Book SUCCESS --> Book:" + transferResult1.getOrThrow())
+        context.log.d(this, "Transfer Book SUCCESS --> Book:" + transferResult1.getOrThrow())
 
         val transferredBook13: Book = transferResult1.getOrThrow()
-        ctx.log.d(this, "NEW Source Library: name=" + transferredBook13.sourceLibrary().info()?.name)
+        context.log.d(this, "NEW Source Library: name=" + transferredBook13.sourceLibrary().info()?.name)
         assertEquals(
             transferredBook13.sourceLibrary().info()?.name,
             roles.library1.info()?.name,
             "Book13 should have been transferred to Library1")
-        }
-    }
-
-    companion object {
-        private const val shouldDisplayAllDebugLogs = false // Set to `true` to see all debug logs
-
-        fun setupDefaultTestContext(): Context {
-            val testLog = TestLog(!shouldDisplayAllDebugLogs) // false = print all logs to console, including info/debug
-            val prodContext = Context.setupProductionInstance(testLog)
-
-            // Modify the Production context into a Test context.
-            return Context(
-                prodContext.bookInfoRepo,
-                prodContext.userInfoRepo,
-                prodContext.libraryInfoRepo,
-                prodContext.accountInfoRepo,
-                prodContext.gson,
-                testLog  // <--- Using the test logger
-            )
         }
     }
 }

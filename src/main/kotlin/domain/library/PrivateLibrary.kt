@@ -65,7 +65,6 @@ class PrivateLibrary : Library, IUUID2 {
         id()._setUUID2TypeStr(UUID2.calcUUID2TypeStr(PrivateLibrary::class.java))
         isForOnlyOneBook = false
     }
-
     constructor(
         id: UUID2<Library>,
         context: Context
@@ -73,7 +72,6 @@ class PrivateLibrary : Library, IUUID2 {
         id()._setUUID2TypeStr(UUID2.calcUUID2TypeStr(PrivateLibrary::class.java))
         isForOnlyOneBook = false
     }
-
     constructor(
         bookId: UUID2<Book>,
         @Suppress("unused")
@@ -91,7 +89,6 @@ class PrivateLibrary : Library, IUUID2 {
         //  - And the 1 BookId must always match initial BookId that created this Orphan Library.
         this.isForOnlyOneBook = true
     }
-
     constructor(
         context: Context
     ) : this(UUID2.randomUUID2(Book::class.java), true,  context) {
@@ -109,7 +106,7 @@ class PrivateLibrary : Library, IUUID2 {
 
         // Automatically upsert the User into the Library's User Register
         // - Private libraries are open to all users, so we don't need to check if the user is registered.
-        val addRegisteredUserResult: Result<UUID2<User>> = info()?.registerUser(user.id())
+        val addRegisteredUserResult = info()?.registerUser(user.id())
             ?: return Result.failure(Exception("Failed to register User in Library, userId: " + user.id()))
         if (addRegisteredUserResult.isFailure) return Result.failure(Exception("Failed to register User in Library, userId: " + user.id()))
 
@@ -118,16 +115,17 @@ class PrivateLibrary : Library, IUUID2 {
             return super.info()!!.checkOutPrivateLibraryBookToUser(book, user)
         }
 
-        // Orphan Libraries can only check out 1 Book to 1 User.
         // todo extract info() to var
+        // Orphan Libraries can only check out 1 Book to 1 User.
         if (info()!!.findAllKnownBookIds().size != 1)
             return Result.failure(Exception("Orphan Private Library can only check-out 1 Book to Users, bookId: " + book.id()))
 
         // Only allow check out if the Book Id matches the initial Book Id that created this Orphan Library.
-        val bookIds: Set<UUID2<Book>> = info()!!.findAllKnownBookIds()
-        val firstBookId: UUID2<Book> = bookIds.toTypedArray()[0] // there should only be 1 bookId
+        val bookIds = info()!!.findAllKnownBookIds()
+        val firstBookId = bookIds.toTypedArray()[0] // there should only be 1 bookId
         if (firstBookId != book.id()) return Result.failure(Exception("Orphan Private Library can only check-out 1 Book to Users and must be the same Id as the initial Book placed in the PrivateLibrary, bookId: " + book.id()))
-        val checkOutResult: Result<Book> = super.info()!!
+
+        val checkOutResult = super.info()!!
             .checkOutPrivateLibraryBookToUser(book, user) // note: we bypass all normal Library User Account checking
         if (checkOutResult.isFailure) return Result.failure(checkOutResult.exceptionOrNull()
                 ?: Exception("Failed to check-out Book from Library, bookId: " + book.id()))
@@ -164,13 +162,13 @@ class PrivateLibrary : Library, IUUID2 {
         } ?: return Result.failure(Exception("Failed to check-in Book from Private Library, bookId: " + book.id()))
 
         // note: we bypass all normal Library User Account checking
-        val checkInResult: Result<Book> = super.info()?.checkInPrivateLibraryBookFromUser(book, user) 
+        val checkInResult = super.info()?.checkInPrivateLibraryBookFromUser(book, user)
             ?: Result.failure(Exception("Failed to check-in Book from PrivateLibrary, bookId: " + book.id() + ", userId: " + user.id()))
         if (checkInResult.isFailure) 
             return Result.failure(Exception("Failed to check-in Book from Private Library, bookId: " + book.id()))
 
         // Update the Info
-        val updateInfoResult: Result<LibraryInfo> = updateInfo(info() 
+        val updateInfoResult = updateInfo(info()
             ?: return Result.failure(Exception("Failed to update LibraryInfo, bookId: " + book.id())))
         return if (updateInfoResult.isFailure)
             Result.failure(updateInfoResult.exceptionOrNull()

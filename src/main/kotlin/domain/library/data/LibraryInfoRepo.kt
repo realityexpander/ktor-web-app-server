@@ -45,7 +45,7 @@ class LibraryInfoRepo(log: ILog) : Repo(log), ILibraryInfoRepo {
         log.d(this, "libraryInfo.id: " + libraryInfo.id())
 
         // Simulate network/database
-        database.put(libraryInfo.id(), libraryInfo)
+        database[libraryInfo.id()] = libraryInfo
         return Result.success(libraryInfo)
     }
 

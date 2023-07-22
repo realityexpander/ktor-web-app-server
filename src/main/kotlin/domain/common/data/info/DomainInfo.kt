@@ -15,4 +15,4 @@ import java.util.*
  * @since 0.12 Kotlin conversion`
  */
 
-open class DomainInfo protected constructor(id: UUID2<*>) : Model(id)
+open class DomainInfo(id: UUID2<*>) : Model(id)

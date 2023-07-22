@@ -5,10 +5,11 @@ import common.data.network.FakeHttpClient
 import common.data.network.InMemoryAPI
 import common.uuid2.UUID2
 import domain.book.Book
-import domain.book.data.local.EntityBookInfo
 
 /**
- * BookInfoApi encapsulates an in-memory API database simulation for the DTOBookInfo.
+ * BookInfoInMemoryApi
+ *
+ * Simulates an API using an in-memory database for the DTOBookInfo.
  *
  * Note: Use Domain-specific language to define the API methods.
  *
@@ -16,10 +17,15 @@ import domain.book.data.local.EntityBookInfo
  * @since 0.12
  */
 
-class BookInfoApi internal constructor(api: InMemoryAPI<Book, DTOBookInfo>) {
+class BookInfoInMemoryApi(api: InMemoryAPI<Book, DTOBookInfo>) {
     private val api: InMemoryAPI<Book, DTOBookInfo>
 
-    constructor() : this(InMemoryAPI(FakeURL("memory://api.book.com"), FakeHttpClient()))
+    constructor() : this(
+        InMemoryAPI(
+            FakeURL("memory://api.book.com"),
+            FakeHttpClient()
+        )
+    )
 
     init {
         this.api = api

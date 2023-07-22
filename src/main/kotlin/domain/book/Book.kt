@@ -13,6 +13,8 @@ import domain.library.Library
 import domain.library.PrivateLibrary
 import domain.library.data.LibraryInfo
 import domain.user.User
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.yield
 
 /**
  * Book Role Object - Only interacts with its own repository, Context, and other Role Objects<br></br>
@@ -36,7 +38,7 @@ class Book : Role<BookInfo>, IUUID2 {
         repo = context.bookInfoRepo
         this.sourceLibrary = pickSourceLibrary(sourceLibrary, id(), context)
 
-        context.log.d(this, "Book (" + id() + ") created from Info")
+        context.log.d("Book<init>", "Book (" + id() + ") created from Info")
     }
     constructor(
         id: UUID2<Book>,
@@ -47,7 +49,7 @@ class Book : Role<BookInfo>, IUUID2 {
         repo = context.bookInfoRepo
         this.sourceLibrary = pickSourceLibrary(sourceLibrary, id, context)
 
-        context.log.d(this, "Book (" + id() + ") created using id with no Info")
+        context.log.d("Book<init>", "Book (" + id() + ") created using id with no Info")
     }
     constructor(
         bookInfoJson: String,
@@ -58,7 +60,7 @@ class Book : Role<BookInfo>, IUUID2 {
         repo = context.bookInfoRepo
         this.sourceLibrary = pickSourceLibrary(sourceLibrary, id(), context)
 
-        context.log.d(this, "Book (" + id() + ") created from JSON using class:" + clazz.name)
+        context.log.d("Book<init>", "Book (" + id() + ") created from JSON using class:" + clazz.name)
     }
     constructor(
         id: UUID2<Book>,
@@ -68,7 +70,7 @@ class Book : Role<BookInfo>, IUUID2 {
         repo = context.bookInfoRepo
         this.sourceLibrary = pickSourceLibrary(sourceLibrary, id, context)
 
-        context.log.d(this, "Book (" + id() + ") created using id with no Info")
+        context.log.d("Book<init>", "Book (" + id() + ") created using id with no Info")
     }
     constructor(bookInfoJson: String, sourceLibrary: Library?, context: Context) : this(
         bookInfoJson,
@@ -110,7 +112,7 @@ class Book : Role<BookInfo>, IUUID2 {
     }
 
     override fun toString(): String {
-        return this.info.get()?.toPrettyJson(this.context) ?: "Book (null)"
+        return this.info.get()?.toPrettyJson(this.context) ?: "Book (info=null)"
     }
 
     /////////////////////////////////////
@@ -201,23 +203,43 @@ class Book : Role<BookInfo>, IUUID2 {
     ): Library {
         // If a sourceLibrary was not provided, create a new ORPHAN PrivateLibrary for this Book.
         if (sourceLibrary == null) {
-            // Create a new ORPHAN PrivateLibrary just for this one Book
-            val privateLibrary: Library = PrivateLibrary(bookId, true, context)
-            context.libraryInfoRepo
-                .upsertLibraryInfo(
-                    LibraryInfo(
-                        privateLibrary.id(),
-                        "ORPHAN Private Library only for one Book, BookId: " + bookId.uuid()
-                    )
-                )
 
-            // Add this Book to the new ORPHAN PrivateLibrary
-            @Suppress("UNUSED_VARIABLE")
-            val ignoreThisResult: Result<UUID2<Book>> =
-                privateLibrary.info.get()?.addPrivateBookIdToInventory(bookId, 1)
+            return runBlocking {
+                // Create a new ORPHAN PrivateLibrary just for this one Book
+                val privateLibrary: Library = PrivateLibrary(bookId, true, context)
+
+//                yield()
+                // Create a new ORPHAN PrivateLibrary in the Repo for this one Book
+                val upsertOrphanLibraryInfoResult = context.libraryInfoRepo
+                    .upsertLibraryInfo(
+                        LibraryInfo(
+                            privateLibrary.id(),
+                            "ORPHAN Private Library only for one Book, BookId: " + bookId.uuid()
+                        )
+                    )
+                if (upsertOrphanLibraryInfoResult.isFailure) throw Exception("Error adding Book to PrivateLibrary")
+                val orphanLibraryInfo = upsertOrphanLibraryInfoResult.getOrNull()
                     ?: throw Exception("Error adding Book to PrivateLibrary")
 
-            return privateLibrary
+//                yield()
+//                println("privateLibrary.info.get() = " + privateLibrary.info.get())
+//                println("orphanLibraryInfo = $orphanLibraryInfo")
+//                if(privateLibrary.info.get() == null) throw Exception("Error adding Book to PrivateLibrary")
+//                val result = privateLibrary.info.get().addPrivateBookIdToInventory(bookId, 1)
+                val result = orphanLibraryInfo.addPrivateBookIdToInventory(bookId, 1)
+//                    ?: throw Exception("Error adding Book to PrivateLibrary")
+                if(result.isFailure) throw Exception("Error adding Book to PrivateLibrary")
+
+                privateLibrary
+            }
+
+//            // Add this Book to the new ORPHAN PrivateLibrary
+//            @Suppress("UNUSED_VARIABLE")
+//            val ignoreThisResult: Result<UUID2<Book>> =
+//                privateLibrary.info.get()?.addPrivateBookIdToInventory(bookId, 1)
+//                    ?: throw Exception("Error adding Book to PrivateLibrary")
+
+//            return privateLibrary
         }
 
         return sourceLibrary

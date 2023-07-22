@@ -22,7 +22,7 @@ import java.util.*
  */
 
 class UserInfo(
-    id: UUID2<User>,  // note this is a UUID2<User> not a UUID2<UserInfo>, it is the id of the User.
+    override val id: UUID2<User>,  // note this is a UUID2<User> not a UUID2<UserInfo>, it is the id of the User.
     val name: String,
     val email: String,
     private val acceptedBookIdToSourceLibraryIdMap: MutableMap<UUID2<Book>, UUID2<Library>> = mutableMapOf()
@@ -53,8 +53,7 @@ class UserInfo(
 
     // Convenience method to get the Type-safe id from the Class
     override fun id(): UUID2<User> {
-        @Suppress("UNCHECKED_CAST")
-        return this.id as UUID2<User> // todo remove and use direct val access
+        return this.id
     }
 
     ////////////////////////////////////////

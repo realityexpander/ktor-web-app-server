@@ -1,5 +1,6 @@
 package domain.library.data
 
+import com.google.gson.annotations.Expose
 import common.uuid2.UUID2
 import domain.book.Book
 import domain.common.data.Model
@@ -18,7 +19,7 @@ import java.util.*
  */
 
 class LibraryInfo(
-    id: UUID2<Library>,
+    override val id: UUID2<Library>,
     val name: String,
     registeredUserIdToCheckedOutBookIdsMap: MutableMap<UUID2<User>, ArrayList<UUID2<Book>>>,
     bookIdToNumBooksAvailableMap: MutableMap<UUID2<Book>, Long>
@@ -52,20 +53,19 @@ class LibraryInfo(
 
     // Convenience method to get the Type-safe id from the Class
     override fun id(): UUID2<Library> {
-        @Suppress("UNCHECKED_CAST")
-        return this.id as UUID2<Library>  // todo remove & use direct val access
+        return this.id
     }
 
-//    override fun toString(): String {
-////        return this.toPrettyJson() // todo why does this cause ClassCastException? need to use UUID2Map adapter
-//
+    override fun toString(): String {
+        return this.toPrettyJson() // todo why does this cause ClassCastException? need to use UUID2Map adapter
+
 //        return "LibraryInfo{" +
 //                "id=" + id() +
 //                ", name='" + name + '\'' +
 //                ", registeredUserIdToCheckedOutBookIdsMap=" + registeredUserIdToCheckedOutBookIdsMap +
 //                ", bookIdToNumBooksAvailableMap=" + bookIdToNumBooksAvailableMap +
 //                '}'
-//    }
+    }
 
     ////////////////////////
     // Creational Methods //
@@ -79,7 +79,7 @@ class LibraryInfo(
     // Published Domain Business Logic Methods //
     /////////////////////////////////////////////
 
-    fun registerUser(userId: UUID2<User>): Result<UUID2<User>> {
+    suspend fun registerUser(userId: UUID2<User>): Result<UUID2<User>> {
         return upsertUserIdIntoRegisteredUserCheckedOutBookMap(userId)
     }
 

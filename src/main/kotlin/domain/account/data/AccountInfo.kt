@@ -23,7 +23,7 @@ import java.util.function.IntFunction
  */
 
 class AccountInfo private constructor(
-    id: UUID2<Account>,  // UUID should match User's UUID
+    override val id: UUID2<Account>,  // UUID should match User's UUID
     val name: String,
     val accountStatus: AccountStatus,
     val currentFinePennies: Int,
@@ -92,8 +92,7 @@ class AccountInfo private constructor(
     ///////////////////////////////
 
     override fun id(): UUID2<Account> {
-        @Suppress("UNCHECKED_CAST")
-        return this.id as UUID2<Account>
+        return this.id
     }
 
     fun name(): String {
@@ -306,7 +305,6 @@ class AccountInfo private constructor(
     }
 
     val isAccountActive: Boolean
-        /////////////////////////////////
         get() = accountStatus == AccountStatus.ACTIVE
     val isAccountInactive: Boolean
         get() = accountStatus == AccountStatus.INACTIVE
