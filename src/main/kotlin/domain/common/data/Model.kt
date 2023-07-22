@@ -24,8 +24,8 @@ import kotlinx.serialization.Transient
  *  * These are the "source of truth" for the Domain object's "information" in the application.
  *  * `{Domain}Info` hold the `Role Info` that resides *elsewhere*, usually on a server/db/api.
  *
- * The `Role` does not know (or care) where the data comes from, it only knows the "data shapes"
- * that it accepts.
+ * The **`Role`** does not know (or care) where it's data comes from, it only knows the "data shapes"
+ * that it accepts, ie: `DomainInfo` objects.
  *
  * **DTO/Entity Info Classes**
  *

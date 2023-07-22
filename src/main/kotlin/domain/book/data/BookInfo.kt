@@ -16,7 +16,7 @@ import java.util.*
  * This class uses domain-specific language to modify information for the BookInfo class.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.11
+ * @since 0.12 Kotlin conversion
  */
 
 class BookInfo(
