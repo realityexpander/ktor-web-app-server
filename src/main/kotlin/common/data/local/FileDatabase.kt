@@ -35,13 +35,13 @@ import java.util.*
  *
  * Note: It is possible to have multiple databases, but they must have different filenames.
  *
- * @author Chris Athanas (realityexpanderdev@gmail.com)
- * @since 0.12 Kotlin conversion
  * @param databaseFilename The name of the JSON file to use for the database.
  * @param entityKSerializer The Kotlin Serialization serializer to use for the Entities in the database.
  * @param database The in-memory database that represents the JSON file.
  * @property MAX_POLLING_ATTEMPTS The maximum number of times to poll the file system for the database file to become
  *           available.
+ * @author Chris Athanas (realityexpanderdev@gmail.com)
+ * @since 0.12 Kotlin conversion
  */
 
 abstract class FileDatabase<TKey : UUID2<*>, TEntity : FileDatabase.HasId<TKey>>(
@@ -57,11 +57,20 @@ abstract class FileDatabase<TKey : UUID2<*>, TEntity : FileDatabase.HasId<TKey>>
         if(!File(databaseFile).exists()
             && !File(hiddenDatabaseFile).exists()) {
             ktorLogger.warn("$databaseFilename does not exist, creating DB...")
+
+            initJsonDatabaseFile()
+        }
+    }
+
+    // *IMPORTANT*: Be sure to call this method in your subclass's init block.
+    suspend fun loadFileDatabase() {
+        if(!File(databaseFile).exists()
+            && !File(hiddenDatabaseFile).exists()) {
+            ktorLogger.error("$databaseFilename does not exist!")
+            return
         }
 
         runBlocking {
-            initJsonDatabaseFile()
-
             try {
                 loadJsonDatabaseFileFromDisk()
             } catch (e: Exception) {
@@ -86,6 +95,7 @@ abstract class FileDatabase<TKey : UUID2<*>, TEntity : FileDatabase.HasId<TKey>>
     }
 
     suspend fun toDatabaseCopy(): Map<TKey, TEntity> {
+        yield()
         return database.toImmutableMap()
     }
 
@@ -124,16 +134,17 @@ abstract class FileDatabase<TKey : UUID2<*>, TEntity : FileDatabase.HasId<TKey>>
     // Note: Be sure to override this method in your subclass to make sure subclass's your lookup tables are updated.
     abstract suspend fun updateLookupTables()
 
-    public fun deleteDatabaseFile() {
+    public suspend fun deleteDatabaseFile() {
         File(databaseFile).delete()
         File(hiddenDatabaseFile).delete() // just in case
         database.clear()
+        updateLookupTables()
     }
 
     ///////////////////////// PRIVATE METHODS /////////////////////////
 
     private fun initJsonDatabaseFile() {
-        // ONLY init the DB if it doesn't exist.
+        // ONLY create the DB if it doesn't exist.
         // NOTE: If you want to reset the db, use the deleteDatabaseFile() method.
         if (!File(databaseFile).exists()) {
             File(databaseFile).writeText("")
@@ -173,36 +184,39 @@ abstract class FileDatabase<TKey : UUID2<*>, TEntity : FileDatabase.HasId<TKey>>
 
         pollUntilFileExists(databaseFile)
 
-        try {
-            val tempFilename = renameFileBeforeWriting(databaseFile)
+            try {
+                val tempFilename = renameFileBeforeWriting(databaseFile)
 
-            File(tempFilename).writeText(
-                jsonConfig.encodeToString(
-                    ListSerializer(entityKSerializer),
-                    database.values.toList()
+                File(tempFilename).writeText(
+                    jsonConfig.encodeToString(
+                        ListSerializer(entityKSerializer),
+                        database.values.toList()
+                    )
                 )
-            )
-        } catch (e: Exception) {
-            ktorLogger.error("Error saving FileDatabase: `$databaseFilename`, error: ${e.message}")
-            throw(e)
-        } finally {
-            renameFileAfterWriting(databaseFile)
-        }
+            } catch (e: Exception) {
+                ktorLogger.error("Error saving FileDatabase: `$databaseFilename`, error: ${e.message}")
+                throw (e)
+            } finally {
+                renameFileAfterWriting(databaseFile)
+            }
     }
 
     private suspend fun pollUntilFileExists(fileName: String) {
         var pollingAttempts = 0
 
-        if(File(fileName).exists()) {
-            return
-        }
+        runBlocking {
 
-        while (!File(fileName).exists()) {
-            delay(100)
+            if(File(fileName).exists()) {
+                return@runBlocking
+            }
 
-            pollingAttempts++;
-            if (pollingAttempts > MAX_POLLING_ATTEMPTS) {
-                throw Exception("File $fileName does not exist after $MAX_POLLING_ATTEMPTS attempts.")
+            while (!File(fileName).exists()) {
+                delay(100)
+
+                pollingAttempts++;
+                if (pollingAttempts > MAX_POLLING_ATTEMPTS) {
+                    throw Exception("File $fileName does not exist after $MAX_POLLING_ATTEMPTS attempts.")
+                }
             }
         }
     }

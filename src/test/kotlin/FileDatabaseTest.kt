@@ -5,6 +5,8 @@ import domain.book.data.network.DTOBookInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.KSerializer
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -39,13 +41,15 @@ class FileDatabaseTest {
 
     @AfterEach
     fun tearDown() {
-        // Delete the test database file
-        fakeFileDatabase.deleteDatabaseFile()
+        runBlocking {
+            // Delete the test database file
+            fakeFileDatabase.deleteDatabaseFile()
+        }
     }
 
     @Test
     fun findAllEntities() {
-        val job = CoroutineScope(Dispatchers.IO).launch {
+        runBlocking {
 
             // • ARRANGE
             fakeFileDatabase.addEntity(dtoBookInfo)
@@ -57,12 +61,11 @@ class FileDatabaseTest {
             assertTrue(result.size == 1, "Find all entities test failed, size is wrong.")
             assertTrue(result[0].id() == dtoBookInfo.id, "Find all entities test failed, id is wrong.")
         }
-        job.waitForJobToComplete()
     }
 
     @Test
-    fun findEntityById() {
-        val job = CoroutineScope(Dispatchers.IO).launch {
+    fun `findEntityById for existing id is Success`() {
+        runBlocking {
 
             // • ARRANGE
             fakeFileDatabase.addEntity(dtoBookInfo)
@@ -74,12 +77,27 @@ class FileDatabaseTest {
             assertTrue(result != null, "Find entity by id test failed, result is null.")
             assertTrue(result!!.id() == dtoBookInfo.id, "Find entity by id test failed, id is wrong.")
         }
-        job.waitForJobToComplete()
+    }
+
+    @Test
+    fun `findEntityById for non-existing id is Failure`() {
+        runBlocking {
+
+            // • ARRANGE
+            // no-op
+
+            // • ACT
+            val result = fakeFileDatabase.findEntityById(dtoBookInfo.id)
+
+            // • ASSERT
+            assertFalse(result != null, "Find entity by id test succeeded but should have failed, result is not null.")
+            assertFalse(result?.id() == dtoBookInfo.id, "Find entity by id test succeeded but should have failed.")
+        }
     }
 
     @Test
     fun addEntity() {
-        val job = CoroutineScope(Dispatchers.IO).launch {
+        runBlocking {
 
             // • ARRANGE
             val initialSize = fakeFileDatabase.findAllEntities().size
@@ -92,12 +110,11 @@ class FileDatabaseTest {
             assertTrue(result.size == initialSize + 1, "Add entity test failed, size is wrong.")
             assertTrue(result[0].id() == dtoBookInfo.id, "Add entity test failed, id is wrong.")
         }
-        job.waitForJobToComplete()
     }
 
     @Test
     fun updateEntity() {
-        val job = CoroutineScope(Dispatchers.IO).launch {
+        runBlocking {
 
             // • ARRANGE
             fakeFileDatabase.addEntity(dtoBookInfo)
@@ -119,12 +136,11 @@ class FileDatabaseTest {
             assertTrue(result[0].author == updatedDtoBookInfo.author, "Update entity test failed, author is wrong.")
             assertTrue(result[0].description == updatedDtoBookInfo.description, "Update entity test failed, description is wrong.")
         }
-        job.waitForJobToComplete()
     }
 
     @Test
     fun deleteEntity() {
-        val job = CoroutineScope(Dispatchers.IO).launch {
+        runBlocking {
 
             // • ARRANGE
             fakeFileDatabase.addEntity(dtoBookInfo)
@@ -136,42 +152,44 @@ class FileDatabaseTest {
             val result = fakeFileDatabase.findAllEntities()
             assertTrue(result.isEmpty(), "Delete entity test failed, size is wrong.")
         }
-        job.waitForJobToComplete()
-    }
-
-    @Test
-    fun deleteEntityById() {
-        val job = CoroutineScope(Dispatchers.IO).launch {
-
-            // • ARRANGE
-            fakeFileDatabase.addEntity(dtoBookInfo)
-
-            // • ACT
-            fakeFileDatabase.deleteEntityById(dtoBookInfo.id)
-
-            // • ASSERT
-            val result = fakeFileDatabase.findAllEntities()
-            assertTrue(result.isEmpty(), "Delete entity test failed, size is wrong.")
-        }
-        job.waitForJobToComplete()
     }
 
     @Test
     fun updateLookupTables() {
-        val job = CoroutineScope(Dispatchers.IO).launch {
+        runBlocking {
 
             // • ARRANGE + ACT
             fakeFileDatabase.addEntity(dtoBookInfo)
-
             // • ASSERT
-            assertTrue(fakeFileDatabase.calledUpdateLookupTables, "Update lookup tables test failed, calledUpdateLookupTables is wrong.")
+            assertTrue(fakeFileDatabase.calledUpdateLookupTables,
+                "Update lookup tables test failed, never happened for addEntity")
+
+            // • ARRANGE + ACT
+            fakeFileDatabase.calledUpdateLookupTables = false  // reset test
+            fakeFileDatabase.updateEntity(dtoBookInfo)
+            // • ASSERT
+            assertTrue(fakeFileDatabase.calledUpdateLookupTables,
+                "Update lookup tables test failed, never happened for updateEntity")
+
+            // • ARRANGE + ACT
+            fakeFileDatabase.calledUpdateLookupTables = false  // reset test
+            fakeFileDatabase.deleteEntity(dtoBookInfo)
+            // • ASSERT
+            assertTrue(fakeFileDatabase.calledUpdateLookupTables,
+                "Update lookup tables test failed, never happened for deleteEntity")
+
+            // • ARRANGE + ACT
+            fakeFileDatabase.calledUpdateLookupTables = false  // reset test
+            fakeFileDatabase.deleteDatabaseFile()
+            // • ASSERT
+            assertTrue(fakeFileDatabase.calledUpdateLookupTables,
+                "Update lookup tables test failed, never happened for deleteDatabaseFile")
         }
-        job.waitForJobToComplete()
     }
 
     @Test
     fun deleteDatabaseFile() {
-        val job = CoroutineScope(Dispatchers.IO).launch {
+        runBlocking {
 
             // • ARRANGE
             fakeFileDatabase.addEntity(dtoBookInfo)
@@ -181,8 +199,7 @@ class FileDatabaseTest {
 
             // • ASSERT
             val result = fakeFileDatabase.findAllEntities()
-            assertTrue(result.isEmpty(), "Delete database file test failed, size is wrong.")
+            assertTrue(result.isEmpty(), "Delete database file test failed, should be empty.")
         }
-        job.waitForJobToComplete()
     }
 }

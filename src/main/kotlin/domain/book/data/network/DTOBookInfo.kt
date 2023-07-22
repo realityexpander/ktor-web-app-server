@@ -50,7 +50,8 @@ class DTOBookInfo(
 {
 
     // todo use kotlinx serialization instead of gson
-    constructor(json: String, context: Context) : this(context.gson.fromJson(json, DTOBookInfo::class.java))
+//    constructor(json: String, context: Context) : this(context.gson.fromJson(json, DTOBookInfo::class.java))
+    constructor(json: String, context: Context) : this(jsonConfig.decodeFromString<DTOBookInfo>(json))
     constructor() : this(UUID2<Book>(UUID.randomUUID(), Book::class.java), "", "", "")
 
     /////////////////////////////////////////////////////////////////////

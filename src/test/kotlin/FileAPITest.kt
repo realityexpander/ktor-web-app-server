@@ -35,7 +35,9 @@ class FileAPITest {
     @AfterEach
     fun tearDown() {
         // Delete the test database file
-        testApi.deleteDatabaseFile()
+        runBlocking {
+            testApi.deleteDatabaseFile()
+        }
     }
 
     @Test

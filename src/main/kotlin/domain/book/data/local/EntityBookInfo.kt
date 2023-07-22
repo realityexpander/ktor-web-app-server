@@ -1,18 +1,23 @@
 package domain.book.data.local
 
+import com.realityexpander.jsonConfig
 import common.HumanDate
 import common.uuid2.UUID2
 import domain.Context
 import domain.book.Book
 import domain.book.data.BookInfo
+import domain.book.data.network.DTOBookInfo
 import domain.common.data.Model
 import domain.common.data.info.Info
 import domain.common.data.info.local.EntityInfo
 import domain.library.Library
 import kotlinx.serialization.Contextual
+import kotlinx.serialization.Serializable
 
 /**
  * EntityBookInfo
+ *
+ * Represents a database row for a Book.
  *
  * A Data Transfer Object (DTO) that is used to transfer data between the Domain Layer and the Data Layer.
  *
@@ -20,15 +25,16 @@ import kotlinx.serialization.Contextual
  * @since 0.12 Kotlin conversion
  */
 
+@Serializable  // todo should the database/entity layer be serializable?
 class EntityBookInfo(
     override val id: UUID2<@Contextual Book> = UUID2<Book>(UUID2.randomUUID2(), Book::class.java),
     val title: String,
     val author: String,
     val description: String,
     val extraFieldToShowThisIsAnEntity: String? = "This is an EntityBookInfo", // default value
-    val creationTimeMillis: Long,
-    val lastModifiedTimeMillis: Long,
-    val isDeleted: Boolean
+    val creationTimeMillis: Long = 0,
+    val lastModifiedTimeMillis: Long = 0,
+    val isDeleted: Boolean = false
 ) : EntityInfo(id),
     Model.ToDomainInfo<BookInfo>,
     Model.ToDomainInfo.HasToDeepCopyDomainInfo<BookInfo>,
@@ -36,12 +42,8 @@ class EntityBookInfo(
     Info.HasToDeepCopyInfo<EntityBookInfo>
 {
 
-    constructor(json: String, context: Context) : this(
-        context.gson.fromJson<EntityBookInfo>(
-            json,
-            EntityBookInfo::class.java
-        )
-    )
+//    constructor(json: String, context: Context) : this(context.gson.fromJson(json, EntityBookInfo::class.java))
+    constructor(json: String, context: Context) : this(jsonConfig.decodeFromString<EntityBookInfo>(json))
 
     ////////////////////////////////////////////////////////////
     // DTOInfo <-> DomainInfo conversion                      //

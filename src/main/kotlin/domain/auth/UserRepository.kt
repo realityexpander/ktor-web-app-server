@@ -3,6 +3,7 @@ package com.realityexpander.domain.auth
 import com.realityexpander.common.data.local.FileDatabase
 import common.uuid2.UUID2
 import domain.user.User
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import util.*
@@ -25,11 +26,16 @@ data class UserEntity(
 
 class UserRepository(
     usersDBFilename: String = DEFAULT_USERS_DB_FILENAME,
+    private val authTokenToUserIdLookup: MutableMap<TokenStr, UUID2<User>> = mutableMapOf(),
+    private val authJwtTokenToUserIdLookup: MutableMap<JwtTokenStr, UUID2<User>> = mutableMapOf(),
+    private val emailToUserIdLookup: MutableMap<EmailStr, UUID2<User>> = mutableMapOf()
 ) : FileDatabase<UUID2<User>, UserEntity>(usersDBFilename, UserEntity.serializer()) {
 
-    private val authTokenToUserIdLookup = mutableMapOf<TokenStr, UUID2<User>>()
-    private val authJwtTokenToUserIdLookup = mutableMapOf<JwtTokenStr, UUID2<User>>()
-    private val emailToUserIdLookup = mutableMapOf<EmailStr, UUID2<User>>()
+    init {
+        runBlocking {
+            super.loadFileDatabase()
+        }
+    }
 
     suspend fun findAllUsers(): List<UserEntity> {
         return super.findAllEntities()
@@ -116,19 +122,22 @@ class UserRepository(
 
     ///////////////////////// PRIVATE METHODS /////////////////////////
 
-    private fun updateAuthTokenToEmailLookupTable(usersDb: Map<UUID2<User>, UserEntity>) {
-        for (user in usersDb.values) {
-            authTokenToUserIdLookup[user.authToken] = user.id
+    private suspend fun updateAuthTokenToEmailLookupTable(usersDb: Map<UUID2<User>, UserEntity>) {
+        println("authTokenToUserIdLookup: $authTokenToUserIdLookup")
+        runBlocking {
+            for (user in usersDb.values) {
+                authTokenToUserIdLookup[user.authToken] = user.id
+            }
         }
     }
 
-    private fun updateAuthJwtTokenToEmailLookupTable(usersDb: Map<UUID2<User>, UserEntity>) {
+    private suspend fun updateAuthJwtTokenToEmailLookupTable(usersDb: Map<UUID2<User>, UserEntity>) {
         for (user in usersDb.values) {
             authJwtTokenToUserIdLookup[user.authJwtToken] = user.id
         }
     }
 
-    private fun updateEmailToIdLookupTable(usersDb: Map<UUID2<User>, UserEntity>) {
+    private suspend fun updateEmailToIdLookupTable(usersDb: Map<UUID2<User>, UserEntity>) {
         for (user in usersDb.values) {
             emailToUserIdLookup[user.email] = user.id
         }

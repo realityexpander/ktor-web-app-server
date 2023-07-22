@@ -1,5 +1,6 @@
 package common
 
+import org.jetbrains.annotations.Debug
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -13,6 +14,9 @@ import java.time.format.DateTimeFormatter
  * @since 0.12 Kotlin Conversion
  */
 
+@Debug.Renderer(text = "TimeAgoStr: {toTimeAgoStr(Instant.now())}",
+    childrenArray = "dateTimeInstant.toArray()",
+    hasChildren = "")
 class HumanDate(
     val dateTimeInstant: Instant,
     val timeZone: ZoneId = ZoneId.of("UTC")
