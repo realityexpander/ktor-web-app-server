@@ -34,15 +34,15 @@ class FileAPITest {
 
     @AfterEach
     fun tearDown() {
-        // Delete the test database file
         runBlocking {
+            // Delete the test database file
             testApi.deleteDatabaseFile()
         }
     }
 
     @Test
     fun findAllEntities() {
-        val job = CoroutineScope(Dispatchers.IO).launch {
+        runBlocking {
 
             // • ARRANGE
             testApi.addDtoInfo(dtoBookInfo)
@@ -54,12 +54,11 @@ class FileAPITest {
             assertTrue(result.size == 1, "Find all entities test failed, size is wrong.")
             assertTrue(result[0].id() == dtoBookInfo.id, "Find all entities test failed, id is wrong.")
         }
-        job.waitForJobToComplete()
     }
 
     @Test
     fun findEntityById() {
-        val job = CoroutineScope(Dispatchers.IO).launch {
+        runBlocking {
 
             // • ARRANGE
             testApi.addDtoInfo(dtoBookInfo)
@@ -73,12 +72,11 @@ class FileAPITest {
             assertTrue(result?.id() == dtoBookInfo.id(), "Find all entities test failed, id is wrong.")
             assertTrue(result?.title == dtoBookInfo.title, "Find all entities test failed, id is wrong.")
         }
-        job.waitForJobToComplete()
     }
 
     @Test
     fun addEntity() {
-        val job = CoroutineScope(Dispatchers.IO).launch {
+        runBlocking {
 
             // • ARRANGE
             testApi.addDtoInfo(dtoBookInfo)
@@ -89,7 +87,6 @@ class FileAPITest {
             // • ASSERT
             assertTrue(result == 1, "Add entity test failed, size is wrong.")
         }
-        job.waitForJobToComplete()
     }
 
     @Test
@@ -103,53 +100,50 @@ class FileAPITest {
             description = "UPDATED DESCRIPTION"
         )
 
-        val job = CoroutineScope(Dispatchers.IO).launch {
+        runBlocking {
             testApi.addDtoInfo(dtoBookInfo)
 
             // • ACT
             val result = testApi.updateDtoInfo(updatedDTOBookInfo)
-            val updatedResult = testApi.findEntityById(updatedDTOBookInfo.id)
 
             // • ASSERT
+            val updatedResult = testApi.findEntityById(updatedDTOBookInfo.id)
             assertNotNull(updatedResult, "Update entity test failed, result is null.")
             assertTrue(updatedResult?.title == updatedDTOBookInfo.title, "Update entity test failed, title is wrong.")
             assertTrue(updatedResult?.description == updatedDTOBookInfo.description, "Update entity test failed, description is wrong.")
         }
-        job.waitForJobToComplete()
     }
 
     @Test
     fun deleteEntity() {
-        val job = CoroutineScope(Dispatchers.IO).launch {
+        runBlocking {
 
             // • ARRANGE
             testApi.addDtoInfo(dtoBookInfo)
 
             // • ACT
             testApi.deleteEntity(dtoBookInfo)
-            val result = testApi.toDatabaseCopy().size
 
             // • ASSERT
+            val result = testApi.toDatabaseCopy().size
             assertTrue(result == 0, "Delete entity test failed, size is wrong.")
         }
-        job.waitForJobToComplete()
     }
 
     @Test
     fun deleteEntityById() {
-        val job = CoroutineScope(Dispatchers.IO).launch {
+        runBlocking {
 
             // • ARRANGE
             testApi.addDtoInfo(dtoBookInfo)
 
             // • ACT
             testApi.deleteEntityById(dtoBookInfo.id)
-            val result = testApi.toDatabaseCopy().size
 
             // • ASSERT
+            val result = testApi.toDatabaseCopy().size
             assertTrue(result == 0, "Delete entity test failed, size is wrong.")
         }
-        job.waitForJobToComplete()
     }
 
 }
