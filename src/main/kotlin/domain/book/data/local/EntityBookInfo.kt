@@ -21,7 +21,7 @@ import kotlinx.serialization.Contextual
  */
 
 class EntityBookInfo(
-    override val id: UUID2<@Contextual Book>,
+    override val id: UUID2<@Contextual Book> = UUID2<Book>(UUID2.randomUUID2(), Book::class.java),
     val title: String,
     val author: String,
     val description: String,

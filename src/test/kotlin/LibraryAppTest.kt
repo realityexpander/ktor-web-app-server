@@ -480,7 +480,7 @@ class LibraryAppTest {
             """{
               "id": {
                 "uuid": "00000000-0000-0000-0000-000000000010",
-                "uuid2Type": "Model.DTOInfo.DTOBookInfo"
+                "uuid2Type": "Role.Book"
               },
               "title": "The Great Gatsby",
               "author": "F. Scott Fitzgerald",
@@ -490,7 +490,7 @@ class LibraryAppTest {
             """.trimIndent()
 
     @Test
-    fun `Create Book Role from DTOInfo Json is Success`() {
+    fun `Create Book Role from DTOBookInfo Json is Success`() {
         runBlocking {
 
             // • ARRANGE
@@ -540,7 +540,7 @@ class LibraryAppTest {
         """{
               "id": {
                 "uuid": "00000000-0000-0000-0000-000000000010",
-                "uuid2Type": "Model.EntityInfo.EntityBookInfo"
+                "uuid2Type": "Role.Book"
               },
               "title": "The Great Gatsby",
               "author": "F. Scott Fitzgerald",
@@ -550,7 +550,7 @@ class LibraryAppTest {
             """.trimIndent()
 
     @Test
-    fun `Create Book Role from EntityInfo Json is Success`() {
+    fun `Create Book Role from EntityBookInfo Json is Success`() {
         runBlocking {
 
             // • ARRANGE
