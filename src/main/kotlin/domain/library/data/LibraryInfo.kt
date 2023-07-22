@@ -57,14 +57,15 @@ class LibraryInfo(
     }
 
     override fun toString(): String {
-        return this.toPrettyJson() // todo why does this cause ClassCastException? need to use UUID2Map adapter
+        return this.toPrettyJson()
 
-//        return "LibraryInfo{" +
-//                "id=" + id() +
-//                ", name='" + name + '\'' +
-//                ", registeredUserIdToCheckedOutBookIdsMap=" + registeredUserIdToCheckedOutBookIdsMap +
-//                ", bookIdToNumBooksAvailableMap=" + bookIdToNumBooksAvailableMap +
-//                '}'
+    // LEAVE FOR DEBUGGING
+    //    return "LibraryInfo{" +
+    //            "id=" + id() +
+    //            ", name='" + name + '\'' +
+    //            ", registeredUserIdToCheckedOutBookIdsMap=" + registeredUserIdToCheckedOutBookIdsMap +
+    //            ", bookIdToNumBooksAvailableMap=" + bookIdToNumBooksAvailableMap +
+    //            '}'
     }
 
     ////////////////////////

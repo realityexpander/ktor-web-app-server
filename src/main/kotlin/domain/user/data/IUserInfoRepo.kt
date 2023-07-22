@@ -5,8 +5,8 @@ import domain.common.data.repo.IRepo
 import domain.user.User
 
 /**
- * IUserInfoRepo is an interface for the UserInfoRepo class.<br></br>
- * <br></br>
+ * IUserInfoRepo is an interface for the UserInfoRepo class.
+ *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.12 Kotlin conversion
  */
