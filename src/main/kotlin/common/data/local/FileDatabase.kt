@@ -29,7 +29,7 @@ import java.util.*
  *   the subclass.
  *
  * * **`TKey`** The type of the key used to identify the entities in the database.
- * * **`abstract class  Entity<TKey : Any>`** is a Marker interface for entities that can be stored in the database.
+ * * **`abstract class  Entity<TKey : Any>`** is a Marker interface for entities that will be stored in the database.
  *
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
@@ -41,17 +41,18 @@ import java.util.*
  *           available.
  */
 
-//abstract class FileDatabase<TKey : Any, TEntity : FileDatabase.Entity<TKey>>(
 abstract class FileDatabase<TKey : UUID2<*>, TEntity : FileDatabase.HasId<TKey>>(
     private val databaseFilename: String = generateDefaultDatabaseFilename(),
     private val entityKSerializer: KSerializer<TEntity>,
     private val database: MutableMap<TKey, TEntity> = mutableMapOf(),
 ) {
+    private val databaseFile: String = databaseFolder + databaseFilename
+    private val hiddenDatabaseFile: String = databaseFolder + "__$databaseFilename"
 
     init {
 
-        if(!File(databaseFilename).exists()
-            && !File("__$databaseFilename").exists()) {
+        if(!File(databaseFile).exists()
+            && !File(hiddenDatabaseFile).exists()) {
             ktorLogger.warn("$databaseFilename does not exist, creating DB...")
         }
 
@@ -62,6 +63,7 @@ abstract class FileDatabase<TKey : UUID2<*>, TEntity : FileDatabase.HasId<TKey>>
                 loadJsonDatabaseFileFromDisk()
             } catch (e: Exception) {
                 ktorLogger.error("Error loading $databaseFilename: ${e.message}")
+                e.printStackTrace()
             }
         }
     }
@@ -73,6 +75,7 @@ abstract class FileDatabase<TKey : UUID2<*>, TEntity : FileDatabase.HasId<TKey>>
 
     companion object {
         const val MAX_POLLING_ATTEMPTS = 50
+        const val databaseFolder = "fileDatabases/"  // <-- Note the trailing slash
 
         fun generateDefaultDatabaseFilename(): String {
             return "fileDB.json" + UUID.randomUUID().toString()
@@ -119,31 +122,34 @@ abstract class FileDatabase<TKey : UUID2<*>, TEntity : FileDatabase.HasId<TKey>>
     abstract suspend fun updateLookupTables()
 
     public fun deleteDatabaseFile() {
-        File(databaseFilename).delete()
+        File(databaseFile).delete()
+        File(hiddenDatabaseFile).delete() // just in case
+        database.clear()
     }
 
-    ///////////////////////// PRIVATE FUNCTIONS /////////////////////////
+    ///////////////////////// PRIVATE METHODS /////////////////////////
 
     private fun initJsonDatabaseFile() {
-        // ONLY init the DB if it doesn't exist. If you want to reset the db, delete the file.
-        if (!File(databaseFilename).exists()) {
-            File(databaseFilename).writeText("")
+        // ONLY init the DB if it doesn't exist.
+        // NOTE: If you want to reset the db, use the deleteDatabaseFile() method.
+        if (!File(databaseFile).exists()) {
+            File(databaseFile).writeText("")
         }
 
         // Check for the temp file & delete it
-        if (!File("__${databaseFilename}").exists()) {
-            File("__${databaseFilename}").delete()
+        if (File(hiddenDatabaseFile).exists()) {
+            File(hiddenDatabaseFile).delete()
         }
     }
 
     private suspend fun loadJsonDatabaseFileFromDisk() {
-        if (!File(databaseFilename).exists() && !File("__$databaseFilename").exists()) {
+        if (!File(databaseFile).exists() && !File(hiddenDatabaseFile).exists()) {
             throw Exception("Database `$databaseFilename` does not exist")
         }
 
-        pollIfFileExists(databaseFilename)
+        pollUntilFileExists(databaseFile)
 
-        val fileDatabaseJson = File(databaseFilename).readText()
+        val fileDatabaseJson = File(databaseFile).readText()
         if (fileDatabaseJson.isNotEmpty()) {
             val entities = jsonConfig.decodeFromString(
                 ListSerializer(entityKSerializer),
@@ -162,10 +168,10 @@ abstract class FileDatabase<TKey : UUID2<*>, TEntity : FileDatabase.HasId<TKey>>
     private suspend fun saveJsonDatabaseFileToDisk() {
         updateLookupTables()  // optimistically update the lookup tables
 
-        pollIfFileExists(databaseFilename)
+        pollUntilFileExists(databaseFile)
 
         try {
-            val tempFilename = renameFileBeforeWriting(databaseFilename)
+            val tempFilename = renameFileBeforeWriting(databaseFile)
 
             File(tempFilename).writeText(
                 jsonConfig.encodeToString(
@@ -175,13 +181,18 @@ abstract class FileDatabase<TKey : UUID2<*>, TEntity : FileDatabase.HasId<TKey>>
             )
         } catch (e: Exception) {
             ktorLogger.error("Error saving FileDatabase: `$databaseFilename`, error: ${e.message}")
+            throw(e)
         } finally {
-            renameFileAfterWriting(databaseFilename)
+            renameFileAfterWriting(databaseFile)
         }
     }
 
-    private suspend fun pollIfFileExists(fileName: String) {
+    private suspend fun pollUntilFileExists(fileName: String) {
         var pollingAttempts = 0
+
+        if(File(fileName).exists()) {
+            return
+        }
 
         while (!File(fileName).exists()) {
             delay(100)
@@ -193,21 +204,21 @@ abstract class FileDatabase<TKey : UUID2<*>, TEntity : FileDatabase.HasId<TKey>>
         }
     }
 
-    private fun renameFile(oldName: String, newName: String) {
-        File(oldName).renameTo(File(newName))
-    }
-
     private fun renameFileBeforeWriting(fileName: String): String {
         if (File(fileName).exists()) {
             renameFile(fileName, "__$fileName")
         }
 
-        return "__$fileName"
+        return hiddenDatabaseFile
     }
 
     private fun renameFileAfterWriting(fileName: String) {
-        if (File("__$fileName").exists()) {
-            renameFile("__$fileName", fileName)
+        if (File(hiddenDatabaseFile).exists()) {
+            renameFile(hiddenDatabaseFile, fileName)
         }
+    }
+
+    private fun renameFile(oldName: String, newName: String) {
+        File(oldName).renameTo(File(newName))
     }
 }

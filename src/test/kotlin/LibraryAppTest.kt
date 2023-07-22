@@ -26,6 +26,7 @@ import java.time.Instant
  * @since 0.12 Kotlin Conversion
  */
 
+@OptIn(DelicateCoroutinesApi::class)
 class LibraryAppTest {
     private val ctx: Context = setupDefaultTestContext()
     private val testUtils: TestingUtils = TestingUtils(ctx)
@@ -44,7 +45,7 @@ class LibraryAppTest {
         val book1200: Book
     )
 
-    @OptIn(ExperimentalCoroutinesApi::class)
+    @OptIn(ExperimentalCoroutinesApi::class, DelicateCoroutinesApi::class)
     private fun setupDefaultRolesAndScenario(
         ctx: Context,
         testUtils: TestingUtils
@@ -385,7 +386,6 @@ class LibraryAppTest {
         }
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
     @Test fun `Create Library Role from createInfoFromJson is Success`() {
         GlobalScope.launch {
 
@@ -689,7 +689,7 @@ class LibraryAppTest {
     }
 
     companion object {
-        const val shouldDisplayAllDebugLogs = false // Set to `true` to see all debug logs
+        private const val shouldDisplayAllDebugLogs = false // Set to `true` to see all debug logs
 
         fun setupDefaultTestContext(): Context {
             val testLog = TestLog(!shouldDisplayAllDebugLogs) // false = print all logs to console, including info/debug

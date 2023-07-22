@@ -101,7 +101,7 @@ val applicationConfig =
         ApplicationProperties()
     }
 
-// Load the Users database
+// Load the User Repo
 val userRepository = UserRepository()
 
 fun Application.module() {

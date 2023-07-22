@@ -41,8 +41,8 @@ bin/
 ### Mac OS ###
 .DS_Store
 /uploaded-images/
-usersDB-old2.json
+fileDatabases/usersDB-old2.json
 application.properties
 
-/apiDB.json
-/usersDB.json
+/fileDatabases/apiDB.json
+/fileDatabases/usersDB.json

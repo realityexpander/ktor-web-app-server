@@ -8,12 +8,12 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 import org.junit.jupiter.api.Assertions.*
+import testUtils.waitForJobToComplete
 import java.util.*
 
 class FileAPITest {
 
     private val tempName = UUID.randomUUID().toString()
-
     private val testApi = FileAPI<Book, DTOBookInfo>(
         apiDBFilename = "test-$tempName-apiDB.json",
         serializer = DTOBookInfo.serializer()
@@ -150,12 +150,4 @@ class FileAPITest {
         job.waitForJobToComplete()
     }
 
-    private fun Job.waitForJobToComplete() {
-        this.start()
-
-        while (!this.isCompleted) {
-            println("waiting...")
-            Thread.sleep(20)
-        }
-    }
 }
