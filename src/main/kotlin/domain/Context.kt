@@ -76,16 +76,18 @@ class Context(
                 UserInfoRepo(log),
                 LibraryInfoRepo(log),
                 AccountInfoRepo(log),
-                GsonBuilder()
-                    .registerTypeAdapter(MutableMap::class.java, UUID2.Uuid2MapJsonDeserializer())
-                    .registerTypeAdapter(ArrayList::class.java, UUID2.Uuid2ArrayListJsonDeserializer())
-                    .registerTypeAdapter(ArrayList::class.java, UUID2.Uuid2ArrayListJsonSerializer())
-                    .registerTypeAdapter(UUID2::class.java, UUID2.Uuid2JsonSerializer())
-                    .registerTypeAdapter(UUID2::class.java, UUID2.Uuid2JsonDeserializer())
-                    .setPrettyPrinting()
-                    .create(),
+                gsonConfig,
                 log
             )
         }
+
+        val gsonConfig: Gson = GsonBuilder()
+            .registerTypeAdapter(MutableMap::class.java, UUID2.Uuid2MapJsonDeserializer())
+            .registerTypeAdapter(ArrayList::class.java, UUID2.Uuid2ArrayListJsonDeserializer())
+            .registerTypeAdapter(ArrayList::class.java, UUID2.Uuid2ArrayListJsonSerializer())
+            .registerTypeAdapter(UUID2::class.java, UUID2.Uuid2JsonSerializer())
+            .registerTypeAdapter(UUID2::class.java, UUID2.Uuid2JsonDeserializer())
+            .setPrettyPrinting()
+            .create()
     }
 }

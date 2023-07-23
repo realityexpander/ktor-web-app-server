@@ -91,7 +91,7 @@ class PrivateLibrary : Library, IUUID2 {
     }
     constructor(
         context: Context
-    ) : this(UUID2.randomUUID2(Book::class.java), true,  context) {
+    ) : this(UUID2.randomUUID2<Book>(), true,  context) {
         // Note: this creates an ORPHAN private library with a random id.
         context.log.w(this, "PrivateLibrary (" + id() + ") created with ORPHAN Library with Random Id.")
     }

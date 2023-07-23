@@ -42,7 +42,6 @@ class Account : Role<AccountInfo>, IUUID2 {
 
         context.log.d(this, "Account ($id) created from Info")
     }
-
     constructor(
         accountInfoJson: String,
         clazz: Class<AccountInfo>,
@@ -53,7 +52,6 @@ class Account : Role<AccountInfo>, IUUID2 {
 
         context.log.d(this, "Account (" + id + ") created from Json with class: " + clazz.name)
     }
-
     constructor(
         id: UUID2<Account>,
         context: Context
@@ -62,9 +60,8 @@ class Account : Role<AccountInfo>, IUUID2 {
         this.id = id
         context.log.d(this, "Account(" + this.id + ") created using id with no Info")
     }
-
     constructor(json: String, context: Context) : this(json, AccountInfo::class.java, context)
-    constructor(context: Context) : this(UUID2.randomUUID2(), context)
+    constructor(context: Context) : this(UUID2.randomUUID2<Account>(), context)
 
     /////////////////////////////////////
     // IRole/UUID2 Required Overrides  //

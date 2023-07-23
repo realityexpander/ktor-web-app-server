@@ -3,6 +3,7 @@
 package common.uuid2
 
 import com.google.gson.*
+import common.uuid2.UUID2.Companion.fromUUID2StrToUUID2
 import domain.account.Account
 import domain.book.Book
 import domain.library.Library
@@ -130,7 +131,8 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
         return uuid2TypeStr() == otherUUID2.uuid2TypeStr()
     }
 
-    fun isMatchingUUID2TypeStr(otherUUID2TypeStr: String): Boolean {
+    fun String.isMatchingUUID2TypeStr(): Boolean {
+        val otherUUID2TypeStr = this
         return uuid2TypeStr() == otherUUID2TypeStr
     }
 
@@ -185,7 +187,7 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
     }
 
     // Note: Should only be used when importing JSON
-    // todo - is there a better way to do this in kotlin?  // this doesnt seem to be needed for kotlinx serialization
+    // todo - is there a better way to do this in kotlin?  // this doesn't seem to be needed for kotlinx serialization
     @Suppress("FunctionName") // for leading underscore
     fun _setUUID2TypeStr(uuid2TypeStr: String?): Boolean {
         uuid2Type = getNormalizedUuid2TypeString(uuid2TypeStr)
@@ -227,7 +229,7 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
     class Uuid2ArrayListJsonDeserializer: JsonDeserializer<ArrayList<*>?> {
         @Throws(JsonParseException::class)
         override fun deserialize(
-            json: com.google.gson.JsonElement?,
+            json: JsonElement?,
             typeOfT: Type?,
             jsonDeserializationContext: JsonDeserializationContext?
         ): ArrayList<*> {
@@ -240,7 +242,7 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
 
                 // Rebuild the UUID2<*> to Entity
                 uuid2ArrayListJson?.forEach { entity ->
-                    val uuid2 = UUID2.fromUUID2StrToSameTypeUUID2(entity.asString)
+                    val uuid2 = entity.asString.fromUUID2StrToUUID2()
                     uuid2ArrayList.add(uuid2)
                 }
 
@@ -267,22 +269,22 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
     class Uuid2JsonDeserializer: JsonDeserializer<UUID2<*>?> {
         @Throws(JsonParseException::class)
         override fun deserialize(
-            json: com.google.gson.JsonElement?,
+            json: JsonElement?,
             typeOfT: Type?,
             jsonDeserializationContext: JsonDeserializationContext?
         ): UUID2<*> {
-            return UUID2.fromUUID2StrToSameTypeUUID2(json?.asString ?: "")
+            return (json?.asString ?: "").fromUUID2StrToUUID2()
         }
     }
 
-    // for Gson
+    // For Gson
     // Note: Deserializes all JSON Numbers to Longs for all Entity Number JSON values.
     // - For consistent number deserialization due to GSON defaulting to convert numbers to Doubles.
     class Uuid2MapJsonDeserializer: JsonDeserializer<MutableMap<UUID2<*>, *>?> {
 
         @Throws(JsonParseException::class)
         override fun deserialize(
-            json: com.google.gson.JsonElement?,
+            json: JsonElement?,
             typeOfT: Type?,
             jsonDeserializationContext: JsonDeserializationContext?
         ): MutableMap<UUID2<*>, *> {
@@ -295,7 +297,7 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
 
                 // Rebuild the UUID2<*> to Entity
                 uuid2MapJsonEntrySet?.forEach { entry ->
-                    val uuid2Key = UUID2.fromUUID2StrToSameTypeUUID2(entry.key)
+                    val uuid2Key = entry.key.fromUUID2StrToUUID2()
                     val entity = entry.value
                         ?: throw RuntimeException("Uuid2HashMapGsonDeserializer.deserialize(): entity is null, uuid2Key=$uuid2Key")
 
@@ -338,7 +340,8 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
     companion object {
 
         @Throws(IllegalArgumentException::class)
-        fun <TUUID2: IUUID2> fromUUID2String(uuid2FormattedString: String): UUID2<TUUID2> {
+        fun <TUUID2: IUUID2> String.fromUUID2String(): UUID2<TUUID2> {
+            val uuid2FormattedString = this.trim()
             // format example:
             //
             // UUID2:Role.User@00000000-0000-0000-0000-000000000001
@@ -369,8 +372,9 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
         }
 
         @Throws(RuntimeException::class)
-        fun fromUUID2StrToSameTypeUUID2(uuid2Str: String): UUID2<*> {
-            val uuid2 = fromUUID2String<IUUID2>(uuid2Str)
+        fun String.fromUUID2StrToUUID2(): UUID2<*> {
+            val uuid2Str = this
+            val uuid2 = uuid2Str.fromUUID2String<IUUID2>()
             val typeStr = uuid2.uuid2TypeStr()
 
             fun lastPathItemOfUUID2TypeStr(uuidTypeStr: String): String {
@@ -381,11 +385,11 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
             // Check if it's in the White-listed UUID2 types
             // todo make this a config option?
             when(typeStr) {
-                "Role.Book" ->           return fromUUID2String<Book>(uuid2Str)
-                "Role.User" ->           return fromUUID2String<User>(uuid2Str)
-                "Role.Library" ->        return fromUUID2String<Library>(uuid2Str)
-                "Role.PrivateLibrary" -> return fromUUID2String<PrivateLibrary>(uuid2Str)
-                "Role.Account" ->        return fromUUID2String<Account>(uuid2Str)
+                "Role.Book" ->           return uuid2Str.fromUUID2String<Book>()
+                "Role.User" ->           return uuid2Str.fromUUID2String<User>()
+                "Role.Library" ->        return uuid2Str.fromUUID2String<Library>()
+                "Role.PrivateLibrary" -> return uuid2Str.fromUUID2String<PrivateLibrary>()
+                "Role.Account" ->        return uuid2Str.fromUUID2String<Account>()
             }
 
             ///////////////////////////////////////////////////////////////////
@@ -450,8 +454,8 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
             else
                 try {
                     // Only need the `type string`, not the actual `type` of the UUID2.
-                    val firstUUID2 = fromUUID2String<IUUID2>(firstUuid2Str)
-                    val secondUUID2 = fromUUID2String<IUUID2>(secondUuid2Str)
+                    val firstUUID2 = firstUuid2Str.fromUUID2String<IUUID2>()
+                    val secondUUID2 = secondUuid2Str.fromUUID2String<IUUID2>()
                     firstUUID2.isMatchingUUID2Type(secondUUID2)
                 } catch (e: Exception) {
                     System.err.println("Error: Unable to find class for UUID2: $firstUuid2Str")
@@ -464,16 +468,16 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
         // Converters                 //
         ////////////////////////////////
 
-        fun <TUUID2 : IUUID2> fromUUID2(id: UUID2<IUUID2>, clazz: Class<TUUID2>): UUID2<TUUID2> {
-            return UUID2<TUUID2>(id.uuid, clazz)
+        fun <TUUID2 : IUUID2> UUID2<*>.toUUID2WithUUID2TypeOf(kClazz: KClass<TUUID2>): UUID2<TUUID2> {
+            return UUID2(this.uuid, kClazz.java)
         }
 
-        fun <TUUID2 : IUUID2> fromUUID(uuid: UUID): UUID2<TUUID2> {
-            return UUID2(uuid)
+        fun <TUUID2 : IUUID2> UUID.fromUUID(): UUID2<TUUID2> {
+            return UUID2(this)
         }
 
-        fun <TUUID2 : IUUID2> fromUUIDString(uuidStr: String): UUID2<TUUID2> {
-            return UUID2(UUID.fromString(uuidStr))
+        fun <TUUID2 : IUUID2> String.fromUUIDString(): UUID2<TUUID2> {
+            return UUID2(UUID.fromString(this))
         }
 
         ////////////////////////////////
@@ -481,11 +485,19 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
         ////////////////////////////////
 
         fun <TUUID2 : IUUID2> randomUUID2(): UUID2<TUUID2> {
-            return UUID2<TUUID2>(UUID.randomUUID())
+            return UUID2(UUID.randomUUID())
         }
 
         fun <TUUID2 : IUUID2> randomUUID2(clazz: Class<TUUID2>?): UUID2<TUUID2> {
-            return UUID2<TUUID2>(UUID.randomUUID(), clazz)
+            return UUID2(UUID.randomUUID(), clazz)
+        }
+
+        fun randomUUID2(): UUID2<IUUID2> {
+            return UUID2(UUID.randomUUID())
+        }
+
+        fun <TUUID2 : IUUID2> randomUUID2(kClazz: KClass<TUUID2>): UUID2<TUUID2> {
+            return UUID2(UUID.randomUUID(), kClazz.java)
         }
 
         ////////////////////////////////////
@@ -508,7 +520,9 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
         // UUID2Type String interface  //
         /////////////////////////////////
 
+        // todo use KClass instead of Class
         fun <TUUID2 : IUUID2> calcUUID2TypeStr(clazz: Class<in TUUID2>?): String {
+//        fun <TUUID2 : IUUID2> calcUUID2TypeStr(clazz: KClass<in TUUID2>?): String {
             clazz ?: return "UUID"
 
             // Build the UUID2 Type string -> ie: `Model.DomainInfo.BookInfo`
@@ -520,6 +534,8 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
             while (curClazz?.simpleName != "Object") {
                 superClassNames.add(curClazz?.simpleName.toString())
                 curClazz = curClazz?.superclass
+//                curClazz = curClazz?.supertypes?.firstOrNull()?.classifier as KClass<in TUUID2>
+//                curClazz = curClazz?.superclasses?.firstOrNull() as KClass<in TUUID2>
             }
 
             // Build a Class Inheritance Path from each concrete Class name
@@ -551,10 +567,15 @@ object UUID2Serializer : KSerializer<UUID2<*>> {
     override val descriptor = PrimitiveSerialDescriptor("UUID2", PrimitiveKind.STRING)
 
     override fun deserialize(decoder: Decoder): UUID2<*> {
-        return UUID2.fromUUID2StrToSameTypeUUID2(decoder.decodeString())
+        return decoder.decodeString().fromUUID2StrToUUID2()
     }
 
     override fun serialize(encoder: Encoder, value: UUID2<*>) {
         encoder.encodeString(value.toString())
     }
+}
+
+fun UUID2<*>.isMatchingUUID2Type(): Boolean {
+    val otherUUID2 = this
+    return uuid2TypeStr() == otherUUID2.uuid2TypeStr()
 }

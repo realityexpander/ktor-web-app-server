@@ -3,6 +3,7 @@ package domain.user
 import com.google.gson.Gson
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
+import common.uuid2.UUID2.Companion.toUUID2WithUUID2TypeOf
 import domain.Context
 import domain.account.Account
 import domain.account.data.AccountInfo
@@ -29,7 +30,7 @@ import kotlinx.serialization.encoding.Encoder
  * @since 0.12 Kotlin conversion
  */
 
-@Serializable(with = UserSerializer::class)  // for kotlinx.serialization // todo - use kotlinx serialization instead of gson
+@Serializable(with = UserSerializer::class)  // for kotlinx.serialization
 class User : Role<UserInfo>, IUUID2 {
     private val repo: UserInfoRepo  // convenience reference to the UserInfoRepo in the Context
 
@@ -55,17 +56,19 @@ class User : Role<UserInfo>, IUUID2 {
         context.log.d(this, "User (" + id().toString() + ") created from id with no Info")
     }
     constructor(
-        accountInfoJson: String,
-        clazz: Class<UserInfo>,  // class type of json object
+        userInfoJson: String,
+        clazzOfUserInfo: Class<UserInfo>,  // class type of json object
         account: Account,
         context: Context
-    ) : super(accountInfoJson, clazz, context) {
+    ) : super(userInfoJson, clazzOfUserInfo, context) {
         this.account = account
         repo = context.userInfoRepo
-        context.log.d(this, "User (" + id().toString() + ") created Json with class: " + clazz.name)
+        context.log.d(this, "User (" + id().toString() + ") created Json with class: " + clazzOfUserInfo.name)
     }
-    constructor(userInfoJson: String, account: Account, context: Context) : this(userInfoJson, UserInfo::class.java, account, context)
-    constructor(account: Account, context: Context) : this(UUID2.randomUUID2(), account, context)
+    constructor(userInfoJson: String, account: Account, context: Context) :
+        this(userInfoJson, UserInfo::class.java, account, context)
+    constructor(account: Account, context: Context) :
+        this(account.id().toUUID2WithUUID2TypeOf(User::class) , account, context)
 
     /////////////////////////
     // Simple Getters      //
@@ -331,7 +334,7 @@ class User : Role<UserInfo>, IUUID2 {
 
             // get the User's Account id
             val accountId: UUID2<Account> =
-                UUID2.fromUUID2(id.toDomainUUID2(), Account::class.java) // accountId is the same as userId
+                id.toUUID2WithUUID2TypeOf(Account::class) // accountId is the same as userId
             val accountInfo: Result<AccountInfo> = context.accountInfoRepo.fetchAccountInfo(accountId)
             if (accountInfo.isFailure) return Result.failure(accountInfo.exceptionOrNull() ?: Exception("Error fetching account info"))
 

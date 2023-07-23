@@ -3,6 +3,7 @@ package common.data.local
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import common.data.network.FakeURL
+import common.uuid2.UUID2.Companion.fromUUIDString
 import domain.common.data.info.local.EntityInfo
 
 /**
@@ -46,7 +47,7 @@ class InMemoryDatabase<TUUID2 : IUUID2, TEntity : EntityInfo> (
 
     override suspend fun fetchEntityInfo(id: String): Result<TEntity> {
         return try {
-            val uuid: UUID2<TUUID2> = UUID2.fromUUIDString<TUUID2>(id)
+            val uuid: UUID2<TUUID2> = id.fromUUIDString()
             fetchEntityInfo(uuid)
         } catch (e: Exception) {
             Result.failure(e)

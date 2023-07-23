@@ -2,6 +2,7 @@ package domain.book.data
 
 import common.HumanDate
 import common.uuid2.UUID2
+import common.uuid2.UUID2.Companion.fromUUIDString
 import domain.book.Book
 import domain.book.data.local.EntityBookInfo
 import domain.book.data.network.DTOBookInfo
@@ -21,7 +22,7 @@ import java.util.*
 
 @Serializable // for kotlinx.serialization
 class BookInfo(
-    override val id: UUID2<Book>,  // Note: This is a UUID2<Book> not a UUID2<BookInfo>
+    override val id: UUID2<Book> = UUID2.randomUUID2<Book>(),  // Note: This is a UUID2<Book> not a UUID2<BookInfo>
     val title: String,
     val author: String,
     val description: String,
@@ -51,7 +52,7 @@ class BookInfo(
         isDeleted
     )
     constructor(uuidStr: String, title: String, author: String, description: String) : this(
-        UUID2.fromUUIDString(uuidStr),
+        uuidStr.fromUUIDString(),
         title,
         author,
         description,
@@ -163,7 +164,7 @@ class BookInfo(
     // ToDomain implementation //
     /////////////////////////////
 
-    override fun toDeepCopyDomainInfo(): BookInfo {
+    override fun toDomainInfoDeepCopy(): BookInfo {
         // shallow copy OK here bc its flat
         return BookInfo(this)
     }

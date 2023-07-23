@@ -10,9 +10,7 @@ import domain.book.data.BookInfo
 import domain.common.data.Model
 import domain.common.data.info.Info
 import domain.common.data.info.network.DTOInfo
-import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
-import java.util.*
 
 /**
  * DTOBookInfo
@@ -27,7 +25,7 @@ import java.util.*
 
 @Serializable
 class DTOBookInfo(
-    override val id: UUID2<Book> = UUID2(UUID.randomUUID()),
+    override val id: UUID2<Book> = UUID2.randomUUID2<Book>(),
     val title: String,
     val author: String,
     val description: String,
@@ -37,16 +35,13 @@ class DTOBookInfo(
     val isDeleted: Boolean = false
 ) : DTOInfo(id),
     Model.ToDomainInfo<BookInfo>,
-    Model.ToDomainInfo.HasToDeepCopyDomainInfo<BookInfo>,
+    Model.ToDomainInfo.HasToDomainInfoDeepCopy<BookInfo>,
     Info.ToInfo<DTOBookInfo>,
     Info.HasToDeepCopyInfo<DTOBookInfo>,
     FileDatabase.HasId<UUID2<Book>>
 {
-
-    // todo use kotlinx serialization instead of gson
-//    constructor(json: String, context: Context) : this(context.gson.fromJson(json, DTOBookInfo::class.java))
     constructor(json: String, context: Context) : this(jsonConfig.decodeFromString<DTOBookInfo>(json))
-    constructor() : this(UUID2<Book>(UUID.randomUUID(), Book::class.java), "", "", "")
+    constructor() : this(UUID2.randomUUID2<Book>(), "", "", "")
 
     /////////////////////////////////////////////////////////////////////
     // EntityInfo <-> DomainInfo conversion                            //
@@ -55,7 +50,7 @@ class DTOBookInfo(
     /////////////////////////////////////////////////////////////////////
 
     constructor(bookInfo: DTOBookInfo) : this(
-        UUID2.fromUUID2(bookInfo.id().toDomainUUID2(), Book::class.java),  // change `UUID2Type` to UUID2<Book>
+        bookInfo.id(),
         bookInfo.title,
         bookInfo.author,
         bookInfo.description,
@@ -98,7 +93,7 @@ class DTOBookInfo(
     // ToDomainInfo implementation //
     /////////////////////////////////
 
-    override fun toDeepCopyDomainInfo(): BookInfo {
+    override fun toDomainInfoDeepCopy(): BookInfo {
         // note: implement deep copy (if class is not flat.)
         return BookInfo(this)
     }

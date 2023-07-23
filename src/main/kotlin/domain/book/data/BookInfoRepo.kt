@@ -22,9 +22,9 @@ import domain.common.data.repo.Repo
  * @since 0.12 Kotlin conversion
  */
 
-class BookInfoRepo @JvmOverloads constructor(
-    val bookInfoInMemoryApi: BookInfoInMemoryApi = BookInfoInMemoryApi(),
-    val bookInfoInMemoryDatabase: BookInfoInMemoryDatabase = BookInfoInMemoryDatabase(),
+class BookInfoRepo(
+    private val bookInfoInMemoryApi: BookInfoInMemoryApi = BookInfoInMemoryApi(),
+    private val bookInfoInMemoryDatabase: BookInfoInMemoryDatabase = BookInfoInMemoryDatabase(),
     override val log: ILog = Log()
 ) : Repo(log), IBookInfoRepo {
 
@@ -43,13 +43,13 @@ class BookInfoRepo @JvmOverloads constructor(
 
             val bookInfo: EntityBookInfo = fetchBookDBResult.getOrNull()
                 ?: return Result.failure(Exception("getBookInfo Error"))
-            return Result.success(bookInfo.toDeepCopyDomainInfo())
+            return Result.success(bookInfo.toDomainInfoDeepCopy())
         }
 
         // Convert to Domain Model
         val bookInfo: BookInfo =
             if (fetchBookApiResult.isSuccess)
-                fetchBookApiResult.getOrNull()?.toDeepCopyDomainInfo()
+                fetchBookApiResult.getOrNull()?.toDomainInfoDeepCopy()
                     ?: return Result.failure(Exception("Model conversion error"))
             else
                 return Result.failure(fetchBookApiResult.exceptionOrNull() ?: Exception("Model conversion error"))
@@ -156,7 +156,7 @@ class BookInfoRepo @JvmOverloads constructor(
         if (upsertResult.isFailure) {
             return Result.failure(upsertResult.exceptionOrNull() ?: Exception("upsertBookInfo DB Error"))
         }
-        return Result.success(entityBookInfo.toDeepCopyDomainInfo())
+        return Result.success(entityBookInfo.toDomainInfoDeepCopy())
     }
 
     suspend fun upsertTestDTOBookInfoToApi(dtoBookInfo: DTOBookInfo): Result<BookInfo> {
@@ -164,7 +164,7 @@ class BookInfoRepo @JvmOverloads constructor(
         if (upsertResult.isFailure) {
             return Result.failure(upsertResult.exceptionOrNull() ?: Exception("upsertBookInfo API Error"))
         }
-        return Result.success(dtoBookInfo.toDeepCopyDomainInfo())
+        return Result.success(dtoBookInfo.toDomainInfoDeepCopy())
     }
 
     /////////////////////////////////////////////////////

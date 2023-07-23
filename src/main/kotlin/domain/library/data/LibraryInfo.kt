@@ -20,7 +20,7 @@ import java.util.*
 
 @Serializable // todo should the domainInfo classes be serializable?
 class LibraryInfo(
-    override val id: UUID2<Library> = UUID2(),
+    override val id: UUID2<Library> = UUID2.randomUUID2<Library>(),
     val name: String,
 
     // Registered users of this library
@@ -58,15 +58,15 @@ class LibraryInfo(
 
     override fun toString(): String {
         return this.toPrettyJson()
-//        return jsonConfig.encodeToString<LibraryInfo>(this)  // causes NPE's
+        // return jsonConfig.encodeToString<LibraryInfo>(this)  // causes NPE's
 
-    // LEAVE FOR DEBUGGING
-//        return "LibraryInfo{" +
-//                "id=" + id() +
-//                ", name='" + name + '\'' +
-//                ", registeredUserIdToCheckedOutBookIdsMap=" + registeredUserIdToCheckedOutBookIdsMap +
-//                ", bookIdToNumBooksAvailableMap=" + bookIdToNumBooksAvailableMap +
-//                '}'
+        // LEAVE FOR DEBUGGING
+        //        return "LibraryInfo{" +
+        //                "id=" + id() +
+        //                ", name='" + name + '\'' +
+        //                ", registeredUserIdToCheckedOutBookIdsMap=" + registeredUserIdToCheckedOutBookIdsMap +
+        //                ", bookIdToNumBooksAvailableMap=" + bookIdToNumBooksAvailableMap +
+        //                '}'
     }
 
     ////////////////////////
@@ -488,7 +488,7 @@ class LibraryInfo(
         return Result.success(bookId)
     }
 
-    private fun removeBookFromRegisteredUserCehckoutMap(book: Book, user: User): Result<Book> {
+    private fun removeBookFromRegisteredUserCheckedOutMap(book: Book, user: User): Result<Book> {
         val removedBookResult: Result<UUID2<Book>> = removeBookIdFromRegisteredUserCheckedOutBookMap(book.id(), user.id())
 
         return if (removedBookResult.isFailure) Result.failure(removedBookResult.exceptionOrNull()
@@ -533,7 +533,7 @@ class LibraryInfo(
     /////////////////////////////////
 
     // note: currently no DB or API for UserInfo (so no .ToInfoEntity() or .ToInfoDTO())
-    override fun toDeepCopyDomainInfo(): LibraryInfo {
+    override fun toDomainInfoDeepCopy(): LibraryInfo {
         // Note: *MUST* return a deep copy
         val libraryInfoDeepCopy = LibraryInfo(id(), name)
 

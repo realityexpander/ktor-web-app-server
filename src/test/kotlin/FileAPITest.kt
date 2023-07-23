@@ -1,5 +1,6 @@
 import common.data.network.FileAPI
 import common.uuid2.UUID2
+import common.uuid2.UUID2.Companion.fromUUIDString
 import domain.book.Book
 import domain.book.data.network.DTOBookInfo
 import kotlinx.coroutines.*
@@ -19,7 +20,7 @@ class FileAPITest {
     )
 
     private val dtoBookInfo = DTOBookInfo(
-        id = UUID2.fromUUIDString("00000000-0000-0000-0000-000000000100"),
+        id = "00000000-0000-0000-0000-000000000100".fromUUIDString(),
         title = "The Hobbit",
         author = "J.R.R. Tolkien",
         description = "The Hobbit, or There and Back Again is a children's fantasy novel by English author J. R. R. Tolkien. It was published on 21 September 1937 to wide critical acclaim, being nominated for the Carnegie Medal and awarded a prize from the New York Herald Tribune for best juvenile fiction. The book remains popular and is recognized as a classic in children's literature."
@@ -95,7 +96,7 @@ class FileAPITest {
 
         // • ARRANGE
         val updatedDTOBookInfo = DTOBookInfo(
-            id = UUID2.fromUUIDString("00000000-0000-0000-0000-000000000100"),
+            id = "00000000-0000-0000-0000-000000000100".fromUUIDString(),
             title = "The UPDATED Hobbit",
             author = "J.R.R. Tolkien",
             description = "UPDATED DESCRIPTION"

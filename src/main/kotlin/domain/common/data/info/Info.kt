@@ -1,11 +1,11 @@
 package domain.common.data.info
 
 import com.google.gson.Gson
+import com.realityexpander.jsonConfig
 import common.uuid2.UUID2
 import domain.Context
 import domain.common.data.Model
 import java.lang.reflect.Type
-import java.util.*
 import java.util.concurrent.atomic.AtomicReference
 
 /**
@@ -128,27 +128,46 @@ interface Info<TInfo : Model> {
     }
 
     companion object {
+
+        // Create an Info object from a JSON string using Gson serialization
         fun <TToInfo : ToInfo<*>?> createInfoFromJson(
             json: String,
             infoClazz: Class<TToInfo>,  // type of `Info` object to create
             context: Context
         ): TToInfo? {
             return try {
-                val obj: TToInfo? = context.gson.fromJson(json, infoClazz as Type)
-                context.log.d("Info:createInfoFromJson()", "obj = $obj")
-                if(obj == null) throw Exception("Info:createInfoFromJson(): obj is null")
+                 val infoFromJson: TToInfo? = context.gson.fromJson(json, infoClazz as Type) // Gson version
+                context.log.d("Info:createInfoFromJson(Gson)", "obj = $infoFromJson")
+                if(infoFromJson == null) throw Exception("Info:createInfoFromJson(Gson): infoFromJson is null")
 
-                // Set the UUID2 typeStr to match the Info Class name
-                val infoClazzName: String = UUID2.calcUUID2TypeStr(infoClazz)
-                infoClazz.cast(obj)
-                    ?.id()
-                    ?._setUUID2TypeStr(infoClazzName)
-
-                obj
+                infoFromJson
             } catch (e: Exception) {
                 context.log.d(
                     "Info:createInfoFromJson()", "Failed to createInfoFromJson() for " +
                             "class: " + infoClazz.name + ", " +
+                            "json: " + json + ", " +
+                            "exception: " + e
+                )
+
+                null
+            }
+        }
+
+        // Create an Info object from a JSON string using Kotlinx serialization
+        inline fun <reified TToInfo : ToInfo<*>?> createInfoFromJson(
+            json: String,
+            context: Context
+        ): TToInfo? {
+            return try {
+                val infoFromJson: TToInfo? = jsonConfig.decodeFromString(json) // kotlinx.serialization version
+                context.log.d("Info:createInfoFromJson(Kotlinx)", "infoFromJson = $infoFromJson")
+                if(infoFromJson == null) throw Exception("Info:createInfoFromJson(Kotlinx): infoFromJson is null")
+
+                infoFromJson
+            } catch (e: Exception) {
+                context.log.d(
+                    "Info:createInfoFromJson()", "Failed to createInfoFromJson() for " +
+                            "class: " + ToInfo::class.java.name + ", " +
                             "json: " + json + ", " +
                             "exception: " + e
                 )

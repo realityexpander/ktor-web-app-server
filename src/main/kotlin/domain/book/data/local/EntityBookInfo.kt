@@ -6,12 +6,9 @@ import common.uuid2.UUID2
 import domain.Context
 import domain.book.Book
 import domain.book.data.BookInfo
-import domain.book.data.network.DTOBookInfo
 import domain.common.data.Model
 import domain.common.data.info.Info
 import domain.common.data.info.local.EntityInfo
-import domain.library.Library
-import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 
 /**
@@ -25,9 +22,9 @@ import kotlinx.serialization.Serializable
  * @since 0.12 Kotlin conversion
  */
 
-@Serializable  // todo should the database/entity layer be serializable?
+@Serializable
 class EntityBookInfo(
-    override val id: UUID2<@Contextual Book> = UUID2<Book>(UUID2.randomUUID2(), Book::class.java),
+    override val id: UUID2<Book> = UUID2.randomUUID2<Book>(),
     val title: String,
     val author: String,
     val description: String,
@@ -37,12 +34,10 @@ class EntityBookInfo(
     val isDeleted: Boolean = false
 ) : EntityInfo(id),
     Model.ToDomainInfo<BookInfo>,
-    Model.ToDomainInfo.HasToDeepCopyDomainInfo<BookInfo>,
+    Model.ToDomainInfo.HasToDomainInfoDeepCopy<BookInfo>,
     Info.ToInfo<EntityBookInfo>,
     Info.HasToDeepCopyInfo<EntityBookInfo>
 {
-
-//    constructor(json: String, context: Context) : this(context.gson.fromJson(json, EntityBookInfo::class.java))
     constructor(json: String, context: Context) : this(jsonConfig.decodeFromString<EntityBookInfo>(json))
 
     ////////////////////////////////////////////////////////////
@@ -52,7 +47,7 @@ class EntityBookInfo(
     ////////////////////////////////////////////////////////////
 
     constructor(bookInfo: EntityBookInfo) : this(
-        UUID2.fromUUID2(bookInfo.id().toDomainUUID2(), Book::class.java),  // change `UUID2Type` to UUID2<Book>
+        bookInfo.id(),
         bookInfo.title,
         bookInfo.author,
         bookInfo.description,
@@ -97,7 +92,7 @@ class EntityBookInfo(
     // ToDomainInfo implementation //
     /////////////////////////////////
 
-    override fun toDeepCopyDomainInfo(): BookInfo {
+    override fun toDomainInfoDeepCopy(): BookInfo {
         // implement deep copy (if structure is not flat.)
         return BookInfo(this)
     }

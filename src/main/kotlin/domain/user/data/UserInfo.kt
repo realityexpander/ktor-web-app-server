@@ -1,6 +1,5 @@
 package domain.user.data
 
-import com.realityexpander.common.data.local.FileDatabase
 import common.uuid2.UUID2
 import domain.book.Book
 import domain.common.data.Model
@@ -153,7 +152,7 @@ class UserInfo(
     ///////////////////////////////
 
     // note: no DB or API for UserInfo (so no .ToEntity() or .ToDTO())
-    override fun toDeepCopyDomainInfo(): UserInfo {
+    override fun toDomainInfoDeepCopy(): UserInfo {
         // Note: Must return a deep copy (no original references)
         val domainInfoCopy = UserInfo(this)
 

@@ -26,5 +26,5 @@ import java.util.*
 open class DomainInfo(
     @Transient            // prevent kotlinx serialization
     @kotlin.jvm.Transient // prevent gson serialization
-    override val id: UUID2<*> = UUID2(UUID2.randomUUID2()),
+    override val id: UUID2<*> = UUID2.randomUUID2(),
 ) : Model(id)

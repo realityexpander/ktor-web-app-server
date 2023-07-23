@@ -468,7 +468,7 @@ class AccountInfo private constructor(
     /////////////////////////////////
 
     // note: currently no DB or API for UserInfo (so no .ToEntity() or .ToDTO())
-    override fun toDeepCopyDomainInfo(): AccountInfo {
+    override fun toDomainInfoDeepCopy(): AccountInfo {
         // Note: *MUST* return a deep copy
         return AccountInfo(
             id(),
