@@ -370,44 +370,44 @@ class LibraryAppTest {
         }
     }
 
-    private val ronaldReaganLibraryInfoJson: String =
-        """
-            {
-              "name": "Ronald Reagan Library",
-              "id": {
-                "uuid": "00000000-0000-0000-0000-000000000099",
-                "uuid2Type": "Role.Library"
-              },
-              "registeredUserIdToCheckedOutBookIdsMap": {
-                "UUID2:Role.User@00000000-0000-0000-0000-000000000001": [
-                  {
-                    "uuid":"00000000-0000-0000-0000-000000001500",
-                    "uuid2Type":"Role.Book"
-                  }
-                ]
-              },
-              "bookIdToNumBooksAvailableMap": {
-                "UUID2:Role.Book@00000000-0000-0000-0000-000000001400": 25,
-                "UUID2:Role.Book@00000000-0000-0000-0000-000000001000": 25,
-                "UUID2:Role.Book@00000000-0000-0000-0000-000000001300": 25,
-                "UUID2:Role.Book@00000000-0000-0000-0000-000000001200": 25,
-                "UUID2:Role.Book@00000000-0000-0000-0000-000000001500": 24,
-                "UUID2:Role.Book@00000000-0000-0000-0000-000000001600": 25,
-                "UUID2:Role.Book@00000000-0000-0000-0000-000000001700": 25,
-                "UUID2:Role.Book@00000000-0000-0000-0000-000000001800": 25,
-                "UUID2:Role.Book@00000000-0000-0000-0000-000000001900": 25,
-                "UUID2:Role.Book@00000000-0000-0000-0000-000000001100": 25
-              }
-            }
-        """.trimIndent()
+//    private val ronaldReaganLibraryInfoJson: String =
+//        """
+//            {
+//              "name": "Ronald Reagan Library",
+//              "id": {
+//                "uuid": "00000000-0000-0000-0000-000000000099",
+//                "uuid2Type": "Role.Library"
+//              },
+//              "registeredUserIdToCheckedOutBookIdsMap": {
+//                "UUID2:Role.User@00000000-0000-0000-0000-000000000001": [
+//                  {
+//                    "uuid":"00000000-0000-0000-0000-000000001500",
+//                    "uuid2Type":"Role.Book"
+//                  }
+//                ]
+//              },
+//              "bookIdToNumBooksAvailableMap": {
+//                "UUID2:Role.Book@00000000-0000-0000-0000-000000001400": 25,
+//                "UUID2:Role.Book@00000000-0000-0000-0000-000000001000": 25,
+//                "UUID2:Role.Book@00000000-0000-0000-0000-000000001300": 25,
+//                "UUID2:Role.Book@00000000-0000-0000-0000-000000001200": 25,
+//                "UUID2:Role.Book@00000000-0000-0000-0000-000000001500": 24,
+//                "UUID2:Role.Book@00000000-0000-0000-0000-000000001600": 25,
+//                "UUID2:Role.Book@00000000-0000-0000-0000-000000001700": 25,
+//                "UUID2:Role.Book@00000000-0000-0000-0000-000000001800": 25,
+//                "UUID2:Role.Book@00000000-0000-0000-0000-000000001900": 25,
+//                "UUID2:Role.Book@00000000-0000-0000-0000-000000001100": 25
+//              }
+//            }
+//        """.trimIndent()
 
     @Test
-    fun `Update LibraryInfo by updateInfoFromJson is Success`() {
+    fun `Update LibraryInfo using updateInfoFromJson() is Success`() {
         runBlocking {
 
             // • ARRANGE
             val roles = setupDefaultRolesAndScenario(context, TestingUtils(context))
-            val json = ronaldReaganLibraryInfoJson
+            val json = ronaldReaganLibrary99InfoJson
 
             // Create the "unknown" library with just an id.
             val library99 = Library(UUID2.createFakeUUID2(99, Library::class.java), context)
@@ -441,11 +441,50 @@ class LibraryAppTest {
         }
     }
 
+    @Test
+    fun `Update LibraryInfo using updateInfoFromJson() with wrong id in json is Failure`() {
+        runBlocking {
+
+            // • ARRANGE
+            val json = ronaldReaganLibrary99InfoJson // note: using the wrong id to update the json
+            val library1 = Library(UUID2.createFakeUUID2(1, Library::class.java), context)
+
+            // • ACT & ASSERT
+            val library1UpdateInfoResult = library1.updateInfoFromJson(json)
+            assertTrue(library1UpdateInfoResult.isFailure, "LibraryInfo updateInfoFromJson() of unknown library succeeded unexpectedly")
+        }
+    }
+
+    private val ronaldReaganLibrary99InfoJson: String =
+        """
+        {
+          "name": "Ronald Reagan Library",
+          "id": "UUID2:Role.Library@00000000-0000-0000-0000-000000000099",
+          "registeredUserIdToCheckedOutBookIdsMap": {
+            "UUID2:Role.User@00000000-0000-0000-0000-000000000001": [
+               "UUID2:Role.Book@00000000-0000-0000-0000-000000001500"
+            ]
+          },
+          "bookIdToNumBooksAvailableMap": {
+            "UUID2:Role.Book@00000000-0000-0000-0000-000000001400": 25,
+            "UUID2:Role.Book@00000000-0000-0000-0000-000000001000": 25,
+            "UUID2:Role.Book@00000000-0000-0000-0000-000000001300": 25,
+            "UUID2:Role.Book@00000000-0000-0000-0000-000000001200": 25,
+            "UUID2:Role.Book@00000000-0000-0000-0000-000000001500": 24,
+            "UUID2:Role.Book@00000000-0000-0000-0000-000000001600": 25,
+            "UUID2:Role.Book@00000000-0000-0000-0000-000000001700": 25,
+            "UUID2:Role.Book@00000000-0000-0000-0000-000000001800": 25,
+            "UUID2:Role.Book@00000000-0000-0000-0000-000000001900": 25,
+            "UUID2:Role.Book@00000000-0000-0000-0000-000000001100": 25
+          }
+        }
+        """.trimIndent()
+
     @Test fun `Create Library Role from createInfoFromJson is Success`() {
         runBlocking {
 
             // • ARRANGE
-            val json = ronaldReaganLibraryInfoJson
+            val json = ronaldReaganLibrary99InfoJson
             val expectedBook1900 = Book(UUID2.createFakeUUID2(1900, Book::class.java), null, context)
 
             // Create a Library Domain Object from the Info
@@ -454,9 +493,18 @@ class LibraryAppTest {
                 // • ACT
                 val libraryInfo: LibraryInfo? = Role.createInfoFromJson(
                     json,
+//                    ronaldReaganLibraryInfoJson2,
                     LibraryInfo::class.java,
-                    context
+                    context,
                 )
+//                val kotlinxToJson = jsonConfig.encodeToString(LibraryInfo.serializer(), libraryInfo!!)
+//                println("kotlinxToJson: $kotlinxToJson")
+//                val libraryInfo: LibraryInfo? = Role.createInfoFromJson(
+//                    ronaldReaganLibraryInfoJson2,
+//                    LibraryInfo.serializer(),
+//                    context
+//                )
+                println("libraryInfo: $libraryInfo")
                 assertNotNull(libraryInfo)
                 val library = Library(libraryInfo!!, context)
                 context.log.d(this, "Results of Library3 json load:" + library.toJson())
@@ -484,17 +532,18 @@ class LibraryAppTest {
     @Test
     fun `Create Book Role from DTOBookInfo Json is Success`() {
         val greatGatsbyDTOBookInfoJson: String =
-            """{
-              "id": {
-                "uuid": "00000000-0000-0000-0000-000000000010",
-                "uuid2Type": "Role.Book"
-              },
-              "title": "The Great Gatsby",
-              "author": "F. Scott Fitzgerald",
-              "description": "The Great Gatsby is a 1925 novel written by American author F. Scott Fitzgerald that follows a cast of characters living in the fictional towns of West Egg and East Egg on prosperous Long Island in the summer of 1922. The story primarily concerns the young and mysterious millionaire Jay Gatsby and his quixotic passion and obsession with the beautiful former debutante Daisy Buchanan. Considered to be Fitzgerald's magnum opus, The Great Gatsby explores themes of decadence, idealism, resistance to change, social upheaval, and excess, creating a portrait of the Jazz Age or the Roaring Twenties that has been described as a cautionary tale regarding the American Dream.",
-              "extraFieldToShowThisIsADTO": "Extra Unneeded Data from JSON payload load"
-            }
-            """.trimIndent()
+        """
+        {
+          "id": "UUID2:Role.Book@00000000-0000-0000-0000-000000000010",
+          "title": "The Great Gatsby",
+          "author": "F. Scott Fitzgerald",
+          "description": "The Great Gatsby is a 1925 novel written by American author F. Scott Fitzgerald that follows a cast of characters living in the fictional towns of West Egg and East Egg on prosperous Long Island in the summer of 1922. The story primarily concerns the young and mysterious millionaire Jay Gatsby and his quixotic passion and obsession with the beautiful former debutante Daisy Buchanan. Considered to be Fitzgerald's magnum opus, The Great Gatsby explores themes of decadence, idealism, resistance to change, social upheaval, and excess, creating a portrait of the Jazz Age or the Roaring Twenties that has been described as a cautionary tale regarding the American Dream.",
+          "extraFieldToShowThisIsADTO": "Extra DTO Data from JSON payload load",
+          "creationTimeMillis": 0,
+          "lastModifiedTimeMillis": 0,
+          "isDeleted": false
+        }
+        """.trimIndent()
 
         runBlocking {
 
@@ -505,6 +554,7 @@ class LibraryAppTest {
             val expectedAuthor = "F. Scott Fitzgerald"
             val expectedUUID2: UUID2<Book> = UUID2.createFakeUUID2(10, Book::class.java)
             val expectedUuid2Type: String = expectedUUID2.uuid2Type
+            val expectedExtraFieldToShowThisIsADTO = "Extra DTO Data from JSON payload load"
 
             // • ACT & ASSERT
             try {
@@ -534,6 +584,11 @@ class LibraryAppTest {
                     book3.id().uuid2Type,
                     "Book3 should have UUID2 Type of:$expectedUuid2Type"
                 )
+                assertEquals(
+                    expectedExtraFieldToShowThisIsADTO,
+                    dtoBookInfo3.extraFieldToShowThisIsADTO,
+                    "Book3 should have extraFieldToShowThisIsADTO: $expectedExtraFieldToShowThisIsADTO"
+                )
             } catch (e: Exception) {
                 context.log.e(this, "Exception: " + e.message)
                 fail(e.message)
@@ -545,19 +600,17 @@ class LibraryAppTest {
     @Test
     fun `Create Book Role from EntityBookInfo Json is Success`() {
         val greatGatsbyEntityBookInfoJson: String =
-            """{
-              "id": {
-                "uuid": "00000000-0000-0000-0000-000000000010",
-                "uuid2Type": "Role.Book"
-              },
-              "title": "The Great Gatsby",
-              "author": "F. Scott Fitzgerald",
-              "description": "The Great Gatsby is a 1925 novel written by American author F. Scott Fitzgerald that follows a cast of characters living in the fictional towns of West Egg and East Egg on prosperous Long Island in the summer of 1922. The story primarily concerns the young and mysterious millionaire Jay Gatsby and his quixotic passion and obsession with the beautiful former debutante Daisy Buchanan. Considered to be Fitzgerald's magnum opus, The Great Gatsby explores themes of decadence, idealism, resistance to change, social upheaval, and excess, creating a portrait of the Jazz Age or the Roaring Twenties that has been described as a cautionary tale regarding the American Dream.",
-              "extraFieldToShowThisIsAnEntity": "Extra Unneeded Data from JSON payload load",
-              "creationTimeMillis": 0,
-              "lastModifiedTimeMillis": 0,
-              "isDeleted": false
-            }
+        """
+        {
+          "id": "UUID2:Role.Book@00000000-0000-0000-0000-000000000010",
+          "title": "The Great Gatsby",
+          "author": "F. Scott Fitzgerald",
+          "description": "The Great Gatsby is a 1925 novel written by American author F. Scott Fitzgerald that follows a cast of characters living in the fictional towns of West Egg and East Egg on prosperous Long Island in the summer of 1922. The story primarily concerns the young and mysterious millionaire Jay Gatsby and his quixotic passion and obsession with the beautiful former debutante Daisy Buchanan. Considered to be Fitzgerald's magnum opus, The Great Gatsby explores themes of decadence, idealism, resistance to change, social upheaval, and excess, creating a portrait of the Jazz Age or the Roaring Twenties that has been described as a cautionary tale regarding the American Dream.",
+          "extraFieldToShowThisIsAnEntity": "Extra Entity Data from JSON payload load",
+          "creationTimeMillis": 0,
+          "lastModifiedTimeMillis": 0,
+          "isDeleted": false
+        }
         """.trimIndent()
 
         runBlocking {
@@ -569,7 +622,7 @@ class LibraryAppTest {
             val expectedAuthor = "F. Scott Fitzgerald"
             val expectedUUID2: UUID2<Book> = UUID2.createFakeUUID2(10, Book::class.java)
             val expectedUuid2Type: String = expectedUUID2.uuid2Type
-            val expectedExtraFieldToShowThisIsAnEntity = "Extra Unneeded Data from JSON payload load"
+            val expectedExtraFieldToShowThisIsAnEntity = "Extra Entity Data from JSON payload load"
 
             // • ACT & ASSERT
             try {

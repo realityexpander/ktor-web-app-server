@@ -57,6 +57,7 @@ val jsonConfig = Json {
     ignoreUnknownKeys = true
     coerceInputValues = true
     encodeDefaults = true
+    allowStructuredMapKeys = true
 }
 
 @Serializable

@@ -1,26 +1,30 @@
 package domain.common
 
 import com.google.gson.JsonSyntaxException
+import com.realityexpander.jsonConfig
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.Context
 import domain.common.data.info.DomainInfo
 import domain.common.data.info.Info
+import domain.library.data.LibraryInfo
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.*
+import kotlinx.serialization.builtins.serializer
 import java.lang.reflect.ParameterizedType
-import java.lang.reflect.Type
 import java.util.*
 import java.util.concurrent.atomic.AtomicReference
-import kotlinx.serialization.Transient
+import kotlin.reflect.KClass
 
 /**
- * Domain Role - Common Domain Role Abstract class<br></br>
+ * Role - Domain Role Abstract class
  *
- *  * Repo only accepts/returns Domain Models, and internally converts to/from DTOs/Entities/Domains
- *  * Works with the network API & local database to perform CRUD operations, and also performs validation.
- *  * Can also be used to implement caching.
+ *  * The corresponding Repository only accepts/returns {Domain}Info objects, and internally converts
+ *    to/from DTOs/Entity/Domain objects.
+ *  * Works with the network API & local database to perform CRUD operations
+ *  * Performs basic validation.
  *
- * The Repo can easily accept fake APIs & Database for testing.
+ * The Repo can easily use fake API & Database for testing purposes.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.12 Kotlin conversion
@@ -38,18 +42,26 @@ abstract class Role<TDomainInfo : DomainInfo> (
     // Convenience for Repo Debugging and future UI use
     private val infoResult: AtomicReference<Result<TDomainInfo>> = AtomicReference<Result<TDomainInfo>>(null)
 
-    // For Gson serialization - this is the Class of the Info<TDomain> object for the Role
+    // For Gson serialization - this finds the Class of the Info<TDomain> object for the Role
     private val infoClazz =
-        if (javaClass.genericSuperclass is ParameterizedType) (
-            javaClass
-                .genericSuperclass as ParameterizedType)         // 1. Get clazz for "Info" from this class... ⬇︎
-                .actualTypeArguments[0] as Class<*>
+        if (this.javaClass.genericSuperclass is ParameterizedType) (
+            this.javaClass
+                .genericSuperclass as ParameterizedType)  // 1. Get `TDomainInfo` concrete clazz for "Info"
+                .actualTypeArguments[0] as Class<*>       //      from `Role<TDomainInfo>`... ⬇
         else (((
-            javaClass
+            this.javaClass
                 .genericSuperclass as Class<*>)
-                .genericSuperclass as ParameterizedType)         // 2. ⬆︎ ...or from the super class generic type.
-                .actualTypeArguments[0] as Class<*>
+                .genericSuperclass as ParameterizedType)  // 2. ⬆︎...or superclass generic-type
+                .actualTypeArguments[0] as Class<*>       //      from `Info<TDomainInfo>`.
         )
+
+    // Find the class of the `Info<TDomain>` object for the `Role` for kotlinx serialization
+    @Suppress("UNCHECKED_CAST")
+    @OptIn(InternalSerializationApi::class)
+    val kotlinxSerializer = runBlocking {
+        // find the serializer for the info class
+        infoClazz.kotlin.serializer() as KSerializer<TDomainInfo>
+    }
 
     ///////////////////
     // Constructors  //
@@ -115,6 +127,7 @@ abstract class Role<TDomainInfo : DomainInfo> (
         return try {
             val domainInfoClazz = infoClazz // todo just use infoClazz
             val infoFromJson = context.gson.fromJson(json, domainInfoClazz)
+//            val infoFromJson = jsonConfig.decodeFromString(kotlinxSerializer, json)
 
             // Validate id of imported Info matches the id of this Info
             val checkResult: Result<TDomainInfo> = checkJsonInfoIdMatchesThisInfoId(infoFromJson, domainInfoClazz)
@@ -122,18 +135,20 @@ abstract class Role<TDomainInfo : DomainInfo> (
                 return checkResult
             }
 
-            // Check that the id of the imported Info matches the id of this Info
-            @Suppress("UNCHECKED_CAST")
-            if ((infoFromJson as TDomainInfo).id() != id) {
-                return Result.failure(Exception("Info id does not match this Info id, " +
-                        "class: " + this.javaClass.name + ", " +
-                        "id: " + id + ", " +
-                        "infoFromJson.id: " + infoFromJson.id()
-                ))
-            }
+            // todo remove
+//            // Check that the id of the imported Info matches the id of this Info
+//            @Suppress("UNCHECKED_CAST")
+//            if ((infoFromJson as TDomainInfo).id() != id) {
+//                return Result.failure(Exception("Info id does not match this Info id, " +
+//                        "class: " + this.javaClass.name + ", " +
+//                        "id: " + id + ", " +
+//                        "infoFromJson.id: " + infoFromJson.id()
+//                ))
+//            }
 
             // Update the info object with the new info
-            updateInfo(infoFromJson)
+            @Suppress("UNCHECKED_CAST")
+            updateInfo(infoFromJson as TDomainInfo)
         } catch (e: JsonSyntaxException) {
             Result.failure(Exception("Failed to parse JSON: " + e.message))
         } catch (e: Exception) {
@@ -159,17 +174,23 @@ abstract class Role<TDomainInfo : DomainInfo> (
     // Methods REQUIRED to be overridden in subclasses //
     /////////////////////////////////////////////////////
 
-    // Defines how to fetch info from server
-    // - REQUIRED - *MUST* be overridden/implemented in subclasses
+    /**
+     * Defines how to fetch the `{Domain}Info` object from server
+     *
+     * * REQUIRED - **MUST** be overridden/implemented in subclasses
+     **/
     override suspend fun fetchInfoResult(): Result<TDomainInfo> {
         return Result.failure(Exception("Not Implemented, should be implemented in subclass."))
     }
 
-    // Updates the `Info` object with new data
-    // - REQUIRED - *MUST* be overridden/implemented in subclasses
-    // - Call `super.updateFetchInfoResult(newInfo)` to update the info<TDomainInfo> object
-    //   (caller decides when appropriate, ie: optimistic updates, or after server confirms update)
-    abstract override suspend fun updateInfo(updatedInfo: TDomainInfo): Result<TDomainInfo> // **MUST** Override in subclasses
+    /**
+     * Updates the `{Domain}Info` object with new data, and returns the updated `{Domain}Info` object.
+     *
+     * * **REQUIRED** - **MUST** be overridden & implemented in subclasses.
+     * * Call **`super.updateFetchInfoResult(newInfo)`** to update the **`info<TDomainInfo>`** object
+     * * The caller decides when appropriate, ie: optimistic updates, or after server confirms update.
+     **/
+    abstract override suspend fun updateInfo(updatedInfo: TDomainInfo): Result<TDomainInfo>
 
     // NOTE: Should be Implemented by subclasses but not required
     override fun toString(): String {
@@ -183,18 +204,21 @@ abstract class Role<TDomainInfo : DomainInfo> (
         }
     }
 
-    /////////////////////////////////
-    // Info<T> interface methods   //
-    /////////////////////////////////
+    ///////////////////////////////////////////
+    // Info<TDomainInfo> interface methods   //
+    ///////////////////////////////////////////
 
     // Shorter named wrapper for fetchInfo()
     suspend fun info(): TDomainInfo? {
         return fetchInfo()
     }
 
-    // Returns the Info<T> object if it has been fetched, otherwise fetches and returns Result.
-    // Used to access the Info object without having to handle the Result<T> object.
-    // NOTE: A cached Info<T> object is returned if it has been fetched, otherwise a new Info<T> object is fetched.
+    /**
+    * Returns the Info<T> object if it has been fetched, otherwise fetches and returns Result.
+    *
+    * * Used to access the Info object without having to handle the Result<T> object.
+    * * NOTE: A cached Info<T> object is returned if it has been fetched, otherwise a new Info<T> object is fetched.
+    **/
     override suspend fun fetchInfo(): TDomainInfo? {
         if (isInfoFetched) {
             return cachedInfo().get()
@@ -218,10 +242,13 @@ abstract class Role<TDomainInfo : DomainInfo> (
         )
     }
 
-    // Returns reason for failure of most recent `fetchInfo()` call, or `null` if was successful.
-    // - Used as a convenient error guard for methods that require the {Domain}Info to be loaded.
-    // - If `Info` is not fetched, it attempts to fetch it.
-    // - BOOP Exception: The "returning null" behavior is to make the call site error handling code smaller.
+    /**
+     * Returns reason for failure of most recent `fetchInfo()` call, or `null` if was successful.
+     *
+     * * Used as a convenient error guard for methods that require the {Domain}Info to be loaded.
+     * * If `Info` is not fetched, it attempts to fetch it.
+     * * BOOP Exception: The "returning null" behavior is to make the call site error handling code smaller.
+     **/
     override suspend fun fetchInfoFailureReason(): String? {
         if (!isInfoFetched) {
             if (fetchInfoResult().isFailure) {
@@ -262,7 +289,7 @@ abstract class Role<TDomainInfo : DomainInfo> (
 
     @Suppress("FunctionName")
     fun _overrideFetchResultToIsSuccess() {
-        // Reset the fetch result to success, for use in testing.
+        // Reset the fetch result to `isSuccess`, for use in testing.
         println("this.info=" + this.info)
         println("this.infoResult=" + this.infoResult)
         infoResult.set(Result.success(this.info.get()))
@@ -274,40 +301,85 @@ abstract class Role<TDomainInfo : DomainInfo> (
         // Static Constructors   //
         ///////////////////////////
 
-        // Creates new `Domain.{Domain}Info` object with id from JSON string of `Domain.{Domain}Info` object
-        // - Implemented as a static method bc it can be called from a constructor.
-        //   (Can't call instance methods from constructor in java.)
-        // - Note: Type definitions are to make sure constrained to Domain subtypes and subclasses.
-        // - ie: The Library domain object has a Domain.LibraryInfo object which requires ToDomain<Domain.LibraryInfo>
-        //   to be implemented.
-        // - Only imports JSON to Domain objects.
-        //   The Domain.EntityInfo and Domain.DTOInfo layer are intentionally restricted to accept only Domain objects.
-
-        fun <TDomainInfo : DomainInfo>  // restrict to Domain subclasses, ie: Model.DomainInfo.*
+        /**
+        * Creates new **`Domain.{Domain}Info`** object with id from JSON string of **`Domain.{Domain}Info`** object.
+        *
+        * For use with kotlinx serialization.
+        *
+        * - Implemented as a static method so it can be called from a constructor.
+        * - Note: Type definitions are to make sure constrained to Domain subtypes and subclasses.
+        * - ie: The `Library` Role object has a **`DomainInfo.LibraryInfo`** object which requires
+        * **`ToDomain<DomainInfo.LibraryInfo>`** to be implemented.
+        *   The `Domain.EntityInfo` and `Domain.DTOInfo` layer are intentionally restricted to accept only `Domain` objects.
+        **/
+        inline fun <reified TDomainInfo : DomainInfo>  // restrict to Domain subclasses, ie: Model.DomainInfo.*
         createInfoFromJson(
-            json: String?,  // todo remove nullability?
-            domainInfoClazz: Class<TDomainInfo>,  // type of `Domain.TDomainInfo` object to create
-            context: Context
+            json: String?,
+            serializer: KSerializer<TDomainInfo>,
+            context: Context,
         ): TDomainInfo? {
             json ?: return null
 
             return try {
-                val obj: TDomainInfo = context.gson.fromJson(json, domainInfoClazz as Type)
-                context.log.d("Role:createInfoFromJson()", "obj = $obj")
+                val domainInfoFromJson = jsonConfig.decodeFromString(serializer, json)
+                context.log.d("Role:createInfoFromJson()", "domainInfoFromJson = $domainInfoFromJson")
 
-                // Set UUID2Type to match the type of TDomainInfo object
-                val domainInfoClazzName: String = UUID2.calcUUID2TypeStr(domainInfoClazz)
-                domainInfoClazz.cast(obj)
-                    ?.id()
-                    ?._setUUID2TypeStr(domainInfoClazzName)
+//                // Set UUID2Type to match the type of TDomainInfo object
+//                // For Gson serialization - this finds the Class of the Info<TDomain> object for the Role
+//                // But this is not needed for kotlinx serialization // todo remove
+//                val domainInfoClazz = TDomainInfo::class.java
+//                val domainInfoClazzName: String = UUID2.calcUUID2TypeStr(domainInfoClazz)
+//                domainInfoClazz.cast(domainInfoFromJson)
+//                    ?.id()
+//                    ?._setUUID2TypeStr(domainInfoClazzName)
 
-                obj
+                domainInfoFromJson
             } catch (e: Exception) {
                 context.log.d(
                     "Role:createInfoFromJson()", "Failed to createInfoFromJson() for " +
-                        "class: " + domainInfoClazz.name + ", " +
-                        "json: " + json + ", " +
-                        "exception: " + e
+                            "class: " + TDomainInfo::class.java.name + ", " +
+                            "json: " + json + ", " +
+                            "exception: " + e
+                )
+
+                null
+            }
+        }
+
+        /**
+         * Creates new **`Domain.{Domain}Info`** object with id from JSON string of **`Domain.{Domain}Info`** object.
+         *
+         * Same as above `createInfoFromJson(...)`, except uses **Gson** instead of kotlinx serialization.
+         *
+         **/
+        fun <TDomainInfo : DomainInfo>  // restrict to Domain subclasses, ie: Model.DomainInfo.*
+        createInfoFromJson(
+            json: String?,
+            domainInfoClazz: Class<TDomainInfo>,  // Type of `DomainInfo.TDomainInfo` object to create
+            context: Context,
+        ): TDomainInfo? {
+            json ?: return null
+
+            return try {
+                val domainInfoFromJson: TDomainInfo = context.gson.fromJson(json, domainInfoClazz)
+                context.log.d("Role:createInfoFromJson()", "domainInfoFromJson = $domainInfoFromJson")
+
+                // For Gson serialization - this finds the Class of the Info<TDomain> object for the Role
+                // But this is not needed for kotlinx serialization // todo remove
+                // Also no longer using the {Domain}Info object's UUID2Type, the id's all now use the Role's UUID2Type.
+                //    // Set UUID2Type to match the type of TDomainInfo object (ie: Model.DomainInfo.*)
+                //    val domainInfoClazzName: String = UUID2.calcUUID2TypeStr(domainInfoClazz)
+                //    domainInfoClazz.cast(domainInfoFromJson)
+                //        ?.id()
+                //        ?._setUUID2TypeStr(domainInfoClazzName)
+
+                domainInfoFromJson
+            } catch (e: Exception) {
+                context.log.d(
+                    "Role:createInfoFromJson()", "Failed to createInfoFromJson() for " +
+                            "class: " + domainInfoClazz.name + ", " +
+                            "json: " + json + ", " +
+                            "exception: " + e
                 )
 
                 null

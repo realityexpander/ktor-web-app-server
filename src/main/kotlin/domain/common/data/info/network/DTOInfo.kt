@@ -21,7 +21,5 @@ import java.util.*
 open class DTOInfo(
     @Transient            // prevent kotlinx serialization
     @kotlin.jvm.Transient // prevent gson serialization
-    override val id: UUID2<*> = UUID2.randomUUID2(UUID2::class.java)
-) : Model(id) {
-    constructor() : this(UUID2.randomUUID2(UUID2::class.java))
-}
+    override val id: UUID2<*> = UUID2(UUID2.randomUUID2()),
+) : Model(id)

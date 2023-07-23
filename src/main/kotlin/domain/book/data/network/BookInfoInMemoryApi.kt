@@ -31,10 +31,6 @@ class BookInfoInMemoryApi(api: InMemoryAPI<Book, DTOBookInfo>) {
         this.api = api
     }
 
-    suspend fun fetchBookInfo(id: String): Result<DTOBookInfo> {
-        return api.fetchDtoInfo(id)
-    }
-
     suspend fun fetchBookInfo(id: UUID2<Book>): Result<DTOBookInfo> {
         return api.fetchDtoInfo(id)
     }

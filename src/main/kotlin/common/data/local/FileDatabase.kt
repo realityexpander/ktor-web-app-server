@@ -70,14 +70,14 @@ abstract class FileDatabase<TKey : UUID2<*>, TEntity : FileDatabase.HasId<TKey>>
             return
         }
 
-        runBlocking {
+//        runBlocking {
             try {
                 loadJsonDatabaseFileFromDisk()
             } catch (e: Exception) {
                 ktorLogger.error("Error loading $databaseFilename: ${e.message}")
                 e.printStackTrace()
             }
-        }
+//        }
     }
 
     // Marker interface for entities that can be stored in the database.
@@ -204,10 +204,10 @@ abstract class FileDatabase<TKey : UUID2<*>, TEntity : FileDatabase.HasId<TKey>>
     private suspend fun pollUntilFileExists(fileName: String) {
         var pollingAttempts = 0
 
-        runBlocking {
+//        runBlocking {
 
             if(File(fileName).exists()) {
-                return@runBlocking
+                return//@runBlocking
             }
 
             while (!File(fileName).exists()) {
@@ -218,7 +218,7 @@ abstract class FileDatabase<TKey : UUID2<*>, TEntity : FileDatabase.HasId<TKey>>
                     throw Exception("File $fileName does not exist after $MAX_POLLING_ATTEMPTS attempts.")
                 }
             }
-        }
+//        }
     }
 
     private fun renameFileBeforeWriting(fileName: String): String {

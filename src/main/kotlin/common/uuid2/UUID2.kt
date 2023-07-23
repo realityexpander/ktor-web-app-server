@@ -3,21 +3,23 @@
 package common.uuid2
 
 import com.google.gson.*
-import com.realityexpander.common.uuid2.UUIDSerializer
 import domain.account.Account
 import domain.book.Book
 import domain.library.Library
 import domain.library.PrivateLibrary
 import domain.user.User
 import io.ktor.util.reflect.*
-import kotlinx.serialization.Contextual
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import org.bson.json.JsonParseException
 import org.reflections.Reflections
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.util.*
-import kotlin.collections.ArrayList
 import kotlin.reflect.*
 
 /**
@@ -66,7 +68,8 @@ import kotlin.reflect.*
  * @since 0.12 Kotlin Conversion
  */
 
-@Serializable
+//@Serializable  // todo use kotlinx serialization instead of gson
+@Serializable(with = UUID2Serializer::class)
 open class UUID2<TUUID2 : IUUID2> : IUUID2 {
 
     @Serializable(with = UUIDSerializer::class)
@@ -78,7 +81,8 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
         private set(value) {
             field = getNormalizedUuid2TypeString(value)
         }
-    val uuid2TypeStr: String  // todo change interface to use this getter instead of overridden method uuid2TypeStr()
+
+    private val uuid2TypeStr: String
         get() {
             return uuid2Type
         }
@@ -181,7 +185,7 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
     }
 
     // Note: Should only be used when importing JSON
-    // todo - is there a better way to do this in kotlin?
+    // todo - is there a better way to do this in kotlin?  // this doesnt seem to be needed for kotlinx serialization
     @Suppress("FunctionName") // for leading underscore
     fun _setUUID2TypeStr(uuid2TypeStr: String?): Boolean {
         uuid2Type = getNormalizedUuid2TypeString(uuid2TypeStr)
@@ -193,6 +197,7 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
     // JSON Serialization Helpers //
     ////////////////////////////////
 
+    // for Gson
     class Uuid2ArrayListJsonSerializer: JsonSerializer<ArrayList<*>?> {
         override fun serialize(
             src: ArrayList<*>?,
@@ -203,7 +208,12 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
 
             try {
                 src?.forEach { uuid2 ->
-                    uuid2JsonArray.add(uuid2.toString())
+//                    uuid2JsonArray.add(uuid2.toString())
+                    uuid2JsonArray.add(
+                        uuid2.toString()
+                            .removePrefix("\"")  // remove any leading quotes (added by JsonPrimitive)
+                            .removeSuffix("\"")  // remove any trailing quotes (added by JsonPrimitive)
+                    )
                 }
             } catch (e: Exception) {
                 throw RuntimeException("Error serializing UUID2 ArrayList JSON", e)
@@ -213,6 +223,7 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
         }
     }
 
+    // for Gson
     class Uuid2ArrayListJsonDeserializer: JsonDeserializer<ArrayList<*>?> {
         @Throws(JsonParseException::class)
         override fun deserialize(
@@ -241,6 +252,30 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
         }
     }
 
+    // for Gson
+    class Uuid2JsonSerializer: JsonSerializer<UUID2<*>?> {
+        override fun serialize(
+            src: UUID2<*>?,
+            typeOfSrc: Type?,
+            context: JsonSerializationContext?
+        ): JsonElement {
+            return JsonPrimitive(src.toString())
+        }
+    }
+
+    // For Gson
+    class Uuid2JsonDeserializer: JsonDeserializer<UUID2<*>?> {
+        @Throws(JsonParseException::class)
+        override fun deserialize(
+            json: com.google.gson.JsonElement?,
+            typeOfT: Type?,
+            jsonDeserializationContext: JsonDeserializationContext?
+        ): UUID2<*> {
+            return UUID2.fromUUID2StrToSameTypeUUID2(json?.asString ?: "")
+        }
+    }
+
+    // for Gson
     // Note: Deserializes all JSON Numbers to Longs for all Entity Number JSON values.
     // - For consistent number deserialization due to GSON defaulting to convert numbers to Doubles.
     class Uuid2MapJsonDeserializer: JsonDeserializer<MutableMap<UUID2<*>, *>?> {
@@ -343,20 +378,26 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
                 return segments[segments.size - 1]
             }
 
-            // Check if it's in the White-listed UUID2 types // todo make this a config option?
+            // Check if it's in the White-listed UUID2 types
+            // todo make this a config option?
             when(typeStr) {
-                "Role.Book" -> return fromUUID2String<Book>(uuid2Str)
-                "Role.User" -> return fromUUID2String<User>(uuid2Str)
-                "Role.Library" -> return fromUUID2String<Library>(uuid2Str)
+                "Role.Book" ->           return fromUUID2String<Book>(uuid2Str)
+                "Role.User" ->           return fromUUID2String<User>(uuid2Str)
+                "Role.Library" ->        return fromUUID2String<Library>(uuid2Str)
                 "Role.PrivateLibrary" -> return fromUUID2String<PrivateLibrary>(uuid2Str)
-                "Role.Account" -> return fromUUID2String<Account>(uuid2Str)
+                "Role.Account" ->        return fromUUID2String<Account>(uuid2Str)
             }
 
             ///////////////////////////////////////////////////////////////////
             // The UUID2Type is NOT in the White-listed UUID2 types.         //
             // - Attempt to use SLOW REFLECTION to find the correct type.    //
-            // - todo Maybe log a warning here?                              //
             ///////////////////////////////////////////////////////////////////
+
+            System.err.println("WARNING: UUID2Type is NOT in the White-listed UUID2 types. " +
+                    "Attempting to use SLOW REFLECTION to find the correct type. typeStr=$typeStr," +
+                    " uuid2Str=$uuid2Str," +
+                    "Updated the White-listed UUID2 types in `UUID2.kt` to improve performance."
+            )
 
             // Find all the implementations of IUUID2
             val iuuid2SubTypeClazzList =
@@ -503,5 +544,17 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
                 classPath
             } else segments[segments.size - 1]
         }
+    }
+}
+
+object UUID2Serializer : KSerializer<UUID2<*>> {
+    override val descriptor = PrimitiveSerialDescriptor("UUID2", PrimitiveKind.STRING)
+
+    override fun deserialize(decoder: Decoder): UUID2<*> {
+        return UUID2.fromUUID2StrToSameTypeUUID2(decoder.decodeString())
+    }
+
+    override fun serialize(encoder: Encoder, value: UUID2<*>) {
+        encoder.encodeString(value.toString())
     }
 }

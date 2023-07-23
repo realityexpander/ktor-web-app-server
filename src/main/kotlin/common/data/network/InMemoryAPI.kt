@@ -8,25 +8,25 @@ import okhttp3.internal.toImmutableMap
 /**
  * InMemoryAPI is an implementation of the IAPI interface for the DTOInfo.
  *
+ * Simulates a REST API that is backed by a in-memory database.
+ * No data is persisted, so the database is reset on each run.
+ *
  * Uses type-safe UUID2 for the id.
  *
  * @param <TUUID2> The type of the UUID2
  * @param <TDTOInfo> The type of the DTOInfo
+ * @param fakeUrl The fake URL to use for the API
+ * @param client The fake HTTP client to use for the API
  * @since 0.12 Kotlin conversion
 */
 
 class InMemoryAPI<TUUID2 : IUUID2, TDTOInfo : DTOInfo> (
-    private val fakeUrl: FakeURL,
-    private val client: FakeHttpClient
+    private val fakeUrl: FakeURL = FakeURL("fakeHttp://fakeHost:22222"),
+    private val client: FakeHttpClient = FakeHttpClient()
 ) : IAPI<TUUID2, TDTOInfo> {
 
     // Simulate a database accessed via a network API
     private val remoteDatabase: MutableMap<UUID2<TUUID2>, TDTOInfo> = mutableMapOf()
-
-    internal constructor() : this(
-        FakeURL("fakeHttp://fakeHost:22222"),
-        FakeHttpClient()
-    )
 
     override suspend fun fetchDtoInfo(id: UUID2<TUUID2>): Result<TDTOInfo> {
         // Simulate the network request
@@ -36,15 +36,6 @@ class InMemoryAPI<TUUID2 : IUUID2, TDTOInfo : DTOInfo> (
             ?:
             return Result.failure(Exception("API: DTOInfo null, id=$id"))
         )
-    }
-
-    override suspend fun fetchDtoInfo(uuidStr: String): Result<TDTOInfo> {
-        return try {
-            val uuid: UUID2<TUUID2> = UUID2.fromUUIDString<TUUID2>(uuidStr)
-            fetchDtoInfo(uuid)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
     }
 
     override suspend fun updateDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {

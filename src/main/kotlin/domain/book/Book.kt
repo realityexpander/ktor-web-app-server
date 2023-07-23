@@ -1,6 +1,7 @@
 package domain.book
 
 
+import com.google.gson.Gson
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.Context
@@ -14,18 +15,28 @@ import domain.library.PrivateLibrary
 import domain.library.data.LibraryInfo
 import domain.user.User
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.yield
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 
 /**
- * Book Role Object - Only interacts with its own repository, Context, and other Role Objects<br></br>
- * <br></br>
- * Note: Use of **@Nullable** for **sourceLibrary** indicates to *"use default value."*<br></br>
- * Look at **`Book.pickSourceLibrary()`** for more information.
+ * Book Role
+ *
+ * Book is a Role Object that represents a Book in the LibraryApp domain.
+ *
+ * * Only interacts with its own repository, Context, and other Role Objects in the Domain layer.
+ *
+ * Note: Use of **@Nullable** for **sourceLibrary** indicates to *"use default value."*
+ *       See at **`Book.pickSourceLibrary()`** for more information.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.12 Kotlin conversion
  */
 
+@Serializable(with = BookSerializer::class)  // for kotlinx.serialization
 class Book : Role<BookInfo>, IUUID2 {
     private val repo: BookInfoRepo
     private val sourceLibrary: Library // Book's source Library Role Object - owns this Book.
@@ -91,6 +102,7 @@ class Book : Role<BookInfo>, IUUID2 {
         sourceLibrary,
         context
     )
+
     constructor(bookInfoEntity: EntityBookInfo, sourceLibrary: Library, context: Context) : this(
         BookInfo(bookInfoEntity),
         sourceLibrary,
@@ -181,13 +193,17 @@ class Book : Role<BookInfo>, IUUID2 {
         return updateInfo(updatedInfo) // delegate to Info Object
     }
 
-    // Role Role-specific business logic in a Role Object.
+    /**
+     * NOTE: `updateSourceLibrary()` is primarily used by the `Library` Role when transferring a `Book`'s source
+     *       library from one `Library` to another `Library`.
+     *
+     *  This info is *NOT* saved with the Book's BookInfo, as it only applies to the Book Role Object.
+     *
+     *  * Illustrates example of Role-specific business logic in that is not saved in it's **`Info`** Object.
+     *  * ie: **`sourceLibrary`** only exists in this `Book` Role object because **`BookInfo`** does _NOT_ have
+     *    a **`sourceLibrary`** field, and this relationship only exists in the Domain layer.
+     */
     suspend fun updateSourceLibrary(sourceLibrary: Library): Result<Book> {
-        // NOTE: This method is primarily used by the Library Role Object when moving a Book from one Library
-        //   to another Library.
-        // This info is *NOT* saved with the Book's BookInfo, as it only applies to the Book Role Object.
-        // - Shows example of Role-specific business logic in a Role Object that is not saved in the Info Object.
-        // - ie: sourceLibrary only exists in this Book Role Object as `BookInfo` does NOT have a `sourceLibrary` field.
         val updatedBook: Book = Book(id(), this.info(), sourceLibrary, this.context)
         return Result.success(updatedBook)
     }
@@ -208,7 +224,6 @@ class Book : Role<BookInfo>, IUUID2 {
                 // Create a new ORPHAN PrivateLibrary just for this one Book
                 val privateLibrary: Library = PrivateLibrary(bookId, true, context)
 
-//                yield()
                 // Create a new ORPHAN PrivateLibrary in the Repo for this one Book
                 val upsertOrphanLibraryInfoResult = context.libraryInfoRepo
                     .upsertLibraryInfo(
@@ -221,25 +236,11 @@ class Book : Role<BookInfo>, IUUID2 {
                 val orphanLibraryInfo = upsertOrphanLibraryInfoResult.getOrNull()
                     ?: throw Exception("Error adding Book to PrivateLibrary")
 
-//                yield()
-//                println("privateLibrary.info.get() = " + privateLibrary.info.get())
-//                println("orphanLibraryInfo = $orphanLibraryInfo")
-//                if(privateLibrary.info.get() == null) throw Exception("Error adding Book to PrivateLibrary")
-//                val result = privateLibrary.info.get().addPrivateBookIdToInventory(bookId, 1)
                 val result = orphanLibraryInfo.addPrivateBookIdToInventory(bookId, 1)
-//                    ?: throw Exception("Error adding Book to PrivateLibrary")
                 if(result.isFailure) throw Exception("Error adding Book to PrivateLibrary")
 
                 privateLibrary
             }
-
-//            // Add this Book to the new ORPHAN PrivateLibrary
-//            @Suppress("UNUSED_VARIABLE")
-//            val ignoreThisResult: Result<UUID2<Book>> =
-//                privateLibrary.info.get()?.addPrivateBookIdToInventory(bookId, 1)
-//                    ?: throw Exception("Error adding Book to PrivateLibrary")
-
-//            return privateLibrary
         }
 
         return sourceLibrary
@@ -256,15 +257,14 @@ class Book : Role<BookInfo>, IUUID2 {
             sourceLibrary: Library?,  // `null` means use default (ie: Orphan PrivateLibrary)
             context: Context
         ): Result<Book> {
-            val repo: BookInfoRepo = context.bookInfoRepo
-            val infoResult: Result<BookInfo> = repo.fetchBookInfo(uuid2)
-            if (infoResult.isFailure) return Result.failure(infoResult.exceptionOrNull()
+            val bookInfoResult = context.bookInfoRepo.fetchBookInfo(uuid2)
+            if (bookInfoResult.isFailure) return Result.failure(bookInfoResult.exceptionOrNull()
                 ?: Exception("Error fetching BookInfo, BookId: " + uuid2.uuid()))
 
-            val info: BookInfo = infoResult.getOrNull()
+            val bookInfo = bookInfoResult.getOrNull()
                 ?: return Result.failure(Exception("Error fetching BookInfo, BookId: " + uuid2.uuid()))
 
-            return Result.success(Book(info, sourceLibrary, context))
+            return Result.success(Book(bookInfo, sourceLibrary, context))
         }
 
         suspend fun fetchBook(
@@ -273,5 +273,17 @@ class Book : Role<BookInfo>, IUUID2 {
         ): Result<Book> {
             return fetchBook(uuid2, null, context)
         }
+    }
+}
+
+object BookSerializer : KSerializer<Book> {
+    override val descriptor = PrimitiveSerialDescriptor("Book", PrimitiveKind.STRING)
+
+    override fun deserialize(decoder: Decoder): Book {
+        return Gson().fromJson(decoder.decodeString(), Book::class.java)  // todo use kotlinx serialization instead of gson
+    }
+
+    override fun serialize(encoder: Encoder, value: Book) {
+        encoder.encodeString(value.toString())
     }
 }

@@ -21,6 +21,7 @@ import java.util.*
  * @since 0.12 Kotlin conversion
  */
 
+@Serializable // for kotlinx.serialization
 class UserInfo(
     override val id: UUID2<User>,  // note this is a UUID2<User> not a UUID2<UserInfo>, it is the id of the User.
     val name: String,

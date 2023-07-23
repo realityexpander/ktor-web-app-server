@@ -2,12 +2,12 @@ package domain.book.data
 
 import common.HumanDate
 import common.uuid2.UUID2
-import domain.account.Account
 import domain.book.Book
 import domain.book.data.local.EntityBookInfo
 import domain.book.data.network.DTOBookInfo
 import domain.common.data.Model
 import domain.common.data.info.DomainInfo
+import kotlinx.serialization.Serializable
 import java.util.*
 
 /**
@@ -19,6 +19,7 @@ import java.util.*
  * @since 0.12 Kotlin conversion
  */
 
+@Serializable // for kotlinx.serialization
 class BookInfo(
     override val id: UUID2<Book>,  // Note: This is a UUID2<Book> not a UUID2<BookInfo>
     val title: String,

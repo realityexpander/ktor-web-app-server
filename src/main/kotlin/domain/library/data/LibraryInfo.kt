@@ -1,12 +1,12 @@
 package domain.library.data
 
-import com.google.gson.annotations.Expose
 import common.uuid2.UUID2
 import domain.book.Book
 import domain.common.data.Model
 import domain.common.data.info.DomainInfo
 import domain.library.Library
 import domain.user.User
+import kotlinx.serialization.Serializable
 import java.util.*
 
 /**
@@ -18,27 +18,27 @@ import java.util.*
  * @since 0.12 Kotlin conversion
  */
 
+@Serializable // todo should the domainInfo classes be serializable?
 class LibraryInfo(
-    override val id: UUID2<Library>,
+    override val id: UUID2<Library> = UUID2(),
     val name: String,
-    registeredUserIdToCheckedOutBookIdsMap: MutableMap<UUID2<User>, ArrayList<UUID2<Book>>>,
-    bookIdToNumBooksAvailableMap: MutableMap<UUID2<Book>, Long>
+
+    // Registered users of this library
+    private val registeredUserIdToCheckedOutBookIdsMap:
+        MutableMap<UUID2<User>, ArrayList<UUID2<Book>>> = mutableMapOf(),
+
+    // Known books & number available in this library (inventory)
+    private val bookIdToNumBooksAvailableMap:
+        MutableMap<UUID2<Book>, Long> = mutableMapOf()
+
 ) : DomainInfo(id),
     Model.ToDomainInfo<LibraryInfo>
 {
-    // registered users of this library
-    private val registeredUserIdToCheckedOutBookIdsMap: MutableMap<UUID2<User>, ArrayList<UUID2<Book>>>
-
-    // known books & number available in this library (inventory)
-    private val bookIdToNumBooksAvailableMap: MutableMap<UUID2<Book>, Long>
-
-    init {
-        this.registeredUserIdToCheckedOutBookIdsMap = registeredUserIdToCheckedOutBookIdsMap
-        this.bookIdToNumBooksAvailableMap = bookIdToNumBooksAvailableMap
-    }
-
-    constructor(id: UUID2<Library>, name: String) : this(id, name, mutableMapOf(), mutableMapOf())
-    internal constructor(libraryInfo: LibraryInfo) : this(
+    constructor(
+        id: UUID2<Library>,
+        name: String
+    ) : this(id, name, mutableMapOf(), mutableMapOf())
+    constructor(libraryInfo: LibraryInfo) : this(
         libraryInfo.id(),
         libraryInfo.name,
         libraryInfo.registeredUserIdToCheckedOutBookIdsMap,
@@ -58,14 +58,15 @@ class LibraryInfo(
 
     override fun toString(): String {
         return this.toPrettyJson()
+//        return jsonConfig.encodeToString<LibraryInfo>(this)  // causes NPE's
 
     // LEAVE FOR DEBUGGING
-    //    return "LibraryInfo{" +
-    //            "id=" + id() +
-    //            ", name='" + name + '\'' +
-    //            ", registeredUserIdToCheckedOutBookIdsMap=" + registeredUserIdToCheckedOutBookIdsMap +
-    //            ", bookIdToNumBooksAvailableMap=" + bookIdToNumBooksAvailableMap +
-    //            '}'
+//        return "LibraryInfo{" +
+//                "id=" + id() +
+//                ", name='" + name + '\'' +
+//                ", registeredUserIdToCheckedOutBookIdsMap=" + registeredUserIdToCheckedOutBookIdsMap +
+//                ", bookIdToNumBooksAvailableMap=" + bookIdToNumBooksAvailableMap +
+//                '}'
     }
 
     ////////////////////////

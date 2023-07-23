@@ -1,6 +1,5 @@
 package domain.book.data.network
 
-import com.google.gson.Gson
 import com.realityexpander.common.data.local.FileDatabase
 import com.realityexpander.jsonConfig
 import common.HumanDate
@@ -12,12 +11,7 @@ import domain.common.data.Model
 import domain.common.data.info.Info
 import domain.common.data.info.network.DTOInfo
 import kotlinx.serialization.Contextual
-import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 import java.util.*
 
 /**
@@ -33,7 +27,7 @@ import java.util.*
 
 @Serializable
 class DTOBookInfo(
-    override val id: UUID2<@Contextual Book> = UUID2<Book>(UUID.randomUUID(), Book::class.java),
+    override val id: UUID2<Book> = UUID2(UUID.randomUUID()),
     val title: String,
     val author: String,
     val description: String,

@@ -38,7 +38,7 @@ interface Info<TInfo : Model> {
 
     // Performs Atomic update of cachedInfo
     fun updateCachedInfo(updatedInfo: TInfo?): TInfo? {
-        return cachedInfo()?.updateAndGet { updatedInfo }
+        return cachedInfo().updateAndGet { updatedInfo }
     }
 
     // Default naive implementation, returns a deep copy of the Info object.

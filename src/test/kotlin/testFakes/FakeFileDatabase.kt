@@ -13,7 +13,7 @@ class FakeFileDatabase<TKey : UUID2<*>, TEntity : FileDatabase.HasId<TKey>>(
 
     init {
         runBlocking {
-            super.loadFileDatabase()
+            super.loadFileDatabase() // required to load the database
         }
     }
 

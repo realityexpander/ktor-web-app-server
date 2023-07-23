@@ -310,7 +310,7 @@ internal class LibraryApp(private val ctx: Context) {
                         """{
                       "id": {
                         "uuid": "00000000-0000-0000-0000-000000000099",
-                        "_uuid2Type": "Role.Library"
+                        "uuid2Type": "Role.Library"
                       },
                       "name": "Ronald Reagan Library",
                       "registeredUserIdToCheckedOutBookIdsMap": {
@@ -380,12 +380,12 @@ internal class LibraryApp(private val ctx: Context) {
                         ctx.log.d(this, "----------------------------------")
                         try {
 //                        val libraryInfo3: LibraryInfo = Library.createInfoFromJson(
-                            val libraryInfo3: LibraryInfo = Role.createInfoFromJson(
+                            val library3Info: LibraryInfo = Role.createInfoFromJson(
                                 json,
                                 LibraryInfo::class.java,
                                 ctx
                             ) ?: throw Exception("libraryInfo3 is null")
-                            val library3 = Library(libraryInfo3, ctx)
+                            val library3 = Library(library3Info, ctx)
                             ctx.log.d(this, "Results of Library3 json load:" + library3.toJson())
 
                             // check for same number of items
@@ -415,9 +415,9 @@ internal class LibraryApp(private val ctx: Context) {
                     ctx.log.d(this, "----------------------------------")
                     val json =
                         """{
-                      "_id": {
+                      "id": {
                         "uuid": "00000000-0000-0000-0000-000000000010",
-                        "uuid2TypeStr": "Model.DTOInfo.BookInfo"
+                        "uuid2Type": "Role.Book"
                       },
                       "title": "The Great Gatsby",
                       "author": "F. Scott Fitzgerald",
@@ -442,9 +442,9 @@ internal class LibraryApp(private val ctx: Context) {
                     ctx.log.d(this, "----------------------------------")
                     val json =
                         """{
-                      "_id": {
+                      "id": {
                         "uuid": "00000000-0000-0000-0000-000000000010",
-                        "uuid2TypeStr": "Model.DTOInfo.DTOBookInfo"
+                        "uuid2Type": "Role.Book"
                       },
                       "title": "The Great Gatsby",
                       "author": "F. Scott Fitzgerald",

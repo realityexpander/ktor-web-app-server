@@ -1,5 +1,6 @@
 package domain.user
 
+import com.google.gson.Gson
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.Context
@@ -10,9 +11,17 @@ import domain.common.Role
 import domain.library.Library
 import domain.user.data.UserInfo
 import domain.user.data.UserInfoRepo
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 
 /**
- * User Role Object
+ * User Role
+ *
+ * User is a Role Object that represents an individual User of the LibraryApp system.
  *
  * Only interacts with its own Repo, the Context, and other Role Objects
  *
@@ -20,6 +29,7 @@ import domain.user.data.UserInfoRepo
  * @since 0.12 Kotlin conversion
  */
 
+@Serializable(with = UserSerializer::class)  // for kotlinx.serialization // todo - use kotlinx serialization instead of gson
 class User : Role<UserInfo>, IUUID2 {
     private val repo: UserInfoRepo  // convenience reference to the UserInfoRepo in the Context
 
@@ -45,16 +55,16 @@ class User : Role<UserInfo>, IUUID2 {
         context.log.d(this, "User (" + id().toString() + ") created from id with no Info")
     }
     constructor(
-        json: String,
+        accountInfoJson: String,
         clazz: Class<UserInfo>,  // class type of json object
         account: Account,
         context: Context
-    ) : super(json, clazz, context) {
+    ) : super(accountInfoJson, clazz, context) {
         this.account = account
         repo = context.userInfoRepo
-        context.log.d(this, "User (" + id().toString() + ") created Json with class: " + clazz.getName())
+        context.log.d(this, "User (" + id().toString() + ") created Json with class: " + clazz.name)
     }
-    constructor(json: String, account: Account, context: Context) : this(json, UserInfo::class.java, account, context)
+    constructor(userInfoJson: String, account: Account, context: Context) : this(userInfoJson, UserInfo::class.java, account, context)
     constructor(account: Account, context: Context) : this(UUID2.randomUUID2(), account, context)
 
     /////////////////////////
@@ -333,5 +343,18 @@ class User : Role<UserInfo>, IUUID2 {
             // Create the User
             return Result.success(User(userInfo, account, context))
         }
+    }
+}
+
+// for kotlinx.serialization
+object UserSerializer : KSerializer<User> {
+    override val descriptor = PrimitiveSerialDescriptor("User", PrimitiveKind.STRING)
+
+    override fun deserialize(decoder: Decoder): User {
+        return Gson().fromJson(decoder.decodeString(), User::class.java)  // todo use kotlinx serialization instead of gson
+    }
+
+    override fun serialize(encoder: Encoder, value: User) {
+        encoder.encodeString(value.toString())
     }
 }

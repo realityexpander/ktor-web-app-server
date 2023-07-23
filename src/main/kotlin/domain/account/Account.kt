@@ -1,11 +1,18 @@
 package domain.account
 
+import com.google.gson.Gson
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.Context
 import domain.account.data.AccountInfo
 import domain.account.data.AccountInfoRepo
 import domain.common.Role
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 
 /**
  * Account Role Object
@@ -16,6 +23,7 @@ import domain.common.Role
  * @since 0.12 Kotlin conversion
  */
 
+@Serializable(with = AccountSerializer::class)  // for kotlinx.serialization
 class Account : Role<AccountInfo>, IUUID2 {
     override val id: UUID2<Account>
 
@@ -36,10 +44,10 @@ class Account : Role<AccountInfo>, IUUID2 {
     }
 
     constructor(
-        json: String,
+        accountInfoJson: String,
         clazz: Class<AccountInfo>,
         context: Context
-    ) : super(json, clazz, context) {
+    ) : super(accountInfoJson, clazz, context) {
         repo = context.accountInfoRepo
         id = this.info.get()?.id() ?: throw Exception("AccountInfo id not found in Json")
 
@@ -113,5 +121,17 @@ class Account : Role<AccountInfo>, IUUID2 {
 
             return Result.success(Account(info, context))
         }
+    }
+}
+
+object AccountSerializer : KSerializer<Account> {
+    override val descriptor = PrimitiveSerialDescriptor("Account", PrimitiveKind.STRING)
+
+    override fun deserialize(decoder: Decoder): Account {
+        return Gson().fromJson(decoder.decodeString(), Account::class.java)  // todo use kotlinx serialization instead of gson
+    }
+
+    override fun serialize(encoder: Encoder, value: Account) {
+        encoder.encodeString(value.toString())
     }
 }

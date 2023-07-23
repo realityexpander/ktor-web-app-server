@@ -104,7 +104,6 @@ class UUID2Test {
         val user1200Id: UUID2<User> = UUID2.createFakeUUID2(1200, User::class.java)
         val user9999Id: UUID2<User> = UUID2.createFakeUUID2(9999, User::class.java)
 
-
         // • ACT
         val isEqual: Boolean = book1200Id.isOnlyUUIDEqual(user1200Id)
         val isNotEqual: Boolean = book1200Id.isOnlyUUIDEqual(user9999Id)
@@ -284,6 +283,7 @@ class UUID2Test {
         assertEquals(book1200a.id, book1200.id)
     }
 
+    // Represents an unknown UUID2 type
     class UnknownUUID2TypeEntity(val id: UUID2<*>) : IUUID2 {
         override fun uuid2TypeStr(): String {
             return UUID2.calcUUID2TypeStr(this.javaClass)
@@ -313,10 +313,8 @@ class UUID2Test {
         assertThrows(RuntimeException::class.java) {
             // • ACT
             val user01a: User = gson.fromJson(user01Json, User::class.java)
-
-            // This is only here to satisfy the compiler warnings.  It should never be reached.
-            System.err.printf("SHOULD NEVER SEE THIS - user01a=%s", user01a)
         }
+
     }
 
 }

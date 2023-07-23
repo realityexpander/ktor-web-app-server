@@ -4,6 +4,7 @@ import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.common.data.Model
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import java.util.*
 
 /**
@@ -15,4 +16,15 @@ import java.util.*
  * @since 0.12 Kotlin conversion`
  */
 
-open class DomainInfo(id: UUID2<*>) : Model(id)
+//@Serializable
+//open class DomainInfo(
+//    override val id: UUID2<*> = UUID2(UUID2.randomUUID2()),
+//) : Model(id)
+
+
+@Serializable
+open class DomainInfo(
+    @Transient            // prevent kotlinx serialization
+    @kotlin.jvm.Transient // prevent gson serialization
+    override val id: UUID2<*> = UUID2(UUID2.randomUUID2()),
+) : Model(id)

@@ -1,5 +1,6 @@
 package domain.library
 
+import com.google.gson.Gson
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.Context
@@ -9,19 +10,26 @@ import domain.common.Role
 import domain.library.data.LibraryInfo
 import domain.library.data.LibraryInfoRepo
 import domain.user.User
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import okhttp3.internal.toImmutableMap
 
 /**
- * Library Role Object
+ * Library Role
  *
  * Library is a Role Object that represents a Library in the LibraryApp domain.
  *
- * *ONLY* interacts with its own Repo, Context, and other Role Objects
+ * * Only interacts with its own repository, Context, and other Role Objects in the Domain layer.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.12 Kotlin conversion
  */
 
+@Serializable(with = LibrarySerializer::class)  // for kotlinx.serialization
 open class Library : Role<LibraryInfo>, IUUID2 {
     private val repo: LibraryInfoRepo
 
@@ -471,5 +479,18 @@ open class Library : Role<LibraryInfo>, IUUID2 {
 
             return Result.success(Library(info, context))
         }
+    }
+}
+
+// for kotlinx.serialization
+object LibrarySerializer : KSerializer<Library> {
+    override val descriptor = PrimitiveSerialDescriptor("Library", PrimitiveKind.STRING)
+
+    override fun deserialize(decoder: Decoder): Library {
+        return Gson().fromJson(decoder.decodeString(), Library::class.java)  // todo use kotlinx serialization instead of gson
+    }
+
+    override fun serialize(encoder: Encoder, value: Library) {
+        encoder.encodeString(value.toString())
     }
 }

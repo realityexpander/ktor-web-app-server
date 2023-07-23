@@ -42,7 +42,7 @@ import kotlinx.serialization.Transient
 open class Model(
     @Transient            // prevent kotlinx serialization
     @kotlin.jvm.Transient // prevent gson serialization
-    open val id: UUID2<*> = UUID2(UUID2.randomUUID2(UUID2::class.java))
+    open val id: UUID2<*> = UUID2(UUID2.randomUUID2())
 ) {
 
     ////////////////////////
@@ -54,10 +54,14 @@ open class Model(
     }
 
     fun toPrettyJson(): String {
+
+        // todo change to use kotlinx serialization
         return GsonBuilder()
             .registerTypeAdapter(MutableMap::class.java, UUID2.Uuid2MapJsonDeserializer())
             .registerTypeAdapter(ArrayList::class.java, UUID2.Uuid2ArrayListJsonDeserializer())
             .registerTypeAdapter(ArrayList::class.java, UUID2.Uuid2ArrayListJsonSerializer())
+            .registerTypeAdapter(UUID2::class.java, UUID2.Uuid2JsonSerializer())
+            .registerTypeAdapter(UUID2::class.java, UUID2.Uuid2JsonDeserializer())
             .setPrettyPrinting()
             .create()
             .toJson(this) // cant use general case, need to add the adapters for the UUID2 maps?
@@ -107,11 +111,14 @@ open class Model(
 //            } as TDomainInfo
 
             // todo test this
+            // todo change to use kotlinx serialization
             @Suppress("UNCHECKED_CAST")
             return GsonBuilder()
                 .registerTypeAdapter(MutableMap::class.java, UUID2.Uuid2MapJsonDeserializer())
                 .registerTypeAdapter(ArrayList::class.java, UUID2.Uuid2ArrayListJsonDeserializer())
                 .registerTypeAdapter(ArrayList::class.java, UUID2.Uuid2ArrayListJsonSerializer())
+                .registerTypeAdapter(UUID2::class.java, UUID2.Uuid2JsonSerializer())
+                .registerTypeAdapter(UUID2::class.java, UUID2.Uuid2JsonDeserializer())
                 .create()
                 .toJson(this.domainInfo()).let {
                     Gson().fromJson(it, this::class.java)

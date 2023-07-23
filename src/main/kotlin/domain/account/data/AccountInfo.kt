@@ -5,14 +5,15 @@ import domain.account.Account
 import domain.book.Book
 import domain.common.data.Model
 import domain.common.data.info.DomainInfo
-import domain.user.User
+import kotlinx.serialization.Serializable
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.util.*
-import java.util.function.IntFunction
 
 /**
- * AccountInfo contains data about a single User's account status in the LibraryApp system.<br></br>
+ * AccountInfo is a DomainInfo class for the Account domain object.
+ *
+ * * Contains data about a single User's account status in the LibraryApp system.
  *
  *  * Status of Account (active, inactive, suspended, etc.)
  *  * Current Fine Amount
@@ -22,6 +23,7 @@ import java.util.function.IntFunction
  * @since 0.12 Kotlin conversion
  */
 
+@Serializable // todo should the domainInfo classes be serializable?
 class AccountInfo private constructor(
     override val id: UUID2<Account>,  // UUID should match User's UUID
     val name: String,
@@ -29,7 +31,7 @@ class AccountInfo private constructor(
     val currentFinePennies: Int,
     val maxAcceptedBooks: Int,
     val maxFinePennies: Int,
-    private val timeStampToAccountAuditLogItemMap: HashMap<Long, AccountAuditLogItem>
+    private val timeStampToAccountAuditLogItemMap: MutableMap<Long, AccountAuditLogItem>
 ) : DomainInfo(id),
     Model.ToDomainInfo<AccountInfo>
 {
@@ -50,7 +52,7 @@ class AccountInfo private constructor(
         0,
         5,
         1000,
-        HashMap<Long, AccountAuditLogItem>()
+        mutableMapOf<Long, AccountAuditLogItem>()
     )
 
     constructor(accountInfo: AccountInfo) : this(
@@ -73,19 +75,12 @@ class AccountInfo private constructor(
         CLOSED
     }
 
+    @Serializable
     internal class AccountAuditLogItem(
-        val timeStampLongMillis: Long,
-        val operation: String,
-        kvHashMap: HashMap<String, String>
-    ) {
-        // keyString -> valueString
-        val entries: HashMap<String, String>
-
-        init {
-            entries = HashMap()
-            entries.putAll(kvHashMap)
-        }
-    }
+        val timeStampLongMillis: Long = System.currentTimeMillis(),
+        val operation: String = "Default Operation",
+        private val entries: Map<String, String> = mutableMapOf()
+    )
 
     ///////////////////////////////
     // Published Simple Getters  //
@@ -358,7 +353,7 @@ class AccountInfo private constructor(
     //////////////////////////////
 
     fun activateAccount(): Result<AccountInfo> {
-        // Note: this status will be overridden if User pays a fine or Library adds a fine
+        // Note: this status will be overridden if `User` pays a fine or `Library` adds a fine
         return withAccountStatus(AccountStatus.ACTIVE)
     }
 
@@ -367,7 +362,7 @@ class AccountInfo private constructor(
     }
 
     fun suspendAccount(): Result<AccountInfo> {
-        // Note: this status will be overridden if User pays a fine or Library adds a fine
+        // Note: this status will be overridden if `User` pays a fine or `Library` adds a fine
         return withAccountStatus(AccountStatus.SUSPENDED)
     }
 
