@@ -44,5 +44,4 @@ bin/
 fileDatabases/usersDB-old2.json
 application.properties
 
-/fileDatabases/apiDB.json
-/fileDatabases/usersDB.json
+/fileDatabases/
