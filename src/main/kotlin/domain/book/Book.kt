@@ -5,6 +5,7 @@ import com.google.gson.Gson
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.Context
+import domain.Context.Companion.gsonConfig
 import domain.book.data.BookInfo
 import domain.book.data.BookInfoRepo
 import domain.book.data.local.EntityBookInfo
@@ -280,7 +281,7 @@ object BookSerializer : KSerializer<Book> {
     override val descriptor = PrimitiveSerialDescriptor("Book", PrimitiveKind.STRING)
 
     override fun deserialize(decoder: Decoder): Book {
-        return Gson().fromJson(decoder.decodeString(), Book::class.java)  // todo use kotlinx serialization instead of gson
+        return gsonConfig.fromJson(decoder.decodeString(), Book::class.java)  // todo use kotlinx serialization instead of gson
     }
 
     override fun serialize(encoder: Encoder, value: Book) {

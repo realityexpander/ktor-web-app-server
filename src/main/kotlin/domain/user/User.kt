@@ -5,6 +5,7 @@ import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import common.uuid2.UUID2.Companion.toUUID2WithUUID2TypeOf
 import domain.Context
+import domain.Context.Companion.gsonConfig
 import domain.account.Account
 import domain.account.data.AccountInfo
 import domain.book.Book
@@ -354,7 +355,7 @@ object UserSerializer : KSerializer<User> {
     override val descriptor = PrimitiveSerialDescriptor("User", PrimitiveKind.STRING)
 
     override fun deserialize(decoder: Decoder): User {
-        return Gson().fromJson(decoder.decodeString(), User::class.java)  // todo use kotlinx serialization instead of gson
+        return gsonConfig.fromJson(decoder.decodeString(), User::class.java)  // todo use kotlinx serialization instead of gson
     }
 
     override fun serialize(encoder: Encoder, value: User) {

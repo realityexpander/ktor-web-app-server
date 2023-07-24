@@ -22,6 +22,7 @@ import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.util.*
 import kotlin.reflect.*
+import kotlin.reflect.full.superclasses
 
 /**
  * **`UUID2`** is a type-safe wrapper for an **`UUID`**, and it can be used in place
@@ -337,7 +338,7 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
     companion object {
 
         @Throws(IllegalArgumentException::class)
-        fun <TUUID2: IUUID2> String.fromUUID2String(): UUID2<TUUID2> {
+        fun <TUUID2 : IUUID2> String.fromUUID2String(): UUID2<TUUID2> {
             val uuid2FormattedString = this.trim()
             // format example:
             //
@@ -381,39 +382,37 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
 
             // Check if it's in the White-listed UUID2 types
             // todo make this a config option?
-            when(typeStr) {
-                "Role.Book" ->           return uuid2Str.fromUUID2String<Book>()
-                "Role.User" ->           return uuid2Str.fromUUID2String<User>()
-                "Role.Library" ->        return uuid2Str.fromUUID2String<Library>()
+            when (typeStr) {
+                "Role.Book" -> return uuid2Str.fromUUID2String<Book>()
+                "Role.User" -> return uuid2Str.fromUUID2String<User>()
+                "Role.Library" -> return uuid2Str.fromUUID2String<Library>()
                 "Role.PrivateLibrary" -> return uuid2Str.fromUUID2String<PrivateLibrary>()
-                "Role.Account" ->        return uuid2Str.fromUUID2String<Account>()
+                "Role.Account" -> return uuid2Str.fromUUID2String<Account>()
             }
 
-            ///////////////////////////////////////////////////////////////////
-            // The UUID2Type is NOT in the White-listed UUID2 types.         //
-            // - Attempt to use SLOW REFLECTION to find the correct type.    //
-            ///////////////////////////////////////////////////////////////////
-
-            System.err.println("WARNING: UUID2Type is NOT in the White-listed UUID2 types. " +
-                    "Attempting to use SLOW REFLECTION to find the correct type. typeStr=$typeStr," +
-                    " uuid2Str=$uuid2Str," +
-                    "Updated the White-listed UUID2 types in `UUID2.kt` to improve performance."
+            // The UUID2Type is NOT in the White-listed UUID2 types.
+            // - Attempt to use SLOW REFLECTION to find the correct type.
+            System.err.println(
+                "WARNING: UUID2Type is NOT in the White-listed UUID2 types. " +
+                        "Attempting to use SLOW REFLECTION to find the correct type. typeStr=$typeStr," +
+                        " uuid2Str=$uuid2Str," +
+                        "Please update the White-listed UUID2 types in `UUID2.kt` to improve processing performance."
             )
 
-            // Find all the implementations of IUUID2
-            val iuuid2SubTypeClazzList =
-                Reflections("domain").getSubTypesOf(IUUID2::class.java)
-            val uuid2TypeClazz = iuuid2SubTypeClazzList.find { clazz ->
+            try {
+                // Find all the implementations of IUUID2
+                val iuuid2SubTypeClazzList =
+                    Reflections("domain").getSubTypesOf(IUUID2::class.java)
+                val uuid2TypeClazz = iuuid2SubTypeClazzList.find { clazz ->
                     clazz.simpleName == lastPathItemOfUUID2TypeStr(typeStr)
                 } ?: throw RuntimeException("Unknown UUID2 type: $typeStr")
 
-            val uuid2DomainParameterizedType = object : ParameterizedType {
-                override fun getRawType(): Type = UUID2::class.java
-                override fun getOwnerType(): Type? = null
-                override fun getActualTypeArguments(): Array<Type> = arrayOf(uuid2TypeClazz)
-            }
+                val uuid2DomainParameterizedType = object : ParameterizedType {
+                    override fun getRawType(): Type = UUID2::class.java
+                    override fun getOwnerType(): Type? = null
+                    override fun getActualTypeArguments(): Array<Type> = arrayOf(uuid2TypeClazz)
+                }
 
-            try {
                 return createUUID2TypedInstance(uuid2, uuid2DomainParameterizedType)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -428,7 +427,7 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
         ): UUID2<*> {
             // Check the raw type from the parameterized type to ensure it is a UUID2
             val rawType = types.rawType as Class<*>  // should be `class common.uuid.UUID2`
-            if(rawType != UUID2::class.java) {
+            if (rawType != UUID2::class.java) {
                 throw RuntimeException("Uuid2HashMapGsonDeserializer.deserialize(): rawType is not a UUID2: $rawType")
             }
 
@@ -484,7 +483,7 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
         fun <TUUID2 : IUUID2> randomUUID2(): UUID2<TUUID2> {
             return UUID2(UUID.randomUUID())
         }
-        fun <TUUID2 : IUUID2> randomUUID2(clazz: Class<TUUID2>?): UUID2<TUUID2> {
+        fun <TUUID2 : IUUID2> randomUUID2(clazz: Class<TUUID2>): UUID2<TUUID2> {
             return UUID2(UUID.randomUUID(), clazz)
         }
         fun <TUUID2 : IUUID2> randomUUID2(kClazz: KClass<TUUID2>): UUID2<TUUID2> {
@@ -498,7 +497,7 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
         @Suppress("UNCHECKED_CAST")
         fun <TUUID2 : IUUID2> createFakeUUID2(nullableId: Int?, nullableClazz: Class<TUUID2>?): UUID2<TUUID2> {
             val id: Int = nullableId ?: 1
-            if(id > 999999999) throw IllegalArgumentException("id cannot be greater than 999999999")
+            if (id > 999999999) throw IllegalArgumentException("id cannot be greater than 999999999")
             val clazz: Class<TUUID2> = nullableClazz ?: IUUID2::class.java as Class<TUUID2>
 
             val idPaddedWith11LeadingZeroes = String.format("%011d", id)
@@ -511,7 +510,7 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
         @Suppress("UNCHECKED_CAST")
         fun <TUUID2 : IUUID2> createFakeUUID2(nullableId: Int?, nullableKClazz: KClass<TUUID2>?): UUID2<TUUID2> {
             val id: Int = nullableId ?: 1
-            if(id > 999999999) throw IllegalArgumentException("id cannot be greater than 999999999")
+            if (id > 999999999) throw IllegalArgumentException("id cannot be greater than 999999999")
             val clazz: Class<TUUID2> = nullableKClazz?.java ?: IUUID2::class.java as Class<TUUID2>
 
             val idPaddedWith11LeadingZeroes = String.format("%011d", id)
@@ -525,9 +524,11 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
         // UUID2Type String interface  //
         /////////////////////////////////
 
-        // todo use KClass instead of Class
-        fun <TUUID2 : IUUID2> calcUUID2TypeStr(clazz: Class<in TUUID2>?): String {
-//        fun <TUUID2 : IUUID2> calcUUID2TypeStr(clazz: KClass<in TUUID2>?): String {  // todo use KClass instead of Class
+        fun calcUUID2TypeStr(clazz: KClass<out IUUID2>?): String {
+            clazz ?: return "UUID"
+            return calcUUID2TypeStr(clazz.java)
+        }
+        fun calcUUID2TypeStr(clazz: Class<out IUUID2>?): String {
             clazz ?: return "UUID"
 
             // Build the UUID2 Type string -> ie: `Model.DomainInfo.BookInfo`
@@ -538,9 +539,8 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
             var curClazz = clazz
             while (curClazz?.simpleName != "Object") {
                 superClassNames.add(curClazz?.simpleName.toString())
-                curClazz = curClazz?.superclass
-//                curClazz = curClazz?.supertypes?.firstOrNull()?.classifier as KClass<in TUUID2>
-//                curClazz = curClazz?.superclasses?.firstOrNull() as KClass<in TUUID2>
+                @Suppress("UNCHECKED_CAST")
+                curClazz = curClazz?.superclass as Class<IUUID2>?
             }
 
             // Build a Class Inheritance Path from each concrete Class name

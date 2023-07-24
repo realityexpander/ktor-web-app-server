@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.Context
+import domain.Context.Companion.gsonConfig
 import domain.book.Book
 import domain.common.Role
 import domain.library.data.LibraryInfo
@@ -486,7 +487,7 @@ object LibrarySerializer : KSerializer<Library> {
     override val descriptor = PrimitiveSerialDescriptor("Library", PrimitiveKind.STRING)
 
     override fun deserialize(decoder: Decoder): Library {
-        return Gson().fromJson(decoder.decodeString(), Library::class.java)  // todo use kotlinx serialization instead of gson
+        return gsonConfig.fromJson(decoder.decodeString(), Library::class.java)  // todo use kotlinx serialization instead of gson
     }
 
     override fun serialize(encoder: Encoder, value: Library) {

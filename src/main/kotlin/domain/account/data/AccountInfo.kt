@@ -23,7 +23,7 @@ import java.util.*
  * @since 0.12 Kotlin conversion
  */
 
-@Serializable // todo should the domainInfo classes be serializable?
+@Serializable
 class AccountInfo private constructor(
     override val id: UUID2<Account>,  // UUID should match User's UUID
     val name: String,
@@ -35,8 +35,8 @@ class AccountInfo private constructor(
 ) : DomainInfo(id),
     Model.ToDomainInfo<AccountInfo>
 {
-    // Showing object can use internal ways to track its own data that will not be directly exposed to the outside world.
-    // ie: we could have used a "Log" role here, but instead we just use a HashMap. // todo should this be a subclassed Log Role instead?
+    // Showing the object can use internal ways to track its own data that will not be directly exposed to the outside world.
+    // Ie: we could have used a "Log" role here, but instead we just use a Simple Map.
 
     // LEAVE for future use
     // final int maxDays;               // max number of days a book can be checked out
@@ -168,7 +168,7 @@ class AccountInfo private constructor(
         )
     }
 
-    fun addFineForBook(fineAmountPennies: Int, bookId: UUID2<Book>): Result<AccountInfo> { // todo use long instead of int for pennies
+    fun addFineForBook(fineAmountPennies: Int, bookId: UUID2<Book>): Result<AccountInfo> {
         if (fineAmountPennies < 0) return Result.failure(IllegalArgumentException("fineAmountPennies is negative"))
         addAuditLogEntry("addFine", "fineAmountPennies", fineAmountPennies, "bookId", bookId)
 

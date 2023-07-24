@@ -16,6 +16,6 @@ package common.uuid2
 
 interface IUUID2 {
     fun uuid2TypeStr(): String // Returns the Type of the UUID2 as a String.
-                                // - Usually the class inheritance hierarchy path of the object
-                                // - ie: "Model.DomainInfo.BookInfo" or "Role.Book"
+                               // - Usually the class inheritance hierarchy path of the object
+                               // - ie: "Model.DomainInfo.BookInfo" or "Role.Book"
 }

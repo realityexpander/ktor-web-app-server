@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.Context
+import domain.Context.Companion.gsonConfig
 import domain.account.data.AccountInfo
 import domain.account.data.AccountInfoRepo
 import domain.common.Role
@@ -125,7 +126,7 @@ object AccountSerializer : KSerializer<Account> {
     override val descriptor = PrimitiveSerialDescriptor("Account", PrimitiveKind.STRING)
 
     override fun deserialize(decoder: Decoder): Account {
-        return Gson().fromJson(decoder.decodeString(), Account::class.java)  // todo use kotlinx serialization instead of gson
+        return gsonConfig.fromJson(decoder.decodeString(), Account::class.java)  // todo use kotlinx serialization instead of gson
     }
 
     override fun serialize(encoder: Encoder, value: Account) {
