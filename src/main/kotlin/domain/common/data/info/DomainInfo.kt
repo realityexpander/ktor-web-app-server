@@ -16,15 +16,9 @@ import java.util.*
  * @since 0.12 Kotlin conversion`
  */
 
-//@Serializable
-//open class DomainInfo(
-//    override val id: UUID2<*> = UUID2(UUID2.randomUUID2()),
-//) : Model(id)
-
-
 @Serializable
 open class DomainInfo(
     @Transient            // prevent kotlinx serialization
     @kotlin.jvm.Transient // prevent gson serialization
-    override val id: UUID2<*> = UUID2.randomUUID2(),
+    override val id: UUID2<*> = UUID2(UUID2.randomUUID2()),
 ) : Model(id)
