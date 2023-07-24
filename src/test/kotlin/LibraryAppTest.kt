@@ -453,7 +453,6 @@ class LibraryAppTest {
         runBlocking {
 
             // • ARRANGE
-            val json = library99InfoJson
             val expectedBook1900 = Book(UUID2.createFakeUUID2(1900, Book::class.java), null, context)
 
             // Create a Library Domain Object from the Info
@@ -461,11 +460,7 @@ class LibraryAppTest {
 
 
                 // • ACT
-                val library99Info: LibraryInfo? = Role.createInfoFromJson(
-                    json,
-                    LibraryInfo::class.java,
-                    context,
-                )
+                val library99Info = Library(library99InfoJson, context).info()
 
                 // • ASSERT
                 assertNotNull(library99Info)

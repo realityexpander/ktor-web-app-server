@@ -24,11 +24,11 @@ data class UserEntity(
 }
 
 class UserRepository(
-    usersDBFilename: String = DEFAULT_USERS_DB_FILENAME,
+    usersDatabaseFilename: String = DEFAULT_USERS_DATABASE_FILENAME,
     private val authTokenToUserIdLookup: MutableMap<TokenStr, UUID2<User>> = mutableMapOf(),
     private val authJwtTokenToUserIdLookup: MutableMap<JwtTokenStr, UUID2<User>> = mutableMapOf(),
     private val emailToUserIdLookup: MutableMap<EmailStr, UUID2<User>> = mutableMapOf()
-) : FileDatabase<UUID2<User>, UserEntity>(usersDBFilename, UserEntity.serializer()) {
+) : FileDatabase<UUID2<User>, UserEntity>(usersDatabaseFilename, UserEntity.serializer()) {
 
     init {
         runBlocking {
@@ -122,11 +122,8 @@ class UserRepository(
     ///////////////////////// PRIVATE METHODS /////////////////////////
 
     private suspend fun updateAuthTokenToEmailLookupTable(usersDb: Map<UUID2<User>, UserEntity>) {
-        println("authTokenToUserIdLookup: $authTokenToUserIdLookup")
-        runBlocking {
-            for (user in usersDb.values) {
-                authTokenToUserIdLookup[user.authToken] = user.id
-            }
+        for (user in usersDb.values) {
+            authTokenToUserIdLookup[user.authToken] = user.id
         }
     }
 
@@ -143,6 +140,6 @@ class UserRepository(
     }
 
     companion object {
-        const val DEFAULT_USERS_DB_FILENAME = "usersDB.json"
+        const val DEFAULT_USERS_DATABASE_FILENAME = "usersDB.json"
     }
 }
