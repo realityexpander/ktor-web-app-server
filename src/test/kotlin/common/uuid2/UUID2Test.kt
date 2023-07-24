@@ -1,6 +1,6 @@
+package common.uuid2
+
 import com.google.gson.GsonBuilder
-import common.uuid2.IUUID2
-import common.uuid2.UUID2
 import common.uuid2.UUID2.Companion.fromUUID
 import common.uuid2.UUID2.Companion.fromUUID2String
 import common.uuid2.UUID2.Companion.fromUUIDString

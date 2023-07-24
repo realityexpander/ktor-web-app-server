@@ -1,4 +1,4 @@
-package testFakes.common.util.log
+package testUtils
 
 import common.log.Log
 

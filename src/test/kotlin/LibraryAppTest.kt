@@ -14,7 +14,7 @@ import domain.user.data.UserInfo
 import kotlinx.coroutines.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
-import testFakes.common.util.log.TestLog
+import testUtils.TestLog
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.fail
 import java.time.Instant

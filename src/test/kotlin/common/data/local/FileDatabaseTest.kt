@@ -1,21 +1,16 @@
-import com.realityexpander.common.data.local.FileDatabase
+package common.data.local
+
 import common.uuid2.UUID2
 import common.uuid2.UUID2.Companion.fromUUIDString
 import domain.book.Book
 import domain.book.data.network.DTOBookInfo
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.KSerializer
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
-import testFakes.FakeFileDatabase
-import testUtils.waitForJobToComplete
+import testFakes.common.data.local.FakeFileDatabase
 import java.util.*
 
 class FileDatabaseTest {
