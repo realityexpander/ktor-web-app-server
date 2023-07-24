@@ -8,14 +8,11 @@ import common.uuid2.UUID2.Companion.fromUUID
 import domain.Context
 import domain.common.data.info.DomainInfo
 import domain.common.data.info.Info
-import domain.library.data.LibraryInfo
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.*
-import kotlinx.serialization.builtins.serializer
 import java.lang.reflect.ParameterizedType
 import java.util.*
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.reflect.KClass
 
 /**
  * Role - Domain Role Abstract class
@@ -95,16 +92,16 @@ abstract class Role<TDomainInfo : DomainInfo> (
         info: TDomainInfo?,
         context: Context
     ) : this(
-        info?.id()?.toDomainUUID2() ?: UUID2.randomUUID2<IUUID2>(),  // if info is null, then user a random UUID // todo is there a better way to do this?
+        info?.id() ?: UUID2.randomUUID2<IUUID2>(),  // if info is null, then user is a random UUID
         AtomicReference<TDomainInfo>(info),
         context
     )
     private
     constructor(
-        id: UUID,
+        uuid: UUID,
         info: TDomainInfo?,
         context: Context
-    ) : this(id.fromUUID<IUUID2>(), AtomicReference<TDomainInfo>(info), context)
+    ) : this(uuid.fromUUID<IUUID2>(), AtomicReference<TDomainInfo>(info), context)
 
     /////////////////////
     // Simple getters  //

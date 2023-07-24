@@ -80,6 +80,7 @@ abstract class FileDatabase<TKey : UUID2<*>, TEntity : FileDatabase.HasId<TKey>>
 
     // Marker interface for entities that can be stored in the database.
     interface HasId<TKey : UUID2<*>> {
+        abstract val id: TKey  // todo is there a way to enforce this?
         abstract fun id(): TKey
     }
 

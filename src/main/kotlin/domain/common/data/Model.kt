@@ -40,34 +40,33 @@ import java.util.*
  * @since 0.12 Kotlin conversion
  */
 
+// This interface enforces all Model objects to include an id() method
+interface HasId<TKey : UUID2<*>> {
+    abstract val id: TKey  // todo is there a way to enforce this?
+    abstract fun id(): TKey
+}
+
 @Serializable
 open class Model(
     @Transient            // prevent kotlinx serialization
     @kotlin.jvm.Transient // prevent gson serialization
-    open val id: UUID2<*> = UUID2.randomUUID2<IUUID2>()
-) {
+    override val id: UUID2<*> = UUID2.randomUUID2<IUUID2>()
+) : HasId<UUID2<*>> {
 
     ////////////////////////
     // Simple getters     //
     ////////////////////////
 
-    open fun id(): UUID2<*> {
+    override fun id(): UUID2<*> {
         return id;
     }
 
     fun toPrettyJson(): String {
-        // todo change to use kotlinx serialization
-        return gsonConfig.toJson(this) // cant use general case, need to add the adapters for the UUID2 maps?
+        return gsonConfig.toJson(this)
     }
 
     fun toPrettyJson(context: Context): String {
         return context.gson.toJson(this)
-    }
-
-    // This interface enforces all Model objects to include an id() method
-    interface HasId<TKey : UUID2<*>> {
-        //abstract val id: TKey  // todo is there a way to enforce this?
-        abstract fun id(): TKey
     }
 
     ///////////////////////////

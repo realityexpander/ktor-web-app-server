@@ -66,12 +66,10 @@ interface Info<TInfo : Model> {
             return this as TInfo
         }
 
+        // Should be overridden in the `{Domain}Info` subclass to return a deep copy of the Info object.
         fun toDeepCopyInfo(): TInfo {
             @Suppress("UNCHECKED_CAST")
             return (this as Info<TInfo>).deepCopyInfo()
-
-            // todo Should force override? or use this default behavior?
-            // throw new RuntimeException("Info:ToInfo:toDeepCopyInfo(): Must override this method");
         }
     }
 
@@ -81,9 +79,8 @@ interface Info<TInfo : Model> {
     interface HasToDeepCopyInfo<TInfo : ToInfo<*>> {
         fun deepCopyInfo(): TInfo {
             // This default implementation for deepCopyInfo() simply calls the toDeepCopyInfo() implemented in the subclass.
-            // This is a workaround for the fact that Java doesn't allow static methods in interfaces. // todo fix for kotlin?
             @Suppress("UNCHECKED_CAST")
-            return (this as TInfo).toDeepCopyInfo() as TInfo // calls the toDeepCopyInfo() method of the implementing class
+            return (this as TInfo).toDeepCopyInfo() as TInfo
         }
     }
 
