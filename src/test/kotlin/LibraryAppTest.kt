@@ -370,44 +370,13 @@ class LibraryAppTest {
         }
     }
 
-//    private val ronaldReaganLibraryInfoJson: String =
-//        """
-//            {
-//              "name": "Ronald Reagan Library",
-//              "id": {
-//                "uuid": "00000000-0000-0000-0000-000000000099",
-//                "uuid2Type": "Role.Library"
-//              },
-//              "registeredUserIdToCheckedOutBookIdsMap": {
-//                "UUID2:Role.User@00000000-0000-0000-0000-000000000001": [
-//                  {
-//                    "uuid":"00000000-0000-0000-0000-000000001500",
-//                    "uuid2Type":"Role.Book"
-//                  }
-//                ]
-//              },
-//              "bookIdToNumBooksAvailableMap": {
-//                "UUID2:Role.Book@00000000-0000-0000-0000-000000001400": 25,
-//                "UUID2:Role.Book@00000000-0000-0000-0000-000000001000": 25,
-//                "UUID2:Role.Book@00000000-0000-0000-0000-000000001300": 25,
-//                "UUID2:Role.Book@00000000-0000-0000-0000-000000001200": 25,
-//                "UUID2:Role.Book@00000000-0000-0000-0000-000000001500": 24,
-//                "UUID2:Role.Book@00000000-0000-0000-0000-000000001600": 25,
-//                "UUID2:Role.Book@00000000-0000-0000-0000-000000001700": 25,
-//                "UUID2:Role.Book@00000000-0000-0000-0000-000000001800": 25,
-//                "UUID2:Role.Book@00000000-0000-0000-0000-000000001900": 25,
-//                "UUID2:Role.Book@00000000-0000-0000-0000-000000001100": 25
-//              }
-//            }
-//        """.trimIndent()
-
     @Test
     fun `Update LibraryInfo using updateInfoFromJson() is Success`() {
         runBlocking {
 
             // • ARRANGE
             val roles = setupDefaultRolesAndScenario(context, TestingUtils(context))
-            val json = ronaldReaganLibrary99InfoJson
+            val json = library99InfoJson
 
             // Create the "unknown" library with just an id.
             val library99 = Library(UUID2.createFakeUUID2(99, Library::class.java), context)
@@ -446,7 +415,7 @@ class LibraryAppTest {
         runBlocking {
 
             // • ARRANGE
-            val json = ronaldReaganLibrary99InfoJson // note: using the wrong id to update the json
+            val json = library99InfoJson // note: using the wrong id to update the json
             val library1 = Library(UUID2.createFakeUUID2(1, Library::class.java), context)
 
             // • ACT & ASSERT
@@ -455,7 +424,7 @@ class LibraryAppTest {
         }
     }
 
-    private val ronaldReaganLibrary99InfoJson: String =
+    private val library99InfoJson: String =
         """
         {
           "name": "Ronald Reagan Library",
@@ -480,46 +449,81 @@ class LibraryAppTest {
         }
         """.trimIndent()
 
-    @Test fun `Create Library Role from createInfoFromJson is Success`() {
+    @Test fun `Create Library Role from createInfoFromJson with Gson Serialization is Success`() {
         runBlocking {
 
             // • ARRANGE
-            val json = ronaldReaganLibrary99InfoJson
+            val json = library99InfoJson
             val expectedBook1900 = Book(UUID2.createFakeUUID2(1900, Book::class.java), null, context)
 
             // Create a Library Domain Object from the Info
             try {
 
+
                 // • ACT
-                val libraryInfo: LibraryInfo? = Role.createInfoFromJson(
+                val library99Info: LibraryInfo? = Role.createInfoFromJson(
                     json,
-//                    ronaldReaganLibraryInfoJson2,
                     LibraryInfo::class.java,
                     context,
                 )
-//                val kotlinxToJson = jsonConfig.encodeToString(LibraryInfo.serializer(), libraryInfo!!)
-//                println("kotlinxToJson: $kotlinxToJson")
-//                val libraryInfo: LibraryInfo? = Role.createInfoFromJson(
-//                    ronaldReaganLibraryInfoJson2,
-//                    LibraryInfo.serializer(),
-//                    context
-//                )
-                println("libraryInfo: $libraryInfo")
-                assertNotNull(libraryInfo)
-                val library = Library(libraryInfo!!, context)
-                context.log.d(this, "Results of Library3 json load:" + library.toJson())
 
                 // • ASSERT
+                assertNotNull(library99Info)
+                val library99 = Library(library99Info!!, context)
+                context.log.d(this, "Results of Library3 json load:" + library99.toJson())
+
                 // check for the same number of items
                 assertEquals(
-                    library.calculateAvailableBookIdToNumberAvailableList().getOrThrow().size,
+                    library99.calculateAvailableBookIdToNumberAvailableList().getOrThrow().size,
                     10,
                     "Library2 should have 10 books"
                 )
 
                 // check the existence of a particular book
                 assertTrue(
-                    library.isKnownBook(expectedBook1900),
+                    library99.isKnownBook(expectedBook1900),
+                    "Library2 should have known Book with id=" + expectedBook1900.id()
+                )
+            } catch (e: Exception) {
+                context.log.e(this, "Exception: " + e.message)
+                fail(e.message)
+            }
+        }
+    }
+
+    @Test
+    fun `Create Library Role from createInfoFromJson with Kotlinx Serialization is Success`() {
+        runBlocking {
+
+            // • ARRANGE
+            val json = library99InfoJson
+            val expectedBook1900 = Book(UUID2.createFakeUUID2(1900, Book::class.java), null, context)
+
+            // Create a Library Domain Object from the Info
+            try {
+
+                // • ACT
+                val library99Info: LibraryInfo? = Role.createInfoFromJson(
+                    json,
+                    LibraryInfo.serializer(),
+                    context
+                )
+
+                // • ASSERT
+                assertNotNull(library99Info)
+                val library99 = Library(library99Info!!, context)
+                context.log.d(this, "Results of Library3 json load:" + library99.toJson())
+
+                // check for the same number of items
+                assertEquals(
+                    library99.calculateAvailableBookIdToNumberAvailableList().getOrThrow().size,
+                    10,
+                    "Library2 should have 10 books"
+                )
+
+                // check the existence of a particular book
+                assertTrue(
+                    library99.isKnownBook(expectedBook1900),
                     "Library2 should have known Book with id=" + expectedBook1900.id()
                 )
             } catch (e: Exception) {
@@ -558,35 +562,35 @@ class LibraryAppTest {
 
             // • ACT & ASSERT
             try {
-                val dtoBookInfo3 = DTOBookInfo(json, context)
-                assertNotNull(dtoBookInfo3)
-                val book3 = Book(BookInfo(dtoBookInfo3), null, context)
-                assertNotNull(book3)
+                val dtoBook10Info = DTOBookInfo(json, context)
+                assertNotNull(dtoBook10Info)
+                val book10 = Book(BookInfo(dtoBook10Info), null, context)
+                assertNotNull(book10)
 
-                context.log.d(this, "Results of load BookInfo from DTO Json: " + book3.toJson())
+                context.log.d(this, "Results of load BookInfo from DTO Json: " + book10.toJson())
                 assertEquals(
                     expectedTitle,
-                    book3.info()?.title,
+                    book10.info()?.title,
                     "Book3 should have title:$expectedTitle"
                 )
                 assertEquals(
                     expectedAuthor,
-                    book3.info()?.author,
+                    book10.info()?.author,
                     "Book3 should have author:$expectedAuthor"
                 )
                 assertEquals(
                     expectedUUID2,
-                    book3.id(),
+                    book10.id(),
                     "Book3 should have id: $expectedUUID2"
                 )
                 assertEquals(
                     expectedUuid2Type,
-                    book3.id().uuid2Type,
+                    book10.id().uuid2Type,
                     "Book3 should have UUID2 Type of:$expectedUuid2Type"
                 )
                 assertEquals(
                     expectedExtraFieldToShowThisIsADTO,
-                    dtoBookInfo3.extraFieldToShowThisIsADTO,
+                    dtoBook10Info.extraFieldToShowThisIsADTO,
                     "Book3 should have extraFieldToShowThisIsADTO: $expectedExtraFieldToShowThisIsADTO"
                 )
             } catch (e: Exception) {
@@ -626,9 +630,9 @@ class LibraryAppTest {
 
             // • ACT & ASSERT
             try {
-                val entityBookInfo = EntityBookInfo(json, context)
-                assertNotNull(entityBookInfo)
-                val book10 = Book(BookInfo(entityBookInfo), null, context)
+                val entityBook10Info = EntityBookInfo(json, context)
+                assertNotNull(entityBook10Info)
+                val book10 = Book(BookInfo(entityBook10Info), null, context)
                 assertNotNull(book10)
 
                 context.log.d(this, "Results of load BookInfo from Entity Json: " + book10.toJson())
@@ -654,7 +658,7 @@ class LibraryAppTest {
                 )
                 assertEquals(
                     expectedExtraFieldToShowThisIsAnEntity,
-                    entityBookInfo.extraFieldToShowThisIsAnEntity,
+                    entityBook10Info.extraFieldToShowThisIsAnEntity,
                     "Book Entity info should have extraFieldToShowThisIsAnEntity: $expectedExtraFieldToShowThisIsAnEntity"
                 )
             } catch (e: Exception) {
