@@ -12,9 +12,12 @@ import okhttp3.internal.toImmutableMap
 import java.util.*
 
 /**
- * UserInfo is a DomainInfo class that holds the information about a User.
+ * UserInfo
  *
- * Holds the information about a User, including the User's name, email, and the list of Books the User has accepted.
+ * UserInfo is a mutable class that holds the information represented by the User Role object.
+ *
+ * Holds the information about a User, including the User's name, email, and the list of `Book`s the
+ * `User` has accepted.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.12 Kotlin conversion
@@ -22,7 +25,7 @@ import java.util.*
 
 @Serializable // for kotlinx.serialization
 class UserInfo(
-    override val id: UUID2<User>,  // note this is a UUID2<User> not a UUID2<UserInfo>, it is the id of the User.
+    override val id: UUID2<User>,  // note this is a `UUID2<User>` NOT a `UUID2<UserInfo>`.
     val name: String,
     val email: String,
     private val acceptedBookIdToSourceLibraryIdMap: MutableMap<UUID2<Book>, UUID2<Library>> = mutableMapOf()

@@ -12,7 +12,10 @@ import kotlinx.serialization.Serializable
 import java.util.*
 
 /**
- * BookInfo - Contains information about a book like title, author, description, etc.
+ * BookInfo
+ *
+ * BookInfo is a mutable class that holds the information represented by the Book Role object.
+ * Contains information about a book like title, author, description, etc.
  *
  * This class uses domain-specific language to modify information for the BookInfo class.
  *
@@ -114,7 +117,7 @@ class BookInfo(
     }
 
     ////////////////////////////////
-    // Published Getters          //
+    // Published Getters          //  // note: no setters, all changes are made through business logic methods.
     ////////////////////////////////
 
     // Convenience method to get the Type-safe id from the Class

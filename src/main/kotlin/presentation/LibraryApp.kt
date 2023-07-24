@@ -376,7 +376,6 @@ internal class LibraryApp(private val context: Context) {
                         context.log.d(this, "Create Library from LibraryInfo: ")
                         context.log.d(this, "----------------------------------")
                         try {
-//                        val libraryInfo3: LibraryInfo = Library.createInfoFromJson(
                             val library3Info: LibraryInfo = Role.createInfoFromJson(
                                 json,
                                 LibraryInfo::class.java,

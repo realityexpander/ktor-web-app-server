@@ -144,9 +144,9 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
         return if (other !is UUID2<*>) false else other.uuid() == uuid() && uuid2TypeStr() == other.uuid2TypeStr()
     }
 
-    ////////////////////////////////
-    // Converters                 //
-    ////////////////////////////////
+    ////////////////////////////
+    // Converters             //
+    ////////////////////////////
 
     fun toUUID(): UUID {
         return UUID(uuid.mostSignificantBits, uuid.leastSignificantBits)
@@ -209,7 +209,6 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
 
             try {
                 src?.forEach { uuid2 ->
-//                    uuid2JsonArray.add(uuid2.toString())
                     uuid2JsonArray.add(
                         uuid2.toString()
                             .removePrefix("\"")  // remove any leading quotes (added by JsonPrimitive)
@@ -232,10 +231,9 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
             typeOfT: Type?,
             jsonDeserializationContext: JsonDeserializationContext?
         ): ArrayList<*> {
-
             val uuid2ArrayList: ArrayList<Any> = arrayListOf()
-            try {
 
+            try {
                 val uuid2ArrayListJson =
                     json?.asJsonArray
 
@@ -480,17 +478,15 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
         }
 
         ////////////////////////////////
-        // Generators                 //
+        // Random Generators          //
         ////////////////////////////////
 
         fun <TUUID2 : IUUID2> randomUUID2(): UUID2<TUUID2> {
             return UUID2(UUID.randomUUID())
         }
-
         fun <TUUID2 : IUUID2> randomUUID2(clazz: Class<TUUID2>?): UUID2<TUUID2> {
             return UUID2(UUID.randomUUID(), clazz)
         }
-
         fun <TUUID2 : IUUID2> randomUUID2(kClazz: KClass<TUUID2>): UUID2<TUUID2> {
             return UUID2(UUID.randomUUID(), kClazz.java)
         }
@@ -531,7 +527,7 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
 
         // todo use KClass instead of Class
         fun <TUUID2 : IUUID2> calcUUID2TypeStr(clazz: Class<in TUUID2>?): String {
-//        fun <TUUID2 : IUUID2> calcUUID2TypeStr(clazz: KClass<in TUUID2>?): String {
+//        fun <TUUID2 : IUUID2> calcUUID2TypeStr(clazz: KClass<in TUUID2>?): String {  // todo use KClass instead of Class
             clazz ?: return "UUID"
 
             // Build the UUID2 Type string -> ie: `Model.DomainInfo.BookInfo`

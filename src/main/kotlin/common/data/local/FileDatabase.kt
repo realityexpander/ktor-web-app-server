@@ -70,14 +70,12 @@ abstract class FileDatabase<TKey : UUID2<*>, TEntity : FileDatabase.HasId<TKey>>
             return
         }
 
-//        runBlocking {
-            try {
-                loadJsonDatabaseFileFromDisk()
-            } catch (e: Exception) {
-                ktorLogger.error("Error loading $databaseFilename: ${e.message}")
-                e.printStackTrace()
-            }
-//        }
+        try {
+            loadJsonDatabaseFileFromDisk()
+        } catch (e: Exception) {
+            ktorLogger.error("Error loading $databaseFilename: ${e.message}")
+            e.printStackTrace()
+        }
     }
 
     // Marker interface for entities that can be stored in the database.
@@ -184,41 +182,38 @@ abstract class FileDatabase<TKey : UUID2<*>, TEntity : FileDatabase.HasId<TKey>>
 
         pollUntilFileExists(databaseFile)
 
-            try {
-                val tempFilename = renameFileBeforeWriting(databaseFile)
+        try {
+            val tempFilename = renameFileBeforeWriting(databaseFile)
 
-                File(tempFilename).writeText(
-                    jsonConfig.encodeToString(
-                        ListSerializer(entityKSerializer),
-                        database.values.toList()
-                    )
+            File(tempFilename).writeText(
+                jsonConfig.encodeToString(
+                    ListSerializer(entityKSerializer),
+                    database.values.toList()
                 )
-            } catch (e: Exception) {
-                ktorLogger.error("Error saving FileDatabase: `$databaseFilename`, error: ${e.message}")
-                throw (e)
-            } finally {
-                renameFileAfterWriting(databaseFile)
-            }
+            )
+        } catch (e: Exception) {
+            ktorLogger.error("Error saving FileDatabase: `$databaseFilename`, error: ${e.message}")
+            throw (e)
+        } finally {
+            renameFileAfterWriting(databaseFile)
+        }
     }
 
     private suspend fun pollUntilFileExists(fileName: String) {
         var pollingAttempts = 0
 
-//        runBlocking {
+        if(File(fileName).exists()) {
+            return//@runBlocking
+        }
 
-            if(File(fileName).exists()) {
-                return//@runBlocking
+        while (!File(fileName).exists()) {
+            delay(100)
+
+            pollingAttempts++;
+            if (pollingAttempts > MAX_POLLING_ATTEMPTS) {
+                throw Exception("File $fileName does not exist after $MAX_POLLING_ATTEMPTS attempts.")
             }
-
-            while (!File(fileName).exists()) {
-                delay(100)
-
-                pollingAttempts++;
-                if (pollingAttempts > MAX_POLLING_ATTEMPTS) {
-                    throw Exception("File $fileName does not exist after $MAX_POLLING_ATTEMPTS attempts.")
-                }
-            }
-//        }
+        }
     }
 
     private fun renameFileBeforeWriting(fileName: String): String {

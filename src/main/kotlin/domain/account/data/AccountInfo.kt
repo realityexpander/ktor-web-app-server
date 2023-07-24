@@ -83,7 +83,7 @@ class AccountInfo private constructor(
     )
 
     ///////////////////////////////
-    // Published Simple Getters  //
+    // Published Simple Getters  //  // note: no setters, all changes are made through business logic methods.
     ///////////////////////////////
 
     override fun id(): UUID2<Account> {
@@ -340,6 +340,7 @@ class AccountInfo private constructor(
     }
 
     // todo - calculate fines based on time passed since book was due, etc.
+
     /////////////////////////////////////////
     // Published Testing Helper Methods    //
     /////////////////////////////////////////

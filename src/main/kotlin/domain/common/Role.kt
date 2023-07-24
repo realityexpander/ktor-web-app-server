@@ -43,7 +43,7 @@ abstract class Role<TDomainInfo : DomainInfo> (
     // Convenience for Repo Debugging and future UI use
     private val infoResult: AtomicReference<Result<TDomainInfo>> = AtomicReference<Result<TDomainInfo>>(null)
 
-    // For Gson serialization - this finds the Class of the Info<TDomain> object for the Role
+    // For Gson serialization - this finds the Class of the Info<TDomain> object for this `Role`
     private val infoClazz =
         if (this.javaClass.genericSuperclass is ParameterizedType) (
             this.javaClass
@@ -56,7 +56,7 @@ abstract class Role<TDomainInfo : DomainInfo> (
                 .actualTypeArguments[0] as Class<*>       //      from `Info<TDomainInfo>`.
         )
 
-    // Find the class of the `Info<TDomain>` object for the `Role` for kotlinx serialization
+    // For kotlinx serialization - Find the class of the `Info<TDomain>` object for this `Role`
     @Suppress("UNCHECKED_CAST")
     @OptIn(InternalSerializationApi::class)
     val kotlinxSerializer = runBlocking {
@@ -279,6 +279,7 @@ abstract class Role<TDomainInfo : DomainInfo> (
     @Suppress("FunctionName")
     fun _overrideFetchResultToIsSuccess() {
         // Reset the fetch result to `isSuccess`, for use in testing.
+        // This is solely used to prevent warnings when running the test code.
         println("this.info=" + this.info)
         println("this.infoResult=" + this.infoResult)
         infoResult.set(Result.success(this.info.get()))
@@ -295,7 +296,7 @@ abstract class Role<TDomainInfo : DomainInfo> (
          *
          * Kotlinx serialization version
          *
-         * * Implemented as a static method so it can be called from a constructor.
+         * * Implemented as a static method, so it can be called from a constructor.
          * * Note: Type definitions are to make sure constrained to Domain subtypes and subclasses.
          * * ie: The `Library` Role object has a **`DomainInfo.LibraryInfo`** object which requires
          *   **`ToDomain<DomainInfo.LibraryInfo>`** to be implemented.

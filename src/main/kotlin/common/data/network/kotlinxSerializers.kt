@@ -1,4 +1,4 @@
-package com.realityexpander.common.data
+package com.realityexpander.common.data.network
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind

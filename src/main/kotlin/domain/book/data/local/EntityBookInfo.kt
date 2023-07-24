@@ -82,11 +82,11 @@ class EntityBookInfo(
         return this.id
     }
 
-    ////////////////////////////////////////////
-    // Entities don't have any business logic //
-    // - All "Info" changes are done in the   //
-    //   domain layer.                        //
-    ////////////////////////////////////////////
+    /**
+     * Entities don't have any business logic
+     *
+     * * All "Info" changes are done in the domain layer.
+    **/
 
     /////////////////////////////////
     // ToDomainInfo implementation //

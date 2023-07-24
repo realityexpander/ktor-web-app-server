@@ -10,9 +10,9 @@ import kotlinx.serialization.Serializable
 import java.util.*
 
 /**
- * LibraryInfo is a DomainInfo class for the Library domain object.
+ * LibraryInfo is a DomainInfo class for the Library Role object.
  *
- * LibraryInfo is a mutable class that contains information about the Library domain object.
+ * LibraryInfo is a mutable class that holds the information represented by the Library Role object.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.12 Kotlin conversion
@@ -48,7 +48,7 @@ class LibraryInfo(
     constructor(id: String, name: String) : this(UUID.fromString(id), name)
 
     ///////////////////////////////
-    // Published Simple Getters  //
+    // Published Simple Getters  //  // note: no setters, all changes are made through business logic methods.
     ///////////////////////////////
 
     // Convenience method to get the Type-safe id from the Class
