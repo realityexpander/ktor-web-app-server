@@ -25,6 +25,7 @@ const val ONE_DAY = ONE_HOUR * 24
 const val ONE_MONTH = ONE_DAY * 30
 const val ONE_YEAR = ONE_DAY * 365
 
+@Suppress("unused")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class HumanDateTest {
 
@@ -36,9 +37,9 @@ class HumanDateTest {
     fun `Calling toDateTimeStr returns DateTime string is Success`(
         testDateTimeInstant: Instant,
         expectedDateTimeString: String,
-        expectedDateStr: String,
-        expectedTimeStr: String,
-        expectedTimeAgoStr: String
+        notUsed1: String,
+        notUsed2: String,
+        notUsed3: String
     ) {
         assertEquals(
             expectedDateTimeString,
@@ -50,10 +51,10 @@ class HumanDateTest {
     @MethodSource("data")
     fun `Calling toDateStr returns Date string is Success`(
         testDateTimeInstant: Instant,
-        expectedDateTimeString: String,
+        notUsed1: String,
         expectedDateStr: String,
-        expectedTimeStr: String,
-        expectedTimeAgoStr: String
+        notUsed2: String,
+        notUsed3: String
     ) {
         assertEquals(
             expectedDateStr,
@@ -65,10 +66,10 @@ class HumanDateTest {
     @MethodSource("data")
     fun `Calling toTimeStr returns Time string is Success`(
         testDateTimeInstant: Instant,
-        expectedDateTimeString: String,
-        expectedDateStr: String,
+        notUsed1: String,
+        notUsed2: String,
         expectedTimeStr: String,
-        expectedTimeAgoStr: String
+        notUsed3: String
     ) {
         assertEquals(
             expectedTimeStr,
@@ -80,9 +81,9 @@ class HumanDateTest {
     @MethodSource("data")
     fun `Calling toTimeAgoStr for Two Years Ago is Success`(
         testDateTimeInstant: Instant,
-        expectedDateTimeString: String,
-        expectedDateStr: String,
-        expectedTimeStr: String,
+        notUsed1: String,
+        notUsed2: String,
+        notUsed3: String,
         expectedTimeAgoStr: String
     ) {
         // • ARRANGE
