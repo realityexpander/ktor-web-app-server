@@ -258,6 +258,7 @@ abstract class Role<TDomainInfo : DomainInfo> (
         // Exception to the no-null rule. This is only done when forcing a re-fetch of the info.
         // todo should we leave the data stale?
         super.updateCachedInfo(null)
+
         return fetchInfoResult()
     }
 

@@ -42,7 +42,7 @@ import java.util.*
 
 // This interface enforces all Model objects to include an id() method
 interface HasId<TKey : UUID2<*>> {
-    abstract val id: TKey  // todo is there a way to enforce this?
+    abstract val id: TKey
     abstract fun id(): TKey
 }
 
@@ -103,7 +103,7 @@ open class Model(
                     gsonConfig.fromJson(it, this::class.java)
                 } as TDomainInfo
 
-            // todo - should this be an abstract method without a default implementation?
+            // LEAVE THIS HERE FOR NOW
             //throw RuntimeException("DomainInfo:ToDomainInfo:toDeepCopyDomainInfo(): Must override this method")
         }
 

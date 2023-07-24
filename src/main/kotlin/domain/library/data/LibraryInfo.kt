@@ -18,7 +18,7 @@ import java.util.*
  * @since 0.12 Kotlin conversion
  */
 
-@Serializable // todo should the domainInfo classes be serializable?
+@Serializable
 class LibraryInfo(
     override val id: UUID2<Library> = UUID2.randomUUID2<Library>(),
     val name: String,
@@ -149,7 +149,7 @@ class LibraryInfo(
         //    if(!book.isBookFromPrivateLibrary()) // todo - should not allow private library books to be checked in from public library?
         //        return new Result.Failure<>(new IllegalArgumentException("Book is not from private library, bookId: " + book.id()));
 
-        // Automatically register any user that is checking in book. // todo is this needed?
+        // Automatically register any user that is checking in book.
         if(!isKnownUserId(user.id()))
             registerUser(user.id())
 
@@ -235,7 +235,7 @@ class LibraryInfo(
             Result.success(registeredUserIdToCheckedOutBookIdsMap[userId] ?: ArrayList<UUID2<Book>>())
     }
 
-    fun calculateAvailableBookIdToCountOfAvailableBooksMap(): Result<MutableMap<UUID2<Book>, Long>> { // todo change to MutableMap
+    fun calculateAvailableBookIdToCountOfAvailableBooksMap(): Result<MutableMap<UUID2<Book>, Long>> {
         val availableBookIdToNumBooksAvailableMap: MutableMap<UUID2<Book>, Long> = mutableMapOf()
 
         val bookSet: Set<UUID2<Book>> = bookIdToNumBooksAvailableMap.keys
@@ -377,7 +377,7 @@ class LibraryInfo(
             }
     }
 
-    private fun addBookIdToBooksAvailableMap(bookId: UUID2<Book>, quantityToAdd: Int): Result<UUID2<Book>> { // todo change quantity to Long
+    private fun addBookIdToBooksAvailableMap(bookId: UUID2<Book>, quantityToAdd: Int): Result<UUID2<Book>> {
         if (quantityToAdd <= 0) return Result.failure(IllegalArgumentException("quantity must be > 0, quantity: $quantityToAdd"))
 
         try {
@@ -443,7 +443,7 @@ class LibraryInfo(
             return Result.failure(IllegalArgumentException("bookId is not known, id: $bookId"))
         if (!isKnownUserId(userId))
             return Result.failure(IllegalArgumentException("userId is not known, id: $userId"))
-        if (isBookIdCheckedOutByUserId(bookId, userId)) // todo remove?
+        if (isBookIdCheckedOutByUserId(bookId, userId))
             return Result.failure(IllegalArgumentException("Book is already checked out by user, bookId: $bookId, userId: $userId"))
 
         try {
@@ -477,7 +477,7 @@ class LibraryInfo(
             return Result.failure(IllegalArgumentException("Book is not checked out by User, bookId: $bookId, userId: $userId"))
 
         try {
-            //todo reduce count instead of remove? Can someone check out multiple copies of the same book?
+            // todo reduce count instead of remove? Allow User to check out multiple copies of the same book?
             registeredUserIdToCheckedOutBookIdsMap[userId]
                 ?.remove(bookId)
                 ?: return Result.failure(Exception("Error removing book from user, bookId: $bookId, userId: $userId"))

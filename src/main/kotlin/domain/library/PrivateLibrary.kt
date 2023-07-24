@@ -104,34 +104,34 @@ class PrivateLibrary : Library, IUUID2 {
         context.log.d(this, "checkOutBookToUser() called, bookId: " + book.id() + ", userId: " + user.id())
         fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 
+        val libraryInfo = super.info() ?: return Result.failure(Exception("Failed to get LibraryInfo, bookId: " + book.id()))
+
         // Automatically upsert the User into the Library's User Register
         // - Private libraries are open to all users, so we don't need to check if the user is registered.
-        val addRegisteredUserResult = info()?.registerUser(user.id())
+        val addRegisteredUserResult = libraryInfo.registerUser(user.id())
             ?: return Result.failure(Exception("Failed to register User in Library, userId: " + user.id()))
         if (addRegisteredUserResult.isFailure) return Result.failure(Exception("Failed to register User in Library, userId: " + user.id()))
 
         if (!isForOnlyOneBook) {
             // note: PrivateLibraries bypass all normal Library User Account checks
-            return super.info()!!.checkOutPrivateLibraryBookToUser(book, user)
+            return libraryInfo.checkOutPrivateLibraryBookToUser(book, user)
         }
 
-        // todo extract info() to var
         // Orphan Libraries can only check out 1 Book to 1 User.
-        if (info()!!.findAllKnownBookIds().size != 1)
+        if (libraryInfo.findAllKnownBookIds().size != 1)
             return Result.failure(Exception("Orphan Private Library can only check-out 1 Book to Users, bookId: " + book.id()))
 
         // Only allow check out if the Book Id matches the initial Book Id that created this Orphan Library.
-        val bookIds = info()!!.findAllKnownBookIds()
+        val bookIds = libraryInfo.findAllKnownBookIds()
         val firstBookId = bookIds.toTypedArray()[0] // there should only be 1 bookId
         if (firstBookId != book.id()) return Result.failure(Exception("Orphan Private Library can only check-out 1 Book to Users and must be the same Id as the initial Book placed in the PrivateLibrary, bookId: " + book.id()))
 
-        val checkOutResult = super.info()!!
-            .checkOutPrivateLibraryBookToUser(book, user) // note: we bypass all normal Library User Account checking
+        val checkOutResult = libraryInfo.checkOutPrivateLibraryBookToUser(book, user) // note: we bypass all normal Library User Account checking
         if (checkOutResult.isFailure) return Result.failure(checkOutResult.exceptionOrNull()
                 ?: Exception("Failed to check-out Book from Library, bookId: " + book.id()))
 
         // Update the Info
-        val updateInfoResult: Result<LibraryInfo> = updateInfo(info()!!)
+        val updateInfoResult: Result<LibraryInfo> = updateInfo(libraryInfo)
         return if (updateInfoResult.isFailure)
             Result.failure(updateInfoResult.exceptionOrNull() ?: Exception("Failed to update LibraryInfo, bookId: " + book.id()))
         else
@@ -141,6 +141,7 @@ class PrivateLibrary : Library, IUUID2 {
     override suspend fun checkInBookFromUser(book: Book, user: User): Result<Book> {
         context.log.d(this, "checkInBookFromUser() called, bookId: " + book.id() + ", userId: " + user.id())
         fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
+
         if (!isForOnlyOneBook) {
             // note: we bypass all normal Library User Account checking
             return super.info()?.checkInPrivateLibraryBookFromUser(book, user) 
