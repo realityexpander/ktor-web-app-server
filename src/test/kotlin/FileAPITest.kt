@@ -109,6 +109,7 @@ class FileAPITest {
             val result = testApi.updateDtoInfo(updatedDTOBookInfo)
 
             // • ASSERT
+            assertTrue(result.isSuccess, "Update entity test failed, result is not success.")
             val updatedResult = testApi.findEntityById(updatedDTOBookInfo.id)
             assertNotNull(updatedResult, "Update entity test failed, result is null.")
             assertTrue(updatedResult?.title == updatedDTOBookInfo.title, "Update entity test failed, title is wrong.")
