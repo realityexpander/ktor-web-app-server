@@ -4,13 +4,12 @@ import com.realityexpander.common.data.local.FileDatabase
 import common.uuid2.UUID2
 import domain.user.User
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import util.*
 
 @Serializable
 data class UserEntity(
-    val id: UUID2<@Contextual User>,
+    override val id: UUID2<User>,
     val email: String,
     val password: PasswordString,
     val authToken: TokenStr = "",
