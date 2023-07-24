@@ -54,7 +54,6 @@ import kotlin.reflect.*
  * *Design note: The java "Class Path" of a Class changes if the package or package structure of a Class changes,
  * so **`UUID2`** uses the **"Class Inheritance Path"** to have more stable types.*
  *
- *
  * **UUID2 String Format example:**
  * ```
  * ・UUID2:Role.User@00000000-0000-0000-0000-000000000001
@@ -492,10 +491,6 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
             return UUID2(UUID.randomUUID(), clazz)
         }
 
-        fun randomUUID2(): UUID2<IUUID2> {
-            return UUID2(UUID.randomUUID())
-        }
-
         fun <TUUID2 : IUUID2> randomUUID2(kClazz: KClass<TUUID2>): UUID2<TUUID2> {
             return UUID2(UUID.randomUUID(), kClazz.java)
         }
@@ -507,7 +502,21 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
         @Suppress("UNCHECKED_CAST")
         fun <TUUID2 : IUUID2> createFakeUUID2(nullableId: Int?, nullableClazz: Class<TUUID2>?): UUID2<TUUID2> {
             val id: Int = nullableId ?: 1
+            if(id > 999999999) throw IllegalArgumentException("id cannot be greater than 999999999")
             val clazz: Class<TUUID2> = nullableClazz ?: IUUID2::class.java as Class<TUUID2>
+
+            val idPaddedWith11LeadingZeroes = String.format("%011d", id)
+            val uuid = UUID.fromString("00000000-0000-0000-0000-$idPaddedWith11LeadingZeroes")
+            uuid ?: throw IllegalArgumentException("uuid cannot be null")
+
+            return UUID2(uuid, clazz)
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        fun <TUUID2 : IUUID2> createFakeUUID2(nullableId: Int?, nullableKClazz: KClass<TUUID2>?): UUID2<TUUID2> {
+            val id: Int = nullableId ?: 1
+            if(id > 999999999) throw IllegalArgumentException("id cannot be greater than 999999999")
+            val clazz: Class<TUUID2> = nullableKClazz?.java ?: IUUID2::class.java as Class<TUUID2>
 
             val idPaddedWith11LeadingZeroes = String.format("%011d", id)
             val uuid = UUID.fromString("00000000-0000-0000-0000-$idPaddedWith11LeadingZeroes")

@@ -2,10 +2,10 @@ import com.google.gson.GsonBuilder
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import common.uuid2.UUID2.Companion.fromUUID
+import common.uuid2.UUID2.Companion.fromUUID2String
 import common.uuid2.UUID2.Companion.fromUUIDString
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Assertions.*
-import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.fail
 import java.util.*
@@ -211,7 +211,7 @@ class UUID2Test {
 
         // • ACT
         try {
-            val book1200aId: UUID2<Book> = (invalidUUID2Str.fromUUID2String)
+            val book1200aId: UUID2<Book> = invalidUUID2Str.fromUUID2String()
             fail("Expected IllegalArgumentException")
         } catch (e: IllegalArgumentException) {
             // • ASSERT
@@ -306,6 +306,7 @@ class UUID2Test {
         )
 
         // create a Gson instance with the Uuid2MapJsonDeserializer registered
+        println("▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ Warning is expected for this test. ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼")
         val gson = GsonBuilder()
                 .registerTypeAdapter(MutableMap::class.java, UUID2.Uuid2MapJsonDeserializer())
                 .setPrettyPrinting()
