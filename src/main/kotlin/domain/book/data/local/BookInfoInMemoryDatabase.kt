@@ -45,6 +45,10 @@ class BookInfoInMemoryDatabase constructor(
         return database.deleteEntityInfo(bookInfo)
     }
 
+    suspend fun deleteDatabase(): Result<Unit> {
+        return database.deleteAllEntityInfo()
+    }
+
     suspend fun allBookInfos(): Map<UUID2<Book>, EntityBookInfo> {
         return database.findAllUUID2ToEntityInfoMap()
     }

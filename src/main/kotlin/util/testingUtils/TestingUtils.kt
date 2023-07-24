@@ -12,6 +12,7 @@ import domain.library.data.LibraryInfo
 import domain.user.User
 import domain.user.data.UserInfo
 import java.time.Instant
+import java.util.*
 
 /**
  * Testing Utility Methods
@@ -24,11 +25,15 @@ import java.time.Instant
 
 class TestingUtils(val context: Context) {
 
+    companion object {
+        fun createTempFileName(prefix: String) = "test-$prefix-${UUID.randomUUID()}.json"
+    }
+
     ///////////////////////////
     // Book Repo, DB and API //
     ///////////////////////////
 
-    suspend fun populateFakeBookInfoInBookRepoDBandAPI() {
+    suspend fun populateFakeBooksInBookInfoRepoDBandAPI() {
         populateDBWithFakeBookInfo()
         populateApiWithFakeBookInfo()
     }
@@ -39,7 +44,7 @@ class TestingUtils(val context: Context) {
             val result: Result<BookInfo> = context.bookInfoRepo
                 .upsertTestEntityBookInfoToDB(
                     EntityBookInfo(
-                        UUID2.createFakeUUID2(id, Book::class.java),
+                        UUID2.createFakeUUID2<Book>(id),
                         "Title $id",
                         "Author $id",
                         "Description $id",
@@ -60,7 +65,7 @@ class TestingUtils(val context: Context) {
             val id = 1000 + i * 100
             val result: Result<BookInfo> = context.bookInfoRepo.upsertTestDTOBookInfoToApi(
                 DTOBookInfo(
-                    UUID2.createFakeUUID2(id, Book::class.java),
+                    UUID2.createFakeUUID2<Book>(id),
                     "Title $id",
                     "Author $id",
                     "Description $id",
@@ -94,7 +99,7 @@ class TestingUtils(val context: Context) {
     fun createFakeBookInfo(id: Int?): BookInfo {
         var fakeId = id
         if (fakeId == null) fakeId = 1
-        val uuid2: UUID2<Book> = UUID2.createFakeUUID2(fakeId, Book::class.java)
+        val uuid2: UUID2<Book> = UUID2.createFakeUUID2<Book>(fakeId)
         
         return BookInfo(
             uuid2,
@@ -118,7 +123,7 @@ class TestingUtils(val context: Context) {
         val upsertUserInfoResult: Result<UserInfo> = context.userInfoRepo
             .upsertUserInfo(
                 UserInfo(
-                    UUID2.createFakeUUID2(someNumber, User::class.java),  // uses DOMAIN id
+                    UUID2.createFakeUUID2<User>(someNumber),  // uses Domain id
                     "User $someNumber",
                     "user$someNumber@gmail.com"
                 )
@@ -144,7 +149,7 @@ class TestingUtils(val context: Context) {
         val accountInfoResult: Result<AccountInfo> = context.accountInfoRepo
             .upsertAccountInfo(
                 AccountInfo(
-                    UUID2.createFakeUUID2(someNumber, Account::class.java),  // uses DOMAIN id
+                    UUID2.createFakeUUID2<Account>(someNumber),  // uses Domain id
                     "Account for User $someNumber"
                 )
             )
@@ -183,20 +188,20 @@ class TestingUtils(val context: Context) {
     // Library Repo  //
     ///////////////////
 
-    fun createFakeLibraryInfoInLibraryInfoRepo(id: Int?): Result<LibraryInfo> {
+    suspend fun createFakeLibraryInfoInLibraryInfoRepo(id: Int?): Result<LibraryInfo> {
         var someNumber = id
         if (someNumber == null) someNumber = 1
 
         return context.libraryInfoRepo
             .upsertLibraryInfo(
                 LibraryInfo(
-                    UUID2.createFakeUUID2(someNumber, Library::class.java),  // uses DOMAIN id
+                    UUID2.createFakeUUID2<Library>(someNumber),  // uses DOMAIN id
                     "Library $someNumber"
                 )
             )
     }
 
-    fun populateLibraryWithFakeBooks(
+    suspend fun populateLibraryWithFakeBooks(
         libraryId: UUID2<Library>,
         numberOfBooksToCreate: Int
     ) {
@@ -211,16 +216,16 @@ class TestingUtils(val context: Context) {
 
         for (i in 0 until numberOfBooksToCreate) {
             val addBookResult: Result<UUID2<Book>> =
-                libraryInfo.addTestBook(UUID2.createFakeUUID2(1000 + i * 100, Book::class.java), 1)
+                libraryInfo.addTestBook(UUID2.createFakeUUID2<Book>(1000 + i * 100), 1)
             if (addBookResult.isFailure) {
                 context.log.e(this, "Error: " + addBookResult.exceptionOrNull()?.message)
             }
         }
 
-//        // Update the Library with the new Info
-//        val updateLibraryResult: Result<LibraryInfo> = context.libraryInfoRepo.upsertLibraryInfo(libraryInfo)
-//        if (updateLibraryResult.isFailure) {
-//            context.log.e(this, "Error: " + updateLibraryResult.exceptionOrNull()?.message)
-//        }
+        // Update the Library with the new Info // todo still needed?
+        val updateLibraryResult: Result<LibraryInfo> = context.libraryInfoRepo.upsertLibraryInfo(libraryInfo)
+        if (updateLibraryResult.isFailure) {
+            context.log.e(this, "Error: " + updateLibraryResult.exceptionOrNull()?.message)
+        }
     }
 }

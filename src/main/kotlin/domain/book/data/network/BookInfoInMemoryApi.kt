@@ -51,6 +51,10 @@ class BookInfoInMemoryApi(api: InMemoryAPI<Book, DTOBookInfo>) {
         return api.deleteDtoInfo(bookInfo)
     }
 
+    suspend fun deleteDatabase(): Result<Unit> {
+        return api.deleteAllDtoInfo()
+    }
+
     suspend fun allBookInfos(): Result<Map<UUID2<Book>, DTOBookInfo>> {
         return api.findAllUUID2ToDtoInfoMap()
     }

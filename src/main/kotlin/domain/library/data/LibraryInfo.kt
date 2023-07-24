@@ -1,7 +1,9 @@
 package domain.library.data
 
+import com.realityexpander.common.data.local.FileDatabase
 import common.uuid2.UUID2
 import domain.book.Book
+import domain.common.data.HasId
 import domain.common.data.Model
 import domain.common.data.info.DomainInfo
 import domain.library.Library
@@ -32,7 +34,8 @@ class LibraryInfo(
         MutableMap<UUID2<Book>, Long> = mutableMapOf()
 
 ) : DomainInfo(id),
-    Model.ToDomainInfo<LibraryInfo>
+    Model.ToDomainInfo<LibraryInfo>,
+    FileDatabase.HasId<UUID2<Library>>
 {
     constructor(
         id: UUID2<Library>,

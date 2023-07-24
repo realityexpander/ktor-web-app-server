@@ -52,4 +52,12 @@ class UserInfoRepo(log: ILog) : Repo(log), IUserInfoRepo {
 
         return Result.success(userInfo)
     }
+
+    override suspend fun deleteDatabase(): Result<Unit> {
+        log.d(this, "deleteDatabase")
+
+        // Simulate network/database
+        database.clear()
+        return Result.success(Unit)
+    }
 }

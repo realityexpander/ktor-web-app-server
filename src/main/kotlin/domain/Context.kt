@@ -9,7 +9,8 @@ import domain.account.data.AccountInfoRepo
 import domain.book.data.BookInfoRepo
 import domain.book.data.local.BookInfoInMemoryDatabase
 import domain.book.data.network.BookInfoInMemoryApi
-import domain.library.data.LibraryInfoRepo
+import domain.library.data.ILibraryInfoRepo
+import domain.library.data.LibraryInfoPersistentRepo
 import domain.user.data.UserInfoRepo
 
 /**
@@ -22,7 +23,7 @@ import domain.user.data.UserInfoRepo
 class Context(
     val bookInfoRepo: BookInfoRepo,
     val userInfoRepo: UserInfoRepo,
-    val libraryInfoRepo: LibraryInfoRepo,
+    val libraryInfoRepo: ILibraryInfoRepo,
     val accountInfoRepo: AccountInfoRepo,
     val gson: Gson,
     val log: ILog
@@ -74,7 +75,8 @@ class Context(
                     log
                 ),
                 UserInfoRepo(log),
-                LibraryInfoRepo(log),
+//                LibraryInfoInMemoryRepo(log),
+                LibraryInfoPersistentRepo(log),
                 AccountInfoRepo(log),
                 gsonConfig,
                 log

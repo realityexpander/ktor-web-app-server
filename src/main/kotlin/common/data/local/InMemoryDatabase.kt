@@ -100,4 +100,9 @@ class InMemoryDatabase<TUUID2 : IUUID2, TEntity : EntityInfo> (
         }
         return map
     }
+
+    override suspend fun deleteAllEntityInfo(): Result<Unit> {
+        database.clear()
+        return Result.success(Unit)
+    }
 }

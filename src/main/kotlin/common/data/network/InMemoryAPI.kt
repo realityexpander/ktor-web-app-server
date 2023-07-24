@@ -89,4 +89,10 @@ class InMemoryAPI<TUUID2 : IUUID2, TDTOInfo : DTOInfo> (
 
         return Result.success(map.toImmutableMap())
     }
+
+    override suspend fun deleteAllDtoInfo(): Result<Unit> {
+        // Simulate Network
+        remoteDatabase.clear()
+        return Result.success(Unit)
+    }
 }

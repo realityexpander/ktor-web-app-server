@@ -16,7 +16,8 @@ import domain.library.Library
  */
 
 interface ILibraryInfoRepo : IRepo {
-    fun fetchLibraryInfo(id: UUID2<Library>): Result<LibraryInfo>
-    fun updateLibraryInfo(libraryInfo: LibraryInfo): Result<LibraryInfo>
-    fun upsertLibraryInfo(libraryInfo: LibraryInfo): Result<LibraryInfo>
+    suspend fun fetchLibraryInfo(id: UUID2<Library>): Result<LibraryInfo>
+    suspend fun updateLibraryInfo(libraryInfo: LibraryInfo): Result<LibraryInfo>
+    suspend fun upsertLibraryInfo(libraryInfo: LibraryInfo): Result<LibraryInfo>
+    suspend fun deleteDatabase(): Result<Unit>
 }

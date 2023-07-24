@@ -1,14 +1,13 @@
 package domain.library
 
-import com.google.gson.Gson
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.Context
 import domain.Context.Companion.gsonConfig
 import domain.book.Book
 import domain.common.Role
+import domain.library.data.ILibraryInfoRepo
 import domain.library.data.LibraryInfo
-import domain.library.data.LibraryInfoRepo
 import domain.user.User
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -31,7 +30,7 @@ import okhttp3.internal.toImmutableMap
 
 @Serializable(with = LibrarySerializer::class)  // for kotlinx.serialization
 open class Library : Role<LibraryInfo>, IUUID2 {
-    private val repo: LibraryInfoRepo
+    private val repo: ILibraryInfoRepo
 
     constructor(
         info: LibraryInfo,
@@ -464,11 +463,11 @@ open class Library : Role<LibraryInfo>, IUUID2 {
         // Static constructors //
         /////////////////////////
 
-        fun fetchLibrary(
+        suspend fun fetchLibrary(
             uuid2: UUID2<Library>,
             context: Context
         ): Result<Library> {
-            val repo: LibraryInfoRepo = context.libraryInfoRepo
+            val repo = context.libraryInfoRepo
             val fetchInfoResult = repo.fetchLibraryInfo(uuid2)
             if (fetchInfoResult.isFailure) return Result.failure((fetchInfoResult.exceptionOrNull()
                     ?: Exception("Unknown failure fetching LibraryInfo, libraryId: $uuid2")))

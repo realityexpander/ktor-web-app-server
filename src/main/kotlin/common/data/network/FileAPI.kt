@@ -61,6 +61,16 @@ class FileAPI<TUUID2 : IUUID2, TDTOInfo : FileDatabase.HasId<UUID2<TUUID2>>>(
         }
     }
 
+    override suspend fun deleteAllDtoInfo(): Result<Unit> {
+        return try {
+            super.deleteDatabaseFile()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun deleteDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
         return try {
             super.deleteEntity(dtoInfo)

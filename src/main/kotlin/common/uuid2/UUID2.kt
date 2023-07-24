@@ -383,17 +383,15 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
             // Check if it's in the White-listed UUID2 types
             // todo make this a config option?
             when (typeStr) {
-                "Role.Book" -> return uuid2Str.fromUUID2String<Book>()
-                "Role.User" -> return uuid2Str.fromUUID2String<User>()
-                "Role.Library" -> return uuid2Str.fromUUID2String<Library>()
+                "Role.Book" ->           return uuid2Str.fromUUID2String<Book>()
+                "Role.User" ->           return uuid2Str.fromUUID2String<User>()
+                "Role.Library" ->        return uuid2Str.fromUUID2String<Library>()
                 "Role.PrivateLibrary" -> return uuid2Str.fromUUID2String<PrivateLibrary>()
-                "Role.Account" -> return uuid2Str.fromUUID2String<Account>()
+                "Role.Account" ->        return uuid2Str.fromUUID2String<Account>()
             }
 
-            // The UUID2Type is NOT in the White-listed UUID2 types.
-            // - Attempt to use SLOW REFLECTION to find the correct type.
             System.err.println(
-                "WARNING: UUID2Type is NOT in the White-listed UUID2 types. " +
+                "WARNING: Provided UUID2Type is NOT in the White-listed UUID2 types. " +
                         "Attempting to use SLOW REFLECTION to find the correct type. typeStr=$typeStr," +
                         " uuid2Str=$uuid2Str," +
                         "Please update the White-listed UUID2 types in `UUID2.kt` to improve processing performance."
@@ -518,6 +516,17 @@ open class UUID2<TUUID2 : IUUID2> : IUUID2 {
             uuid ?: throw IllegalArgumentException("uuid cannot be null")
 
             return UUID2(uuid, clazz)
+        }
+
+        inline fun <reified TUUID2 : IUUID2> createFakeUUID2(nullableId: Int?): UUID2<TUUID2> {
+            val id: Int = nullableId ?: 1
+            if (id > 999999999) throw IllegalArgumentException("id cannot be greater than 999999999")
+
+            val idPaddedWith11LeadingZeroes = String.format("%011d", id)
+            val uuid = UUID.fromString("00000000-0000-0000-0000-$idPaddedWith11LeadingZeroes")
+            uuid ?: throw IllegalArgumentException("uuid cannot be null")
+
+            return UUID2(uuid, TUUID2::class.java)
         }
 
         /////////////////////////////////

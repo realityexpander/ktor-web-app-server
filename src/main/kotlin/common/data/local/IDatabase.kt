@@ -16,9 +16,10 @@ import domain.common.data.info.local.EntityInfo
 interface IDatabase<TUUID2 : IUUID2, TEntity : EntityInfo> {
     suspend fun fetchEntityInfo(id: UUID2<TUUID2>): Result<TEntity>
     suspend fun fetchEntityInfo(id: String): Result<TEntity>
+    suspend fun findAllUUID2ToEntityInfoMap(): Map<UUID2<TUUID2>, TEntity>
     suspend fun updateEntityInfo(entityInfo: TEntity): Result<TEntity>
     suspend fun addEntityInfo(entityInfo: TEntity): Result<TEntity>
     suspend fun upsertEntityInfo(entityInfo: TEntity): Result<TEntity>
     suspend fun deleteEntityInfo(entityInfo: TEntity): Result<TEntity>
-    suspend fun findAllUUID2ToEntityInfoMap(): Map<UUID2<TUUID2>, TEntity>
+    suspend fun deleteAllEntityInfo(): Result<Unit>
 }

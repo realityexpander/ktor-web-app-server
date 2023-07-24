@@ -48,4 +48,12 @@ class AccountInfoRepo(log: ILog) : Repo(log), IAccountInfoRepo {
         database[accountInfo.id()] = accountInfo
         return Result.success(accountInfo)
     }
+
+    override suspend fun deleteDatabase(): Result<Unit> {
+        log.d(this, "deleteDatabase")
+
+        // Simulate network/database
+        database.clear()
+        return Result.success(Unit)
+    }
 }

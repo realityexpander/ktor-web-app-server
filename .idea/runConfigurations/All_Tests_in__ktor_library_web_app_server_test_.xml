@@ -47,6 +47,10 @@
           <option name="PATTERN" value="util.*" />
           <option name="ENABLED" value="true" />
         </pattern>
+        <pattern>
+          <option name="PATTERN" value="com.realityexpander.domain.auth.UserRepository" />
+          <option name="ENABLED" value="true" />
+        </pattern>
       </extension>
       <extension name="net.ashald.envfile">
         <option name="IS_ENABLED" value="false" />

@@ -113,11 +113,24 @@ abstract class FileDatabase<TKey : UUID2<*>, TEntity : FileDatabase.HasId<TKey>>
         return entity;
     }
 
-    suspend fun updateEntity(entity: TEntity): TEntity {
+    suspend fun updateEntity(entity: TEntity): TEntity? {
+        if(!database.containsKey(entity.id())) {
+            return null
+        }
+
         database[entity.id()] = entity
         saveJsonDatabaseFileToDisk()
 
         return entity;
+    }
+
+    suspend fun upsertEntity(entity: TEntity): TEntity? {
+        // simulate network upsert
+        return if(findEntityById(entity.id()) != null) {
+            updateEntity(entity)
+        } else {
+            addEntity(entity)
+        }
     }
 
     suspend fun deleteEntity(entity: TEntity) {

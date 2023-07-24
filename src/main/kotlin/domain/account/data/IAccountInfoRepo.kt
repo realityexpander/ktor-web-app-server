@@ -15,4 +15,5 @@ interface IAccountInfoRepo : IRepo {
     fun fetchAccountInfo(id: UUID2<Account>): Result<AccountInfo>
     fun updateAccountInfo(accountInfo: AccountInfo): Result<AccountInfo>
     fun upsertAccountInfo(accountInfo: AccountInfo): Result<AccountInfo>
+    suspend fun deleteDatabase(): Result<Unit>
 }

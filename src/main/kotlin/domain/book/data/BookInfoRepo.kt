@@ -97,6 +97,15 @@ class BookInfoRepo(
         return saveResult
     }
 
+    override suspend fun deleteDatabase(): Result<Unit> {
+        log.d(this, "deleteDatabase")
+
+        // Simulate network/database
+        bookInfoInMemoryApi.deleteDatabase()
+        bookInfoInMemoryDatabase.deleteDatabase()
+        return Result.success(Unit)
+    }
+
     /////////////////////////////
     // Private Helper Methods  //
     /////////////////////////////

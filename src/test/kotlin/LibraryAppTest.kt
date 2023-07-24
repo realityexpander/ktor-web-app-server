@@ -10,14 +10,17 @@ import domain.book.Book
 import domain.book.data.local.EntityBookInfo
 import domain.common.Role
 import domain.library.data.LibraryInfo
+import domain.library.data.LibraryInfoPersistentRepo
 import domain.user.data.UserInfo
 import kotlinx.coroutines.*
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import testUtils.TestLog
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.fail
 import java.time.Instant
+import kotlin.collections.ArrayList
 
 /**
  * LibraryAppTest
@@ -34,26 +37,38 @@ class LibraryAppTest {
 
     companion object {
         private const val shouldDisplayAllDebugLogs = false // Set to `true` to see all debug logs
+    }
 
-        fun setupDefaultTestContext(): Context {
-            val testLog = TestLog(!shouldDisplayAllDebugLogs) // false = print all logs to console, including info/debug
-            val prodContext = Context.setupProductionInstance(testLog)
+    private fun setupDefaultTestContext(): Context {
+        val testLog = TestLog(!shouldDisplayAllDebugLogs) // false = print all logs to console, including info/debug
+        val prodContext = Context.setupProductionInstance(testLog)
 
-            // Modify the Production context into a Test context.
-            return Context(
-                prodContext.bookInfoRepo,
-                prodContext.userInfoRepo,
-                prodContext.libraryInfoRepo,
-                prodContext.accountInfoRepo,
-                prodContext.gson,
-                testLog  // <--- Using the test logger
-            )
-        }
+        // Modify the Production context into a Test context.
+        return Context(
+            prodContext.bookInfoRepo,
+            prodContext.userInfoRepo,
+            // prodContext.libraryInfoRepo,
+            LibraryInfoPersistentRepo(testLog, TestingUtils.createTempFileName("libraryInfoRepoDB")),
+            prodContext.accountInfoRepo,
+            prodContext.gson,
+            testLog    // <--- Using the `TestLog` logger
+        )
     }
 
     @BeforeEach
     fun setUp() {
         // no-op
+    }
+
+    @AfterEach
+    fun tearDown() {
+        runBlocking {
+            // Delete the test database files
+            context.libraryInfoRepo.deleteDatabase()
+            context.bookInfoRepo.deleteDatabase()
+            context.userInfoRepo.deleteDatabase()
+            context.accountInfoRepo.deleteDatabase()
+        }
     }
 
     internal class TestRoles(
@@ -77,7 +92,7 @@ class LibraryAppTest {
         return runBlocking {
 
             // • Put some fake BookInfo into the DB & API for BookInfo's
-            testUtils.populateFakeBookInfoInBookRepoDBandAPI()
+            testUtils.populateFakeBooksInBookInfoRepoDBandAPI()
 
             // • Create & populate a Library in the Library Repo
             val libraryInfo = testUtils.createFakeLibraryInfoInLibraryInfoRepo(1)
@@ -125,8 +140,8 @@ class LibraryAppTest {
                 Account(accountInfo2, context),
                 User(user1Info, account1, context),
                 library1,
-                Book(UUID2.createFakeUUID2(1100, Book::class.java), null, context),  // create ORPHANED book
-                Book(UUID2.createFakeUUID2(1200, Book::class.java), library1, context)
+                Book(UUID2.createFakeUUID2<Book>(1100), null, context),  // create ORPHANED book
+                Book(UUID2.createFakeUUID2<Book>(1200), library1, context)
             )
             assertNotNull(testRoles)
 
@@ -147,7 +162,7 @@ class LibraryAppTest {
             testUtils.addFakeBookInfoToBookInfoRepo(book1100Id)
 
             // Create a book object (it only has an id)
-            val book = Book(UUID2.createFakeUUID2(book1100Id, Book::class.java), null, context)
+            val book = Book(UUID2.createFakeUUID2<Book>(book1100Id), null, context)
             context.log.d(this, book.fetchInfoResult().toString())
             val expectedUpdatedTitle = "The Updated Title"
             val expectedUpdatedAuthor = "The Updated Author"
@@ -191,7 +206,7 @@ class LibraryAppTest {
         runBlocking {
 
             // • ARRANGE
-            val book99 = Book(UUID2.createFakeUUID2(99, Book::class.java), null, context)
+            val book99 = Book(UUID2.createFakeUUID2<Book>(99), null, context)
 
             // • ACT
             // Try to get a book id that doesn't exist - SHOULD FAIL
@@ -211,7 +226,7 @@ class LibraryAppTest {
 
             // • ARRANGE
             val roles = setupDefaultRolesAndScenario(context, testUtils)
-            val book1200 = Book(UUID2.createFakeUUID2(1200, Book::class.java), roles.library1, context)
+            val book1200 = Book(UUID2.createFakeUUID2<Book>(1200), roles.library1, context)
 
             // • ACT
             // Try to get a book id that exists - SHOULD SUCCEED
@@ -376,19 +391,19 @@ class LibraryAppTest {
 
             // • ARRANGE
             val roles = setupDefaultRolesAndScenario(context, TestingUtils(context))
-            val json = library99InfoJson
 
             // Create the "unknown" library with just an id.
-            val library99 = Library(UUID2.createFakeUUID2(99, Library::class.java), context)
-            val book1500 = Book(UUID2.createFakeUUID2(1500, Book::class.java), null, context)
+            val library99 = Library(UUID2.createFakeUUID2<Library>(99), context)
+            val book1500 = Book(UUID2.createFakeUUID2<Book>(1500), null, context)
 
-            // • ACT & ASSERT
-            val library99InfoResult = library99.updateInfoFromJson(json)
+            // • ACT
+            val library99InfoResult = library99.updateInfoFromJson(library99InfoJson)
+
+            // • ASSERT
             assertTrue(library99InfoResult.isFailure, "LibraryInfo updateInfoFromJson() of unknown library succeeded unexpectedly")
-
             val libraryInfo = library99.info() ?: fail("libraryInfo is null")
             val library = Library(libraryInfo, context)
-            context.log.d(this, "Results of Library3 json load:" + library.toJson())
+            context.log.d(this, "Results of Library99 json load:" + library.toJson())
 
             // • ASSERT
             // check for the same number of items
@@ -416,7 +431,7 @@ class LibraryAppTest {
 
             // • ARRANGE
             val json = library99InfoJson // note: using the wrong id to update the json
-            val library1 = Library(UUID2.createFakeUUID2(1, Library::class.java), context)
+            val library1 = Library(UUID2.createFakeUUID2<Library>(1), context)
 
             // • ACT & ASSERT
             val library1UpdateInfoResult = library1.updateInfoFromJson(json)
@@ -449,16 +464,14 @@ class LibraryAppTest {
         }
         """.trimIndent()
 
-    @Test fun `Create Library Role from createInfoFromJson with Gson Serialization is Success`() {
+    @Test fun `Create Library Role using createInfoFromJson() with Gson Serialization is Success`() {
         runBlocking {
 
             // • ARRANGE
-            val expectedBook1900 = Book(UUID2.createFakeUUID2(1900, Book::class.java), null, context)
+            val expectedBook1900 = Book(UUID2.createFakeUUID2<Book>(1900), null, context)
 
             // Create a Library Domain Object from the Info
             try {
-
-
                 // • ACT
                 val library99Info = Library(library99InfoJson, context).info()
 
@@ -487,19 +500,17 @@ class LibraryAppTest {
     }
 
     @Test
-    fun `Create Library Role from createInfoFromJson with Kotlinx Serialization is Success`() {
+    fun `Create Library Role using createInfoFromJson() with Kotlinx Serialization is Success`() {
         runBlocking {
 
             // • ARRANGE
-            val json = library99InfoJson
-            val expectedBook1900 = Book(UUID2.createFakeUUID2(1900, Book::class.java), null, context)
+            val expectedBook1900 = Book(UUID2.createFakeUUID2<Book>(1900), null, context)
 
             // Create a Library Domain Object from the Info
             try {
-
                 // • ACT
                 val library99Info: LibraryInfo? = Role.createInfoFromJson(
-                    json,
+                    library99InfoJson,
                     LibraryInfo.serializer(),
                     context
                 )
@@ -551,8 +562,8 @@ class LibraryAppTest {
             val json = greatGatsbyDTOBookInfoJson
             val expectedTitle = "The Great Gatsby"
             val expectedAuthor = "F. Scott Fitzgerald"
-            val expectedUUID2: UUID2<Book> = UUID2.createFakeUUID2(10, Book::class.java)
-            val expectedUuid2Type: String = expectedUUID2.uuid2Type
+            val expectedUUID2 = UUID2.createFakeUUID2<Book>(10)
+            val expectedUuid2Type = expectedUUID2.uuid2Type
             val expectedExtraFieldToShowThisIsADTO = "Extra DTO Data from JSON payload load"
 
             // • ACT & ASSERT
@@ -592,7 +603,6 @@ class LibraryAppTest {
                 context.log.e(this, "Exception: " + e.message)
                 fail(e.message)
             }
-
         }
     }
 
@@ -619,7 +629,7 @@ class LibraryAppTest {
             val json = greatGatsbyEntityBookInfoJson
             val expectedTitle = "The Great Gatsby"
             val expectedAuthor = "F. Scott Fitzgerald"
-            val expectedUUID2: UUID2<Book> = UUID2.createFakeUUID2(10, Book::class.java)
+            val expectedUUID2 = UUID2.createFakeUUID2<Book>(10)
             val expectedUuid2Type: String = expectedUUID2.uuid2Type
             val expectedExtraFieldToShowThisIsAnEntity = "Extra Entity Data from JSON payload load"
 

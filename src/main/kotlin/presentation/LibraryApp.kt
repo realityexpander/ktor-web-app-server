@@ -31,11 +31,11 @@ internal class LibraryApp(private val context: Context) {
             //context = Context.setupINSTANCE(context);  // For implementing a static Context. LEAVE for reference
             val testUtils = TestingUtils(context)
             context.log.d(this, "Populating Book DB and API")
-            testUtils.populateFakeBookInfoInBookRepoDBandAPI()
+            testUtils.populateFakeBooksInBookInfoRepoDBandAPI()
 
             // Create fake AccountInfo
             val accountInfo = AccountInfo(
-                UUID2.createFakeUUID2(1, Account::class.java),
+                UUID2.createFakeUUID2<Account>(1),
                 "User Name 1"
             )
 
@@ -46,7 +46,7 @@ internal class LibraryApp(private val context: Context) {
                 context.log.d(this, "----------------------------------")
 
                 // Create a book object (it only has an id)
-                val book = Book(UUID2.createFakeUUID2(1100, Book::class.java), null, context)
+                val book = Book(UUID2.createFakeUUID2<Book>(1100), null, context)
                 context.log.d(this, book.fetchInfoResult().toString())
 
                 // Update info for a book
@@ -71,7 +71,7 @@ internal class LibraryApp(private val context: Context) {
                 } else context.log.d(this, "Book Info --> $bookInfo3")
 
                 // Try to get a book id that doesn't exist
-                val book2 = Book(UUID2.createFakeUUID2(1200, Book::class.java), null, context)
+                val book2 = Book(UUID2.createFakeUUID2<Book>(1200), null, context)
                 if (book2.fetchInfoResult().isFailure) {
                     context.log.d(
                         this,
@@ -128,8 +128,8 @@ internal class LibraryApp(private val context: Context) {
                 val account2 = Account(accountInfo2, context)
                 val user1 = User(user1Info, account1, context)
                 val library1 = Library(library1InfoId, context)
-                val book1100 = Book(UUID2.createFakeUUID2(1100, Book::class.java), null, context) // create ORPHANED book
-                val book1200 = Book(UUID2.createFakeUUID2(1200, Book::class.java), library1, context)
+                val book1100 = Book(UUID2.createFakeUUID2<Book>(1100), null, context) // create ORPHANED book
+                val book1200 = Book(UUID2.createFakeUUID2<Book>(1200), library1, context)
 
                 // print User 1
                 println()
@@ -296,7 +296,7 @@ internal class LibraryApp(private val context: Context) {
                     context.log.d(this, "----------------------------------")
 
                     // Create the "unknown" library with just an id.
-                    val library2 = Library(UUID2.createFakeUUID2(99, Library::class.java), context)
+                    val library2 = Library(UUID2.createFakeUUID2<Library>(99), context)
 
                     // Show the empty info object.
                     context.log.d(this, library2.toJson())
@@ -356,7 +356,7 @@ internal class LibraryApp(private val context: Context) {
                             // check the existence of a particular book
                             if (library2.isUnknownBook(
                                     Book(
-                                        UUID2.createFakeUUID2(1500, Book::class.java),
+                                        UUID2.createFakeUUID2<Book>(1500),
                                         null,
                                         context
                                     )
@@ -391,7 +391,7 @@ internal class LibraryApp(private val context: Context) {
                             // check the existence of a particular book
                             if (library3.isUnknownBook(
                                     Book(
-                                        UUID2.createFakeUUID2(1900, Book::class.java),
+                                        UUID2.createFakeUUID2<Book>(1900),
                                         null,
                                         context
                                     )
@@ -642,10 +642,10 @@ internal class LibraryApp(private val context: Context) {
                     context.log.d(this, "Test UUID2 works with MutableMap: ")
                     context.log.d(this, "----------------------------------")
                     val uuid2ToEntityMap: MutableMap<UUID2<Book>, UUID2<User>> = mutableMapOf()
-                    val book1: UUID2<Book> = UUID2(UUID2.createFakeUUID2(1200, Book::class.java))
-                    val book2: UUID2<Book> = UUID2(UUID2.createFakeUUID2(1300, Book::class.java))
-                    val user01: UUID2<User> = UUID2(UUID2.createFakeUUID2(1, User::class.java))
-                    val user02: UUID2<User> = UUID2(UUID2.createFakeUUID2(2, User::class.java))
+                    val book1: UUID2<Book> = UUID2(UUID2.createFakeUUID2<Book>(1200))
+                    val book2: UUID2<Book> = UUID2(UUID2.createFakeUUID2<Book>(1300))
+                    val user01: UUID2<User> = UUID2(UUID2.createFakeUUID2<User>(1))
+                    val user02: UUID2<User> = UUID2(UUID2.createFakeUUID2<User>(2))
 
                     uuid2ToEntityMap[book1] = user01
                     uuid2ToEntityMap[book2] = user02
@@ -656,7 +656,7 @@ internal class LibraryApp(private val context: Context) {
 
                     val book1a: UUID2<Book> =
                         Book.fetchBook(
-                            UUID2.createFakeUUID2(1200, Book::class.java),
+                            UUID2.createFakeUUID2<Book>(1200),
                             context
                         ).getOrThrow()
                             .id()
@@ -692,7 +692,7 @@ internal class LibraryApp(private val context: Context) {
                         throw RuntimeException("containsKey(book1) failed")
                     if (!uuid2ToEntityMap.containsKey(book2))
                         throw RuntimeException("containsKey(book2) failed")
-                    if (uuid2ToEntityMap.containsKey(UUID2.createFakeUUID2(1400, Book::class.java)))
+                    if (uuid2ToEntityMap.containsKey(UUID2.createFakeUUID2<Book>(1400)))
                         throw RuntimeException("containsKey(Book 1400) should have failed")
                 }
             }

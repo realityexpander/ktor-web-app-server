@@ -16,4 +16,5 @@ interface IBookInfoRepo : IRepo {
     suspend fun addBookInfo(bookInfo: BookInfo): Result<BookInfo>
     suspend fun updateBookInfo(bookInfo: BookInfo): Result<BookInfo>
     suspend fun upsertBookInfo(bookInfo: BookInfo): Result<BookInfo>
+    suspend fun deleteDatabase(): Result<Unit>
 }

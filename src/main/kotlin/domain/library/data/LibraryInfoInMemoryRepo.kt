@@ -17,11 +17,11 @@ import domain.library.PrivateLibrary
  * @since 0.12 Kotlin conversion
  */
 
-class LibraryInfoRepo(log: ILog) : Repo(log), ILibraryInfoRepo {
+class LibraryInfoInMemoryRepo(log: ILog) : Repo(log), ILibraryInfoRepo {
     // simulate a database on a server
     private val database: MutableMap<UUID2<Library>, LibraryInfo> = mutableMapOf()
 
-    override fun fetchLibraryInfo(id: UUID2<Library>): Result<LibraryInfo> {
+    override suspend fun fetchLibraryInfo(id: UUID2<Library>): Result<LibraryInfo> {
         log.d(this, "libraryId: $id")
 
         // Simulate network/database
@@ -30,23 +30,31 @@ class LibraryInfoRepo(log: ILog) : Repo(log), ILibraryInfoRepo {
         } else Result.failure(Exception("Repo.LibraryInfo, Library not found, id: $id"))
     }
 
-    override fun updateLibraryInfo(libraryInfo: LibraryInfo): Result<LibraryInfo> {
+    override suspend fun updateLibraryInfo(libraryInfo: LibraryInfo): Result<LibraryInfo> {
         log.d(this, "libraryInfo.id: " + libraryInfo.id())
 
         // Simulate network/database
         if (database.containsKey(libraryInfo.id())) {
-            database.put(libraryInfo.id(), libraryInfo)
+            database[libraryInfo.id()] = libraryInfo
             return Result.success(libraryInfo)
         }
         return Result.failure(Exception("Repo.LibraryInfo, Library not found, id: " + libraryInfo.id()))
     }
 
-    override fun upsertLibraryInfo(libraryInfo: LibraryInfo): Result<LibraryInfo> {
+    override suspend fun upsertLibraryInfo(libraryInfo: LibraryInfo): Result<LibraryInfo> {
         log.d(this, "libraryInfo.id: " + libraryInfo.id())
 
         // Simulate network/database
         database[libraryInfo.id()] = libraryInfo
         return Result.success(libraryInfo)
+    }
+
+    override suspend fun deleteDatabase(): Result<Unit> {
+        log.d(this, "deleteDatabase")
+
+        // Simulate network/database
+        database.clear()
+        return Result.success(Unit)
     }
 
     /////////////////////////
@@ -69,3 +77,5 @@ class LibraryInfoRepo(log: ILog) : Repo(log), ILibraryInfoRepo {
         }
     }
 }
+
+

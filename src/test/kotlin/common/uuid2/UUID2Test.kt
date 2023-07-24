@@ -245,7 +245,7 @@ class UUID2Test {
             fail("Expected IllegalArgumentException")
         } catch (e: IllegalArgumentException) {
             // • ASSERT
-            assertTrue(true)
+            assertTrue(true)  // expected
         } catch (e: Exception) {
             fail(e.message)
         }
