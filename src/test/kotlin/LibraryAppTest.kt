@@ -11,6 +11,7 @@ import domain.book.Book
 import domain.book.data.BookInfoRepo
 import domain.book.data.local.BookInfoEntity
 import domain.common.Role
+import domain.library.PrivateLibrary
 import domain.library.data.LibraryInfo
 import domain.library.data.LibraryInfoRepo
 import domain.user.data.UserInfo
@@ -59,7 +60,14 @@ class LibraryAppTest {
 
     @BeforeEach
     fun setUp() {
-        // no-op
+        // Setup the UUID2 types for UUID2 deserialization
+        UUID2.registerUUID2TypesForWhiteListDeserialization(listOf(
+            Book::class,
+            Library::class,
+            PrivateLibrary::class,
+            User::class,
+            Account::class
+        ))
     }
 
     @AfterEach

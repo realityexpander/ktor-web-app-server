@@ -13,13 +13,4 @@ import common.log.ILog
  * @since 0.12 Kotlin conversion
  */
 
-//open class Repo protected constructor(log: ILog) : IRepo {
-//    protected open val log: ILog
-//
-//    init {
-//        this.log = log
-//    }
-//}
-
-
 open class Repo(open val log: ILog) : IRepo

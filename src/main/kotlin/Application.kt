@@ -11,6 +11,10 @@ import com.realityexpander.domain.todo.TodoResponse
 import com.realityexpander.domain.remote.fileUpload.FileUploadResponse
 import com.realityexpander.domain.remote.fileUpload.save
 import common.uuid2.UUID2
+import domain.account.Account
+import domain.book.Book
+import domain.library.Library
+import domain.library.PrivateLibrary
 import domain.user.User
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -103,6 +107,14 @@ val applicationConfig =
     }
 
 // Load the User Repo
+// Setup the UUID2 types for UUID2 deserialization
+val uuid2WhiteList = UUID2.registerUUID2TypesForWhiteListDeserialization(listOf(
+    Book::class,
+    Library::class,
+    PrivateLibrary::class,
+    User::class,
+    Account::class
+))
 val userRepository = UserRepository()
 
 fun Application.module() {

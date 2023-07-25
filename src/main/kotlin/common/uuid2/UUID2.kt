@@ -6,6 +6,7 @@ import com.google.gson.*
 import common.uuid2.UUID2.Companion.fromUUID2StrToUUID2
 import domain.account.Account
 import domain.book.Book
+import domain.common.Role
 import domain.library.Library
 import domain.library.PrivateLibrary
 import domain.user.User
@@ -16,6 +17,7 @@ import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import okhttp3.internal.toImmutableMap
 import org.bson.json.JsonParseException
 import org.reflections.Reflections
 import java.lang.reflect.ParameterizedType
@@ -366,6 +368,25 @@ open class UUID2<TUUID2 : IUUID2> {
         // Converters                 //
         ////////////////////////////////
 
+        // The White-listed UUID2Type list for deserialization
+        private var typeStrToClazzMap: MutableMap<String, KClass<out IUUID2>> = mutableMapOf()
+
+        fun registerUUID2TypeForWhiteListDeserialization(typeStr: String, clazz: KClass<out IUUID2>): Map<String, KClass<out IUUID2>> {
+            typeStrToClazzMap[typeStr] = clazz
+
+            return typeStrToClazzMap.toImmutableMap()
+        }
+        fun registerUUID2TypeForWhiteListDeserialization(clazz: KClass<out IUUID2>) : Map<String, KClass<out IUUID2>> {
+            return registerUUID2TypeForWhiteListDeserialization(calcUUID2TypeStr(clazz),  clazz)
+        }
+        fun registerUUID2TypesForWhiteListDeserialization(clazzs: List<KClass<out IUUID2>>): Map<String, KClass<out IUUID2>> {
+            clazzs.forEach { clazz ->
+                registerUUID2TypeForWhiteListDeserialization(calcUUID2TypeStr(clazz),  clazz)
+            }
+
+            return typeStrToClazzMap.toImmutableMap()
+        }
+
         // Finds the correct UUID2 type from the UUID2Type string.
         @Throws(RuntimeException::class)
         fun String.fromUUID2StrToUUID2(): UUID2<*> {
@@ -378,21 +399,20 @@ open class UUID2<TUUID2 : IUUID2> {
                 return segments[segments.size - 1]
             }
 
-            // Check if it's in the White-listed UUID2 types
-            // todo - make this a config option
-            when (typeStr) {
-                "Role.Book" ->           return uuid2Str.fromUUID2StrToTypedUUID2<Book>()
-                "Role.User" ->           return uuid2Str.fromUUID2StrToTypedUUID2<User>()
-                "Role.Library" ->        return uuid2Str.fromUUID2StrToTypedUUID2<Library>()
-                "Role.PrivateLibrary" -> return uuid2Str.fromUUID2StrToTypedUUID2<PrivateLibrary>()
-                "Role.Account" ->        return uuid2Str.fromUUID2StrToTypedUUID2<Account>()
+            // Check if the typeStr is already in the typeStrToClazzMap
+            if (typeStrToClazzMap.containsKey(typeStr)) {
+                val clazz = typeStrToClazzMap[typeStr]
+                if (clazz != null) {
+                    return uuid2Str.fromUUID2StrToTypedUUID2<IUUID2>()
+                        .toUUID2WithUUID2TypeOf(clazz)
+                }
             }
 
             System.err.println(
                 "WARNING: Provided UUID2Type is NOT in the White-listed UUID2 types. " +
-                        "Attempting to use SLOW REFLECTION to find the correct type. typeStr=$typeStr," +
-                        " uuid2Str=$uuid2Str," +
-                        "Please update the White-listed UUID2 types in `UUID2.kt` to improve processing performance."
+                        "Attempting to use SLOW REFLECTION to find the correct type. " +
+                        "typeStr=$typeStr, uuid2Str=$uuid2Str," +
+                        "Please update the White-listed UUID2 types via `registerUUID2TypeForWhiteListDeserialization()` in `UUID2.kt` to improve processing performance."
             )
 
             try {
@@ -408,6 +428,9 @@ open class UUID2<TUUID2 : IUUID2> {
                     override fun getOwnerType(): Type? = null
                     override fun getActualTypeArguments(): Array<Type> = arrayOf(uuid2TypeClazz)
                 }
+
+                // Add the typeStr to the White-listed UUID2 types
+                registerUUID2TypeForWhiteListDeserialization(typeStr, uuid2TypeClazz.kotlin)
 
                 return createTypedInstanceOfUUID2(uuid2, uuid2DomainParameterizedType)
             } catch (e: Exception) {
