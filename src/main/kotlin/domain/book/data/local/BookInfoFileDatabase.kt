@@ -58,6 +58,6 @@ class BookInfoFileDatabase(
     }
 
     companion object {
-        const val DEFAULT_BOOKINFO_FILE_DATABASE_FILENAME: String = "bookInfoFileDatabase.json"
+        const val DEFAULT_BOOKINFO_FILE_DATABASE_FILENAME: String = "bookInfoFileDatabaseDB.json"
     }
 }

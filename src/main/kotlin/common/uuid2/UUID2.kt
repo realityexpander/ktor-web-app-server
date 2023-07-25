@@ -4,12 +4,6 @@ package common.uuid2
 
 import com.google.gson.*
 import common.uuid2.UUID2.Companion.fromUUID2StrToUUID2
-import domain.account.Account
-import domain.book.Book
-import domain.common.Role
-import domain.library.Library
-import domain.library.PrivateLibrary
-import domain.user.User
 import io.ktor.util.reflect.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -371,7 +365,10 @@ open class UUID2<TUUID2 : IUUID2> {
         // The White-listed UUID2Type list for deserialization
         private var typeStrToClazzMap: MutableMap<String, KClass<out IUUID2>> = mutableMapOf()
 
-        fun registerUUID2TypeForWhiteListDeserialization(typeStr: String, clazz: KClass<out IUUID2>): Map<String, KClass<out IUUID2>> {
+        fun registerUUID2TypeForWhiteListDeserialization(
+            typeStr: String,
+            clazz: KClass<out IUUID2>
+        ): Map<String, KClass<out IUUID2>> {
             typeStrToClazzMap[typeStr] = clazz
 
             return typeStrToClazzMap.toImmutableMap()
@@ -379,8 +376,8 @@ open class UUID2<TUUID2 : IUUID2> {
         fun registerUUID2TypeForWhiteListDeserialization(clazz: KClass<out IUUID2>) : Map<String, KClass<out IUUID2>> {
             return registerUUID2TypeForWhiteListDeserialization(calcUUID2TypeStr(clazz),  clazz)
         }
-        fun registerUUID2TypesForWhiteListDeserialization(clazzs: List<KClass<out IUUID2>>): Map<String, KClass<out IUUID2>> {
-            clazzs.forEach { clazz ->
+        fun registerUUID2TypesForWhiteListDeserialization(clazzList: List<KClass<out IUUID2>>): Map<String, KClass<out IUUID2>> {
+            clazzList.forEach { clazz ->
                 registerUUID2TypeForWhiteListDeserialization(calcUUID2TypeStr(clazz),  clazz)
             }
 
@@ -412,7 +409,8 @@ open class UUID2<TUUID2 : IUUID2> {
                 "WARNING: Provided UUID2Type is NOT in the White-listed UUID2 types. " +
                         "Attempting to use SLOW REFLECTION to find the correct type. " +
                         "typeStr=$typeStr, uuid2Str=$uuid2Str," +
-                        "Please update the White-listed UUID2 types via `registerUUID2TypeForWhiteListDeserialization()` in `UUID2.kt` to improve processing performance."
+                        "Please update the White-listed UUID2 types via " +
+                        "`registerUUID2TypeForWhiteListDeserialization()` in `UUID2.kt` to improve processing performance."
             )
 
             try {

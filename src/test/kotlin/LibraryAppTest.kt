@@ -155,9 +155,7 @@ class LibraryAppTest {
             )
             assertNotNull(testRoles)
 
-            // print User1
             context.log.d(this, "User --> " + testRoles.user1.id + ", " + testRoles.user1.fetchInfo()?.toPrettyJson(context))
-
             return@runBlocking testRoles
         }
     }

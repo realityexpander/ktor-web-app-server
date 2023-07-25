@@ -20,6 +20,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.time.Instant
 
+fun main() {
+
+    // Setup App Context Object singletons
+    val productionContext = Context.setupProductionInstance(Log())
+    LibraryApp(productionContext)
+}
+
 @OptIn(DelicateCoroutinesApi::class)
 internal class LibraryApp(private val context: Context) {
     // Library App - Domain Layer Root Object
@@ -305,28 +312,29 @@ internal class LibraryApp(private val context: Context) {
 
                     // todo update this json
                     val json =
-                        """{
-                      "id": {
-                        "uuid": "00000000-0000-0000-0000-000000000099",
-                        "uuid2Type": "Role.Library"
-                      },
+                    """
+                    {
                       "name": "Ronald Reagan Library",
+                      "id": "UUID2:Role.Library@00000000-0000-0000-0000-000000000099",
                       "registeredUserIdToCheckedOutBookIdsMap": {
-                          "UUID2:Role.User@00000000-0000-0000-0000-000000000001": []
+                        "UUID2:Role.User@00000000-0000-0000-0000-000000000001": [
+                           "UUID2:Role.Book@00000000-0000-0000-0000-000000001500"
+                        ]
                       },
                       "bookIdToNumBooksAvailableMap": {
-                          "UUID2:Role.Book@00000000-0000-0000-0000-000000001400": 25,
-                          "UUID2:Role.Book@00000000-0000-0000-0000-000000001000": 25,
-                          "UUID2:Role.Book@00000000-0000-0000-0000-000000001300": 25,
-                          "UUID2:Role.Book@00000000-0000-0000-0000-000000001200": 25,
-                          "UUID2:Role.Book@00000000-0000-0000-0000-000000001500": 25,
-                          "UUID2:Role.Book@00000000-0000-0000-0000-000000001600": 25,
-                          "UUID2:Role.Book@00000000-0000-0000-0000-000000001700": 25,
-                          "UUID2:Role.Book@00000000-0000-0000-0000-000000001800": 25,
-                          "UUID2:Role.Book@00000000-0000-0000-0000-000000001900": 25,
-                          "UUID2:Role.Book@00000000-0000-0000-0000-000000001100": 25
+                        "UUID2:Role.Book@00000000-0000-0000-0000-000000001400": 25,
+                        "UUID2:Role.Book@00000000-0000-0000-0000-000000001000": 25,
+                        "UUID2:Role.Book@00000000-0000-0000-0000-000000001300": 25,
+                        "UUID2:Role.Book@00000000-0000-0000-0000-000000001200": 25,
+                        "UUID2:Role.Book@00000000-0000-0000-0000-000000001500": 24,
+                        "UUID2:Role.Book@00000000-0000-0000-0000-000000001600": 25,
+                        "UUID2:Role.Book@00000000-0000-0000-0000-000000001700": 25,
+                        "UUID2:Role.Book@00000000-0000-0000-0000-000000001800": 25,
+                        "UUID2:Role.Book@00000000-0000-0000-0000-000000001900": 25,
+                        "UUID2:Role.Book@00000000-0000-0000-0000-000000001100": 25
                       }
-                    }""".trimIndent()
+                    }
+                    """.trimIndent()
 
                     // Check JSON loaded properly
                     if (true) {
@@ -411,18 +419,19 @@ internal class LibraryApp(private val context: Context) {
                     context.log.d(this, "Load BookInfo from DTO Json: ")
                     context.log.d(this, "----------------------------------")
 
-                    // todo update this json
                     val json =
-                        """{
-                      "id": {
-                        "uuid": "00000000-0000-0000-0000-000000000010",
-                        "uuid2Type": "Role.Book"
-                      },
+                    """
+                    {
+                      "id": "UUID2:Role.Book@00000000-0000-0000-0000-000000000010",
                       "title": "The Great Gatsby",
                       "author": "F. Scott Fitzgerald",
                       "description": "The Great Gatsby is a 1925 novel written by American author F. Scott Fitzgerald that follows a cast of characters living in the fictional towns of West Egg and East Egg on prosperous Long Island in the summer of 1922. The story primarily concerns the young and mysterious millionaire Jay Gatsby and his quixotic passion and obsession with the beautiful former debutante Daisy Buchanan. Considered to be Fitzgerald's magnum opus, The Great Gatsby explores themes of decadence, idealism, resistance to change, social upheaval, and excess, creating a portrait of the Jazz Age or the Roaring Twenties that has been described as a cautionary tale regarding the American Dream.",
-                      "extraFieldToShowThisIsADTO": "Extra Unneeded Data from JSON payload load"
-                    }""".trimIndent()
+                      "extraFieldToShowThisIsADTO": "Extra DTO Data from JSON payload load",
+                      "creationTimeMillis": 0,
+                      "lastModifiedTimeMillis": 0,
+                      "isDeleted": false
+                    }
+                    """.trimIndent()
 
                     try {
                         val bookInfoDTO3 = BookInfoDTO(json, context)
@@ -440,18 +449,19 @@ internal class LibraryApp(private val context: Context) {
                     context.log.d(this, "Load Book from DTO Json using DTO Book constructor: ")
                     context.log.d(this, "----------------------------------")
 
-                    // todo update this json
                     val json =
-                        """{
-                      "id": {
-                        "uuid": "00000000-0000-0000-0000-000000000010",
-                        "uuid2Type": "Role.Book"
-                      },
+                    """
+                    {
+                      "id": "UUID2:Role.Book@00000000-0000-0000-0000-000000000010",
                       "title": "The Great Gatsby",
                       "author": "F. Scott Fitzgerald",
                       "description": "The Great Gatsby is a 1925 novel written by American author F. Scott Fitzgerald that follows a cast of characters living in the fictional towns of West Egg and East Egg on prosperous Long Island in the summer of 1922. The story primarily concerns the young and mysterious millionaire Jay Gatsby and his quixotic passion and obsession with the beautiful former debutante Daisy Buchanan. Considered to be Fitzgerald's magnum opus, The Great Gatsby explores themes of decadence, idealism, resistance to change, social upheaval, and excess, creating a portrait of the Jazz Age or the Roaring Twenties that has been described as a cautionary tale regarding the American Dream.",
-                      "extraFieldToShowThisIsADTO": "Extra Unneeded Data from JSON payload load"
-                    }""".trimIndent()
+                      "extraFieldToShowThisIsADTO": "Extra DTO Data from JSON payload load",
+                      "creationTimeMillis": 0,
+                      "lastModifiedTimeMillis": 0,
+                      "isDeleted": false
+                    }
+                    """.trimIndent()
 
                     try {
                         val bookInfoDTO3 = BookInfoDTO(json, context)
@@ -708,27 +718,5 @@ internal class LibraryApp(private val context: Context) {
             )
         }
 
-//    companion object {
-//        @Throws(Exception::class)
-//        @JvmStatic
-//        fun main(args: Array<String>) {
-//
-//            // Setup App Context Object singletons
-//            val productionContext = Context.setupProductionInstance(Log())
-//
-//            // Note: Check the tests!
-//            LibraryApp(productionContext)
-//        }
-//    }
-
     }
-}
-
-fun main() {
-
-    // Setup App Context Object singletons
-    val productionContext = Context.setupProductionInstance(Log())
-
-    // Note: Check the tests!
-    LibraryApp(productionContext)
 }
