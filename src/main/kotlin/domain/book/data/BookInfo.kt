@@ -4,8 +4,8 @@ import common.HumanDate
 import common.uuid2.UUID2
 import common.uuid2.UUID2.Companion.fromUUIDStrToUUID2
 import domain.book.Book
-import domain.book.data.local.EntityBookInfo
-import domain.book.data.network.DTOBookInfo
+import domain.book.data.local.BookInfoEntity
+import domain.book.data.network.BookInfoDTO
 import domain.common.data.Model
 import domain.common.data.info.DomainInfo
 import kotlinx.serialization.Serializable
@@ -33,9 +33,9 @@ class BookInfo(
     val lastModifiedTimeMillis: Long = creationTimeMillis,
     val isDeleted: Boolean = false
 ) : DomainInfo(id),
-    Model.ToEntityInfo<EntityBookInfo>,
-    Model.ToDTOInfo<DTOBookInfo>,
-    Model.ToDomainInfo<BookInfo>
+    Model.ToEntityInfo<BookInfoEntity>,
+    Model.ToDTOInfo<BookInfoDTO>,
+    Model.ToDomainInfoDeepCopy<BookInfo>
 {
     constructor(
         uuid: UUID,
@@ -76,32 +76,32 @@ class BookInfo(
     // - Convert to Domain.BookInfo                       //
     ////////////////////////////////////////////////////////
 
-    constructor(dtoBookInfo: DTOBookInfo) : this(
-        UUID2<Book>(dtoBookInfo.id().uuid(), Book::class.java),  // change id to domain UUID2<Book> type
-        dtoBookInfo.title,
-        dtoBookInfo.author,
-        dtoBookInfo.description,
-        dtoBookInfo.creationTimeMillis,
-        dtoBookInfo.lastModifiedTimeMillis,
-        dtoBookInfo.isDeleted
+    constructor(bookInfoDTO: BookInfoDTO) : this(
+        UUID2<Book>(bookInfoDTO.id().uuid(), Book::class.java),  // change id to domain UUID2<Book> type
+        bookInfoDTO.title,
+        bookInfoDTO.author,
+        bookInfoDTO.description,
+        bookInfoDTO.creationTimeMillis,
+        bookInfoDTO.lastModifiedTimeMillis,
+        bookInfoDTO.isDeleted
     ) {
-        // Converts from DTOInfo to DomainInfo
+        // Converts from InfoDTO to DomainInfo
 
         // Basic Validation = Domain decides what to include from the DTO
         // - must be done after construction
         validateBookInfo()
     }
 
-    constructor(entityBookInfo: EntityBookInfo) : this(
-        UUID2<Book>(entityBookInfo.id().uuid(), Book::class.java),  // change id to domain UUID2<Book> type
-        entityBookInfo.title,
-        entityBookInfo.author,
-        entityBookInfo.description,
-        entityBookInfo.creationTimeMillis,
-        entityBookInfo.lastModifiedTimeMillis,
-        entityBookInfo.isDeleted
+    constructor(bookInfoEntity: BookInfoEntity) : this(
+        UUID2<Book>(bookInfoEntity.id().uuid(), Book::class.java),  // change id to domain UUID2<Book> type
+        bookInfoEntity.title,
+        bookInfoEntity.author,
+        bookInfoEntity.description,
+        bookInfoEntity.creationTimeMillis,
+        bookInfoEntity.lastModifiedTimeMillis,
+        bookInfoEntity.isDeleted
     ) {
-        // Converts from EntityInfo to DomainInfo
+        // Converts from InfoEntity to DomainInfo
 
         // Basic Validation - Domain decides what to include from the Entities
         // - must be done after construction
@@ -155,12 +155,12 @@ class BookInfo(
     // ToEntity / ToDTO implementation //
     /////////////////////////////////////
 
-    override fun toInfoDTO(): DTOBookInfo {
-        return DTOBookInfo(this)
+    override fun toInfoDTO(): BookInfoDTO {
+        return BookInfoDTO(this)
     }
 
-    override fun toInfoEntity(): EntityBookInfo {
-        return EntityBookInfo(this)
+    override fun toInfoEntity(): BookInfoEntity {
+        return BookInfoEntity(this)
     }
 
     /////////////////////////////

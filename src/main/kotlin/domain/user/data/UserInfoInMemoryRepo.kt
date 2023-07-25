@@ -20,7 +20,7 @@ class UserInfoInMemoryRepo(log: ILog) : Repo(log), IUserInfoRepo {
     // Simulate a database on a server somewhere
     private val database: MutableMap<UUID2<User>, UserInfo> = mutableMapOf()
 
-    override fun fetchUserInfo(id: UUID2<User>): Result<UserInfo> {
+    override suspend fun fetchUserInfo(id: UUID2<User>): Result<UserInfo> {
         log.d(this, "userId: $id")
 
         // Simulate network/database
@@ -30,7 +30,7 @@ class UserInfoInMemoryRepo(log: ILog) : Repo(log), IUserInfoRepo {
             Result.failure(Exception("Repo.UserInfo, UserInfo not found, id:$id"))
     }
 
-    override fun updateUserInfo(userInfo: UserInfo): Result<UserInfo> {
+    override suspend fun updateUserInfo(userInfo: UserInfo): Result<UserInfo> {
         val methodName = Thread.currentThread().stackTrace[2].methodName  // todo remove?
         log.d(this, methodName + ", userId:" + userInfo.id())
 
@@ -43,7 +43,7 @@ class UserInfoInMemoryRepo(log: ILog) : Repo(log), IUserInfoRepo {
         return Result.failure(Exception("Repo.UserInfo, UserInfo not found, id:" + userInfo.id()))
     }
 
-    override fun upsertUserInfo(userInfo: UserInfo): Result<UserInfo> {
+    override suspend fun upsertUserInfo(userInfo: UserInfo): Result<UserInfo> {
         val methodName = Thread.currentThread().stackTrace[2].methodName // todo remove?
         log.d(this, methodName + ", userId:" + userInfo.id())
 

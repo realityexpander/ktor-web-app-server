@@ -7,7 +7,7 @@ import common.data.network.FakeURL
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.common.data.HasId
-import domain.common.data.info.local.EntityInfo
+import domain.common.data.info.local.InfoEntity
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.KSerializer
 import okhttp3.internal.toImmutableList
@@ -15,20 +15,20 @@ import okhttp3.internal.toImmutableList
 /**
  * **FileDatabase**
  *
- * An implementation of a JsonFileDatabase that uses the IDatabase interface to persistently store EntityInfo.
+ * An implementation of a JsonFileDatabase that uses the IDatabase interface to persistently store InfoEntity.
  *
  * Simulates a Database API that is backed by a json file.
  * Data is persisted, so the database is not reset on each run.
  *
  * @param TDomain The type of UUID2<> to use for the database. ie: User -> UUID2<User>
- * @param TEntityInfo The type of EntityInfo to use for the entities in the database.
+ * @param TEntityInfo The type of InfoEntity to use for the entities in the database.
  * @param apiDatabaseFilename The filename of the database.
  * @param entityKSerializer The kotlinx json serializer to use for the database entities.
  * @param fakeUrl The fake URL to use for the API
  * @param fakeClient The fake HTTP client to use for the API
  */
 
-class FileDatabase<TDomain : IUUID2, TEntityInfo : EntityInfo>(
+class FileDatabase<TDomain : IUUID2, TEntityInfo : InfoEntity>(
     apiDatabaseFilename: String = DEFAULT_FILE_DATABASE_FILENAME,
     entityKSerializer: KSerializer<TEntityInfo>,
     private val fakeUrl: FakeURL = FakeURL("fakeHttp://fakeDatabaseHost:44444"),

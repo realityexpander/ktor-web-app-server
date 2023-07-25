@@ -30,7 +30,7 @@ class UserInfo(
     val email: String,
     private val acceptedBookIdToSourceLibraryIdMap: MutableMap<UUID2<Book>, UUID2<Library>> = mutableMapOf()
 ) : DomainInfo(id),
-    Model.ToDomainInfo<UserInfo>
+    Model.ToDomainInfoDeepCopy<UserInfo>
 {
     constructor(userInfo: UserInfo) : this(
         userInfo.id(),

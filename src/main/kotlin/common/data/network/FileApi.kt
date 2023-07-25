@@ -4,8 +4,7 @@ import com.realityexpander.common.data.local.JsonFileDatabase
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.common.data.HasId
-import domain.common.data.Model
-import domain.common.data.info.network.DTOInfo
+import domain.common.data.info.network.InfoDTO
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.KSerializer
 import okhttp3.internal.toImmutableList
@@ -13,20 +12,20 @@ import okhttp3.internal.toImmutableList
 /**
  * FileApi
  *
- * A JsonFileDatabase that implements the IAPI interface for DTOInfo.
+ * A JsonFileDatabase that implements the IAPI interface for InfoDTO.
  *
  * Simulates a REST API that is backed by a json file.
  * Data is persisted, so the database is not reset on each run.
  *
  * @param TDomain The type of UUID2 to use for the database. ie: User -> UUID2<User>
- * @param TDTOInfo The type of DTOInfo for the entities in the database.
+ * @param TDTOInfo The type of InfoDTO for the entities in the database.
  * @param apiDatabaseFilename The filename of the database.
  * @param serializer The kotlinx json serializer to use for the database entities.
  * @param fakeUrl The fake URL to use for the API
  * @param client The fake HTTP client to use for the API
  */
 
-class FileApi<TDomain : IUUID2, TDTOInfo : DTOInfo>(
+class FileApi<TDomain : IUUID2, TDTOInfo : InfoDTO>(
     apiDatabaseFilename: String = DEFAULT_FILE_API_DATABASE_FILENAME,
     serializer: KSerializer<TDTOInfo>,
     private val fakeUrl: FakeURL = FakeURL("fakeHttp://fakeApiHost:22222"),

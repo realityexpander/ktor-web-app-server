@@ -8,45 +8,43 @@ import domain.book.Book
 import domain.book.data.BookInfo
 import domain.common.data.Model
 import domain.common.data.info.Info
-import domain.common.data.info.local.EntityInfo
+import domain.common.data.info.local.InfoEntity
 import kotlinx.serialization.Serializable
 
 /**
- * EntityBookInfo
+ * BookInfoEntity
  *
- * Represents a database row for a Book.
+ * Represents a database row for a Book from a local database.
  *
- * An "Dumb" Entity that is used to transfer data between the Domain Layer and the Data Layer.
+ * A "Dumb" Entity that is used to transfer data between the Domain Layer and the Data Layer.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.12 Kotlin conversion
  */
 
 @Serializable
-class EntityBookInfo(
+class BookInfoEntity(
     override val id: UUID2<Book> = UUID2.randomUUID2<Book>(),
     val title: String,
     val author: String,
     val description: String,
-    val extraFieldToShowThisIsAnEntity: String? = "This is an EntityBookInfo", // default value
+    val extraFieldToShowThisIsAnEntity: String? = "This is an BookInfoEntity", // default value
     val creationTimeMillis: Long = 0,
     val lastModifiedTimeMillis: Long = 0,
     val isDeleted: Boolean = false
-) : EntityInfo(id),
-    Model.ToDomainInfo<BookInfo>,
-    Model.ToDomainInfo.HasToDomainInfoDeepCopy<BookInfo>,
-    Info.ToInfo<EntityBookInfo>,
-    Info.HasToDeepCopyInfo<EntityBookInfo>
+) : InfoEntity(id),
+    Model.ToDomainInfoDeepCopy<BookInfo>,
+    Info.ToInfoDeepCopy<BookInfoEntity>
 {
-    constructor(json: String, context: Context) : this(jsonConfig.decodeFromString<EntityBookInfo>(json))
+    constructor(json: String, context: Context) : this(jsonConfig.decodeFromString<BookInfoEntity>(json))
 
     ////////////////////////////////////////////////////////////
-    // DTOInfo <-> DomainInfo conversion                      //
-    // Note: Intentionally DON'T accept `DTOInfo.DTOBookInfo` //
+    // InfoDTO <-> DomainInfo conversion                      //
+    // Note: Intentionally DON'T accept `InfoDTO.BookInfoDTO` //
     //   - to keep DB layer separate from API layer)          //
     ////////////////////////////////////////////////////////////
 
-    constructor(bookInfo: EntityBookInfo) : this(
+    constructor(bookInfo: BookInfoEntity) : this(
         bookInfo.id(),
         bookInfo.title,
         bookInfo.author,
@@ -56,13 +54,12 @@ class EntityBookInfo(
         bookInfo.lastModifiedTimeMillis,
         bookInfo.isDeleted
     )
-
     constructor(bookInfo: BookInfo) : this(
         bookInfo.id(),
         bookInfo.title,
         bookInfo.author,
         bookInfo.description,
-        "Extra info added during creation of EntityInfo.EntityBookInfo",
+        "Extra info added during creation of InfoEntity.BookInfoEntity",
         bookInfo.creationTimeMillis,
         bookInfo.lastModifiedTimeMillis,
         false
@@ -88,21 +85,21 @@ class EntityBookInfo(
      * * All "Info" changes are done in the domain layer using BookInfo published methods.
     **/
 
-    /////////////////////////////////
-    // ToDomainInfo implementation //
-    /////////////////////////////////
+    ////////////////////////////////////////////
+    // ToDomainInfoDeepCopy implementation //
+    ////////////////////////////////////////////
 
     override fun toDomainInfoDeepCopy(): BookInfo {
         // implement deep copy (if structure is not flat.)
         return BookInfo(this)
     }
 
-    /////////////////////////////
-    // ToInfo implementation   //
-    /////////////////////////////
+    ////////////////////////////////////////
+    // ToInfoDeepCopy implementation   //
+    ////////////////////////////////////////
 
-    override fun toDeepCopyInfo(): EntityBookInfo {
+    override fun toInfoDeepCopy(): BookInfoEntity {
         // note: implement deep copy (if structure is not flat.)
-        return EntityBookInfo(this)
+        return BookInfoEntity(this)
     }
 }

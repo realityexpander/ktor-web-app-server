@@ -5,8 +5,8 @@ import common.log.ILog
 import common.log.Log
 import common.uuid2.UUID2
 import domain.book.Book
-import domain.book.data.local.EntityBookInfo
-import domain.book.data.network.DTOBookInfo
+import domain.book.data.local.BookInfoEntity
+import domain.book.data.network.BookInfoDTO
 import domain.book.data.network.IBookInfoApi
 import domain.common.data.repo.IRepo
 
@@ -31,20 +31,20 @@ interface IBookInfoRepo : IRepo {
     // Debugging & Testing Methods                     //
     /////////////////////////////////////////////////////
 
-    suspend fun upsertTestEntityBookInfoToDB(entityBookInfo: EntityBookInfo): Result<BookInfo> {
-        val upsertResult: Result<EntityBookInfo> = this.bookInfoDatabase.upsertBookInfo(entityBookInfo)
+    suspend fun upsertTestEntityBookInfoToDB(bookInfoEntity: BookInfoEntity): Result<BookInfo> {
+        val upsertResult: Result<BookInfoEntity> = this.bookInfoDatabase.upsertBookInfo(bookInfoEntity)
         if (upsertResult.isFailure) {
             return Result.failure(upsertResult.exceptionOrNull() ?: Exception("upsertBookInfo DB Error"))
         }
-        return Result.success(entityBookInfo.toDomainInfoDeepCopy())
+        return Result.success(bookInfoEntity.toDomainInfoDeepCopy())
     }
 
-    suspend fun upsertTestDTOBookInfoToApi(dtoBookInfo: DTOBookInfo): Result<BookInfo> {
-        val upsertResult: Result<DTOBookInfo> = bookInfoApi.upsertBookInfo(dtoBookInfo)
+    suspend fun upsertTestDTOBookInfoToApi(bookInfoDTO: BookInfoDTO): Result<BookInfo> {
+        val upsertResult: Result<BookInfoDTO> = bookInfoApi.upsertBookInfo(bookInfoDTO)
         if (upsertResult.isFailure) {
             return Result.failure(upsertResult.exceptionOrNull() ?: Exception("upsertBookInfo API Error"))
         }
-        return Result.success(dtoBookInfo.toDomainInfoDeepCopy())
+        return Result.success(bookInfoDTO.toDomainInfoDeepCopy())
     }
 
     suspend fun printDB(log: ILog = Log()) {

@@ -3,11 +3,12 @@ import domain.Context
 import domain.account.Account
 import domain.account.data.AccountInfo
 import domain.book.data.BookInfo
-import domain.book.data.network.DTOBookInfo
+import domain.book.data.network.BookInfoDTO
 import domain.library.Library
 import domain.user.User
 import domain.book.Book
-import domain.book.data.local.EntityBookInfo
+import domain.book.data.BookInfoRepo
+import domain.book.data.local.BookInfoEntity
 import domain.common.Role
 import domain.library.data.LibraryInfo
 import domain.library.data.LibraryInfoRepo
@@ -45,7 +46,8 @@ class LibraryAppTest {
 
         // Modify the Production context into a Test context.
         return Context(
-            prodContext.bookInfoRepo,
+            // prodContext.bookInfoRepo,
+            BookInfoRepo(testLog, TestingUtils.createTempFileName("bookInfoRepoDB")),
             prodContext.userInfoRepo,
             // prodContext.libraryInfoRepo,
             LibraryInfoRepo(testLog, TestingUtils.createTempFileName("libraryInfoRepoDB")),
@@ -568,7 +570,7 @@ class LibraryAppTest {
 
             // • ACT & ASSERT
             try {
-                val dtoBook10Info = DTOBookInfo(json, context)
+                val dtoBook10Info = BookInfoDTO(json, context)
                 assertNotNull(dtoBook10Info)
                 val book10 = Book(BookInfo(dtoBook10Info), null, context)
                 assertNotNull(book10)
@@ -635,7 +637,7 @@ class LibraryAppTest {
 
             // • ACT & ASSERT
             try {
-                val entityBook10Info = EntityBookInfo(json, context)
+                val entityBook10Info = BookInfoEntity(json, context)
                 assertNotNull(entityBook10Info)
                 val book10 = Book(BookInfo(entityBook10Info), null, context)
                 assertNotNull(book10)

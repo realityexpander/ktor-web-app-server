@@ -7,7 +7,7 @@ import domain.book.Book
 /**
  * BookInfoFileApi
  *
- * Simulates a persistent network API using a local json file database for the DTOBookInfo.
+ * Simulates a persistent network API using a local json file database for the BookInfoDTO.
  *
  * Note: Use Domain-specific language to define the API methods.
  *
@@ -19,34 +19,34 @@ class BookInfoFileApi(
     val bookInfoFileApiDatabaseFilename: String = DEFAULT_BOOKINFO_FILE_API_DATABASE_FILENAME,
 
     // Use a file Api to persist the book info
-    private val api: FileApi<Book, DTOBookInfo> =
+    private val api: FileApi<Book, BookInfoDTO> =
         FileApi(
             bookInfoFileApiDatabaseFilename,
-            DTOBookInfo.serializer()
+            BookInfoDTO.serializer()
         )
 ) : IBookInfoApi {
 
-    override suspend fun fetchBookInfo(id: UUID2<Book>): Result<DTOBookInfo> {
+    override suspend fun fetchBookInfo(id: UUID2<Book>): Result<BookInfoDTO> {
         return api.fetchDtoInfo(id)
     }
 
-    override suspend fun allBookInfos(): Result<Map<UUID2<Book>, DTOBookInfo>> {
+    override suspend fun allBookInfos(): Result<Map<UUID2<Book>, BookInfoDTO>> {
         return api.findAllUUID2ToDtoInfoMap()
     }
 
-    override suspend fun addBookInfo(bookInfo: DTOBookInfo): Result<DTOBookInfo> {
+    override suspend fun addBookInfo(bookInfo: BookInfoDTO): Result<BookInfoDTO> {
         return api.addDtoInfo(bookInfo)
     }
 
-    override suspend fun updateBookInfo(bookInfo: DTOBookInfo): Result<DTOBookInfo> {
+    override suspend fun updateBookInfo(bookInfo: BookInfoDTO): Result<BookInfoDTO> {
         return api.updateDtoInfo(bookInfo)
     }
 
-    override suspend fun upsertBookInfo(bookInfo: DTOBookInfo): Result<DTOBookInfo> {
+    override suspend fun upsertBookInfo(bookInfo: BookInfoDTO): Result<BookInfoDTO> {
         return api.upsertDtoInfo(bookInfo)
     }
 
-    override suspend fun deleteBookInfo(bookInfo: DTOBookInfo): Result<DTOBookInfo> {
+    override suspend fun deleteBookInfo(bookInfo: BookInfoDTO): Result<BookInfoDTO> {
         return api.deleteDtoInfo(bookInfo)
     }
 

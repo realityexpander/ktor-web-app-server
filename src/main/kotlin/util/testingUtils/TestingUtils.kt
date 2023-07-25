@@ -5,8 +5,8 @@ import domain.account.Account
 import domain.account.data.AccountInfo
 import domain.book.Book
 import domain.book.data.BookInfo
-import domain.book.data.local.EntityBookInfo
-import domain.book.data.network.DTOBookInfo
+import domain.book.data.local.BookInfoEntity
+import domain.book.data.network.BookInfoDTO
 import domain.library.Library
 import domain.library.data.LibraryInfo
 import domain.user.User
@@ -43,7 +43,7 @@ class TestingUtils(val context: Context) {
             val id = 1000 + i * 100
             val result: Result<BookInfo> = context.bookInfoRepo
                 .upsertTestEntityBookInfoToDB(
-                    EntityBookInfo(
+                    BookInfoEntity(
                         UUID2.createFakeUUID2<Book>(id),
                         "Title $id",
                         "Author $id",
@@ -64,7 +64,7 @@ class TestingUtils(val context: Context) {
         for (i in 0..9) {
             val id = 1000 + i * 100
             val result: Result<BookInfo> = context.bookInfoRepo.upsertTestDTOBookInfoToApi(
-                DTOBookInfo(
+                BookInfoDTO(
                     UUID2.createFakeUUID2<Book>(id),
                     "Title $id",
                     "Author $id",
@@ -116,7 +116,7 @@ class TestingUtils(val context: Context) {
     // User Repo  //
     ////////////////
 
-    fun createFakeUserInfoInUserInfoRepo(id: Int?): Result<UserInfo> {
+    suspend fun createFakeUserInfoInUserInfoRepo(id: Int?): Result<UserInfo> {
         var someNumber = id
         if (someNumber == null) someNumber = 1
 

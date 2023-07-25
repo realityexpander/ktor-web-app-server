@@ -4,11 +4,11 @@ import common.uuid2.UUID2
 import domain.book.Book
 
 interface IBookInfoApi {
-    suspend fun fetchBookInfo(id: UUID2<Book>): Result<DTOBookInfo>
-    suspend fun allBookInfos(): Result<Map<UUID2<Book>, DTOBookInfo>>
-    suspend fun addBookInfo(bookInfo: DTOBookInfo): Result<DTOBookInfo>
-    suspend fun updateBookInfo(bookInfo: DTOBookInfo): Result<DTOBookInfo>
-    suspend fun upsertBookInfo(bookInfo: DTOBookInfo): Result<DTOBookInfo>
-    suspend fun deleteBookInfo(bookInfo: DTOBookInfo): Result<DTOBookInfo>
+    suspend fun fetchBookInfo(id: UUID2<Book>): Result<BookInfoDTO>
+    suspend fun allBookInfos(): Result<Map<UUID2<Book>, BookInfoDTO>>
+    suspend fun addBookInfo(bookInfo: BookInfoDTO): Result<BookInfoDTO>
+    suspend fun updateBookInfo(bookInfo: BookInfoDTO): Result<BookInfoDTO>
+    suspend fun upsertBookInfo(bookInfo: BookInfoDTO): Result<BookInfoDTO>
+    suspend fun deleteBookInfo(bookInfo: BookInfoDTO): Result<BookInfoDTO>
     suspend fun deleteDatabase(): Result<Unit>
 }

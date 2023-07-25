@@ -79,6 +79,6 @@ class LibraryInfoRepo(
     }
 
     companion object {
-        const val DEFAULT_LIBRARYINFO_REPO_DATABASE_FILENAME = "libraryInfoPersistentRepoDB.json"
+        const val DEFAULT_LIBRARYINFO_REPO_DATABASE_FILENAME = "libraryInfoRepoDB.json"
     }
 }

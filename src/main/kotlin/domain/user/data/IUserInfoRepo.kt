@@ -12,8 +12,8 @@ import domain.user.User
  */
 
 interface IUserInfoRepo : IRepo {
-    fun fetchUserInfo(id: UUID2<User>): Result<UserInfo>
-    fun updateUserInfo(userInfo: UserInfo): Result<UserInfo>
-    fun upsertUserInfo(userInfo: UserInfo): Result<UserInfo>
+    suspend fun fetchUserInfo(id: UUID2<User>): Result<UserInfo>
+    suspend fun updateUserInfo(userInfo: UserInfo): Result<UserInfo>
+    suspend fun upsertUserInfo(userInfo: UserInfo): Result<UserInfo>
     suspend fun deleteDatabase(): Result<Unit>
 }

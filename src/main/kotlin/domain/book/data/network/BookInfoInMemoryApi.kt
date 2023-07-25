@@ -9,7 +9,7 @@ import domain.book.Book
 /**
  * BookInfoInMemoryApi
  *
- * Simulates an API using an in-memory database for the DTOBookInfo.
+ * Simulates an API using an in-memory database for the BookInfoDTO.
  *
  * Note: Use Domain-specific language to define the API methods.
  *
@@ -18,33 +18,33 @@ import domain.book.Book
  */
 
 class BookInfoInMemoryApi(
-    private val api: InMemoryAPI<Book, DTOBookInfo> = InMemoryAPI(
+    private val api: InMemoryAPI<Book, BookInfoDTO> = InMemoryAPI(
         FakeURL("memory://api.book.com"),
         FakeHttpClient()
     )
 ) : IBookInfoApi {
 
-    override suspend fun fetchBookInfo(id: UUID2<Book>): Result<DTOBookInfo> {
+    override suspend fun fetchBookInfo(id: UUID2<Book>): Result<BookInfoDTO> {
         return api.fetchDtoInfo(id)
     }
 
-    override suspend fun allBookInfos(): Result<Map<UUID2<Book>, DTOBookInfo>> {
+    override suspend fun allBookInfos(): Result<Map<UUID2<Book>, BookInfoDTO>> {
         return api.findAllUUID2ToDtoInfoMap()
     }
 
-    override suspend fun addBookInfo(bookInfo: DTOBookInfo): Result<DTOBookInfo> {
+    override suspend fun addBookInfo(bookInfo: BookInfoDTO): Result<BookInfoDTO> {
         return api.addDtoInfo(bookInfo)
     }
 
-    override suspend fun updateBookInfo(bookInfo: DTOBookInfo): Result<DTOBookInfo> {
+    override suspend fun updateBookInfo(bookInfo: BookInfoDTO): Result<BookInfoDTO> {
         return api.updateDtoInfo(bookInfo)
     }
 
-    override suspend fun upsertBookInfo(bookInfo: DTOBookInfo): Result<DTOBookInfo> {
+    override suspend fun upsertBookInfo(bookInfo: BookInfoDTO): Result<BookInfoDTO> {
         return api.upsertDtoInfo(bookInfo)
     }
 
-    override suspend fun deleteBookInfo(bookInfo: DTOBookInfo): Result<DTOBookInfo> {
+    override suspend fun deleteBookInfo(bookInfo: BookInfoDTO): Result<BookInfoDTO> {
         return api.deleteDtoInfo(bookInfo)
     }
 

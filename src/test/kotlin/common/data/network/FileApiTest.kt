@@ -2,7 +2,7 @@ package common.data.network
 
 import common.uuid2.UUID2.Companion.fromUUIDStrToUUID2
 import domain.book.Book
-import domain.book.data.network.DTOBookInfo
+import domain.book.data.network.BookInfoDTO
 import kotlinx.coroutines.*
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -14,12 +14,12 @@ import java.util.*
 class FileApiTest {
 
     private val tempName = UUID.randomUUID().toString()
-    private val testApi = FileApi<Book, DTOBookInfo>(
+    private val testApi = FileApi<Book, BookInfoDTO>(
         apiDatabaseFilename = "test-$tempName-apiDB.json",
-        serializer = DTOBookInfo.serializer()
+        serializer = BookInfoDTO.serializer()
     )
 
-    private val dtoBookInfo = DTOBookInfo(
+    private val bookInfoDTO = BookInfoDTO(
         id = "00000000-0000-0000-0000-000000000100".fromUUIDStrToUUID2(),
         title = "The Hobbit",
         author = "J.R.R. Tolkien",
@@ -45,7 +45,7 @@ class FileApiTest {
         runBlocking {
 
             // • ARRANGE
-            testApi.addDtoInfo(dtoBookInfo)
+            testApi.addDtoInfo(bookInfoDTO)
 
             // • ACT
             val result = testApi.findAllUUID2ToDtoInfoMap()
@@ -54,7 +54,7 @@ class FileApiTest {
             assertTrue(result.isSuccess, "Find all entities test failed, result is not success.")
             assertTrue(result.getOrNull() != null, "Find all entities test failed, result is null.")
             assertTrue(result.getOrNull()!!.isNotEmpty(), "Find all entities test failed, result is empty.")
-            assertTrue(result.getOrNull()!!.containsKey(dtoBookInfo.id()), "Find all entities test failed, result does not contain key.")
+            assertTrue(result.getOrNull()!!.containsKey(bookInfoDTO.id()), "Find all entities test failed, result does not contain key.")
         }
     }
 
@@ -63,16 +63,16 @@ class FileApiTest {
         runBlocking {
 
             // • ARRANGE
-            testApi.addDtoInfo(dtoBookInfo)
+            testApi.addDtoInfo(bookInfoDTO)
 
             // • ACT
-            val result = testApi.fetchDtoInfo(dtoBookInfo.id)
+            val result = testApi.fetchDtoInfo(bookInfoDTO.id)
 
 
             // • ASSERT
             assertTrue(result.isSuccess, "Find all entities test failed, result is not success.")
             assertTrue(result.getOrNull() != null, "Find all entities test failed, result is null.")
-            assertTrue(result.getOrNull()!!.id == dtoBookInfo.id, "Find all entities test failed, result does not contain key.")
+            assertTrue(result.getOrNull()!!.id == bookInfoDTO.id, "Find all entities test failed, result does not contain key.")
         }
     }
 
@@ -81,7 +81,7 @@ class FileApiTest {
         runBlocking {
 
             // • ARRANGE
-            testApi.addDtoInfo(dtoBookInfo)
+            testApi.addDtoInfo(bookInfoDTO)
 
             // • ACT
             val result = testApi.toDatabaseCopy().size
@@ -95,7 +95,7 @@ class FileApiTest {
     fun updateDtoInfo() {
 
         // • ARRANGE
-        val updatedDTOBookInfo = DTOBookInfo(
+        val updatedBookInfoDTO = BookInfoDTO(
             id = "00000000-0000-0000-0000-000000000100".fromUUIDStrToUUID2(),
             title = "The UPDATED Hobbit",
             author = "J.R.R. Tolkien",
@@ -103,17 +103,17 @@ class FileApiTest {
         )
 
         runBlocking {
-            testApi.addDtoInfo(dtoBookInfo)
+            testApi.addDtoInfo(bookInfoDTO)
 
             // • ACT
-            val result = testApi.updateDtoInfo(updatedDTOBookInfo)
+            val result = testApi.updateDtoInfo(updatedBookInfoDTO)
 
             // • ASSERT
             assertTrue(result.isSuccess, "Update entity test failed, result is not success.")
-            val updatedResult = testApi.findEntityById(updatedDTOBookInfo.id)
+            val updatedResult = testApi.findEntityById(updatedBookInfoDTO.id)
             assertNotNull(updatedResult, "Update entity test failed, result is null.")
-            assertTrue(updatedResult?.title == updatedDTOBookInfo.title, "Update entity test failed, title is wrong.")
-            assertTrue(updatedResult?.description == updatedDTOBookInfo.description, "Update entity test failed, description is wrong.")
+            assertTrue(updatedResult?.title == updatedBookInfoDTO.title, "Update entity test failed, title is wrong.")
+            assertTrue(updatedResult?.description == updatedBookInfoDTO.description, "Update entity test failed, description is wrong.")
         }
     }
 
@@ -122,10 +122,10 @@ class FileApiTest {
         runBlocking {
 
             // • ARRANGE
-            testApi.addDtoInfo(dtoBookInfo)
+            testApi.addDtoInfo(bookInfoDTO)
 
             // • ACT
-            testApi.deleteDtoInfo(dtoBookInfo)
+            testApi.deleteDtoInfo(bookInfoDTO)
 
             // • ASSERT
             val result = testApi.toDatabaseCopy().size

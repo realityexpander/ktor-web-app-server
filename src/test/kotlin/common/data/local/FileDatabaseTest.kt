@@ -2,7 +2,7 @@ package common.data.local
 
 import common.uuid2.UUID2.Companion.fromUUIDStrToUUID2
 import domain.book.Book
-import domain.book.data.network.DTOBookInfo
+import domain.book.data.network.BookInfoDTO
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -15,13 +15,13 @@ import java.util.*
 class FileDatabaseTest {
 
     private val tempName = UUID.randomUUID().toString()
-    private val fakeFileDatabase: FakeFileDatabase<Book, DTOBookInfo> =
+    private val fakeFileDatabase: FakeFileDatabase<Book, BookInfoDTO> =
         FakeFileDatabase(
             databaseFilename = "test-$tempName-apiDB.json",
-            entityKSerializer = DTOBookInfo.serializer()
+            entityKSerializer = BookInfoDTO.serializer()
         )
 
-    private val dtoBookInfo = DTOBookInfo(
+    private val bookInfoDTO = BookInfoDTO(
         id = "00000000-0000-0000-0000-000000000100".fromUUIDStrToUUID2<Book>(),
         title = "The Hobbit",
         author = "J.R.R. Tolkien",
@@ -47,14 +47,14 @@ class FileDatabaseTest {
         runBlocking {
 
             // • ARRANGE
-            fakeFileDatabase.addEntity(dtoBookInfo)
+            fakeFileDatabase.addEntity(bookInfoDTO)
 
             // • ACT
             val result = fakeFileDatabase.findAllEntities()
 
             // • ASSERT
             assertTrue(result.size == 1, "Find all entities test failed, size is wrong.")
-            assertTrue(result[0].id() == dtoBookInfo.id, "Find all entities test failed, id is wrong.")
+            assertTrue(result[0].id() == bookInfoDTO.id, "Find all entities test failed, id is wrong.")
         }
     }
 
@@ -63,14 +63,14 @@ class FileDatabaseTest {
         runBlocking {
 
             // • ARRANGE
-            fakeFileDatabase.addEntity(dtoBookInfo)
+            fakeFileDatabase.addEntity(bookInfoDTO)
 
             // • ACT
-            val result = fakeFileDatabase.findEntityById(dtoBookInfo.id)
+            val result = fakeFileDatabase.findEntityById(bookInfoDTO.id)
 
             // • ASSERT
             assertTrue(result != null, "Find entity by id test failed, result is null.")
-            assertTrue(result!!.id() == dtoBookInfo.id, "Find entity by id test failed, id is wrong.")
+            assertTrue(result!!.id() == bookInfoDTO.id, "Find entity by id test failed, id is wrong.")
         }
     }
 
@@ -82,11 +82,11 @@ class FileDatabaseTest {
             // no-op
 
             // • ACT
-            val result = fakeFileDatabase.findEntityById(dtoBookInfo.id)
+            val result = fakeFileDatabase.findEntityById(bookInfoDTO.id)
 
             // • ASSERT
             assertFalse(result != null, "Find entity by id test succeeded but should have failed, result is not null.")
-            assertFalse(result?.id() == dtoBookInfo.id, "Find entity by id test succeeded but should have failed.")
+            assertFalse(result?.id() == bookInfoDTO.id, "Find entity by id test succeeded but should have failed.")
         }
     }
 
@@ -98,12 +98,12 @@ class FileDatabaseTest {
             val initialSize = fakeFileDatabase.findAllEntities().size
 
             // • ACT
-            fakeFileDatabase.addEntity(dtoBookInfo)
+            fakeFileDatabase.addEntity(bookInfoDTO)
 
             // • ASSERT
             val result = fakeFileDatabase.findAllEntities()
             assertTrue(result.size == initialSize + 1, "Add entity test failed, size is wrong.")
-            assertTrue(result[0].id() == dtoBookInfo.id, "Add entity test failed, id is wrong.")
+            assertTrue(result[0].id() == bookInfoDTO.id, "Add entity test failed, id is wrong.")
         }
     }
 
@@ -112,24 +112,24 @@ class FileDatabaseTest {
         runBlocking {
 
             // • ARRANGE
-            fakeFileDatabase.addEntity(dtoBookInfo)
-            val updatedDtoBookInfo = DTOBookInfo(
-                id = dtoBookInfo.id,
+            fakeFileDatabase.addEntity(bookInfoDTO)
+            val updatedBookInfoDTO = BookInfoDTO(
+                id = bookInfoDTO.id,
                 title = "The UPDATED TITLE Hobbit",
                 author = "J.R.R. Tolkien",
                 description = "UPDATED DESCRIPTION"
             )
 
             // • ACT
-            fakeFileDatabase.updateEntity(updatedDtoBookInfo)
+            fakeFileDatabase.updateEntity(updatedBookInfoDTO)
 
             // • ASSERT
             val result = fakeFileDatabase.findAllEntities()
             assertTrue(result.size == 1, "Update entity test failed, size is wrong.")
-            assertTrue(result[0].id() == dtoBookInfo.id, "Update entity test failed, id is wrong.")
-            assertTrue(result[0].title == updatedDtoBookInfo.title, "Update entity test failed, title is wrong.")
-            assertTrue(result[0].author == updatedDtoBookInfo.author, "Update entity test failed, author is wrong.")
-            assertTrue(result[0].description == updatedDtoBookInfo.description, "Update entity test failed, description is wrong.")
+            assertTrue(result[0].id() == bookInfoDTO.id, "Update entity test failed, id is wrong.")
+            assertTrue(result[0].title == updatedBookInfoDTO.title, "Update entity test failed, title is wrong.")
+            assertTrue(result[0].author == updatedBookInfoDTO.author, "Update entity test failed, author is wrong.")
+            assertTrue(result[0].description == updatedBookInfoDTO.description, "Update entity test failed, description is wrong.")
         }
     }
 
@@ -138,10 +138,10 @@ class FileDatabaseTest {
         runBlocking {
 
             // • ARRANGE
-            fakeFileDatabase.addEntity(dtoBookInfo)
+            fakeFileDatabase.addEntity(bookInfoDTO)
 
             // • ACT
-            fakeFileDatabase.deleteEntity(dtoBookInfo)
+            fakeFileDatabase.deleteEntity(bookInfoDTO)
 
             // • ASSERT
             val result = fakeFileDatabase.findAllEntities()
@@ -154,21 +154,21 @@ class FileDatabaseTest {
         runBlocking {
 
             // • ARRANGE + ACT
-            fakeFileDatabase.addEntity(dtoBookInfo)
+            fakeFileDatabase.addEntity(bookInfoDTO)
             // • ASSERT
             assertTrue(fakeFileDatabase.calledUpdateLookupTables,
                 "Update lookup tables test failed, never happened for addEntity")
 
             // • ARRANGE + ACT
             fakeFileDatabase.calledUpdateLookupTables = false  // reset test
-            fakeFileDatabase.updateEntity(dtoBookInfo)
+            fakeFileDatabase.updateEntity(bookInfoDTO)
             // • ASSERT
             assertTrue(fakeFileDatabase.calledUpdateLookupTables,
                 "Update lookup tables test failed, never happened for updateEntity")
 
             // • ARRANGE + ACT
             fakeFileDatabase.calledUpdateLookupTables = false  // reset test
-            fakeFileDatabase.deleteEntity(dtoBookInfo)
+            fakeFileDatabase.deleteEntity(bookInfoDTO)
             // • ASSERT
             assertTrue(fakeFileDatabase.calledUpdateLookupTables,
                 "Update lookup tables test failed, never happened for deleteEntity")
@@ -187,7 +187,7 @@ class FileDatabaseTest {
         runBlocking {
 
             // • ARRANGE
-            fakeFileDatabase.addEntity(dtoBookInfo)
+            fakeFileDatabase.addEntity(bookInfoDTO)
 
             // • ACT
             fakeFileDatabase.deleteDatabaseFile()

@@ -5,17 +5,15 @@ import common.uuid2.UUID2
 import domain.Context
 import domain.Context.Companion.gsonConfig
 import domain.common.data.info.DomainInfo
-import domain.common.data.info.local.EntityInfo
-import domain.common.data.info.network.DTOInfo
-import kotlinx.serialization.InternalSerializationApi
+import domain.common.data.info.local.InfoEntity
+import domain.common.data.info.network.InfoDTO
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import java.util.*
 
 /**
  * **Model** - Top of data "Info" hierarchy
  *
- * * Defines interface for data `Info` conversion of **`DomainInfo`** *to/from* **`DTOInfo/EntityInfo`**.<br></br>
+ * * Defines interface for data `Info` conversion of **`DomainInfo`** *to/from* **`InfoDTO/InfoEntity`**.<br></br>
  *
  *
  * **Domain Info Classes**
@@ -31,9 +29,9 @@ import java.util.*
  *
  * **DTO/Entity Info Classes**
  *
- *  * `{DTOInfo}Info` hold the API transfer "dumb" objects that transport info to/from their service/api/db.
- *  * `{EntityInfo}Info` hold the Database transfer "dumb" objects that transport info to/from their service/db.
- *  * Minimal validation occurs in the Domain layer when a DTOInfo/EntityInfo object is converted into
+ *  * `{InfoDTO}Info` hold the API transfer "dumb" objects that transport info to/from their service/api/db.
+ *  * `{InfoEntity}Info` hold the Database transfer "dumb" objects that transport info to/from their service/db.
+ *  * Minimal validation occurs in the Domain layer when a InfoDTO/InfoEntity object is converted into
  *    a DomainInfo object.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
@@ -76,12 +74,12 @@ open class Model(
     // - DTO.{Domain}Info    //
     ///////////////////////////
 
-    interface ToDomainInfo<TDomainInfo : DomainInfo> {
+    interface ToDomainInfoDeepCopy<TDomainInfo : DomainInfo> {
         /**
-        * **MUST** override in subclass.
+         * **MUST** override in subclass.
          *
-        * * Overridden method must return `id` with the correct type of `UUID2` for the Role.
-        * * ie: `UUID2<User>` for a `User`, `UUID2<Book>` for a `Book`, etc.
+         * * Overridden method must return `id` with the correct type of `UUID2` for the Role.
+         * * ie: `UUID2<User>` for a `User`, `UUID2<Book>` for a `Book`, etc.
         **/
 
         fun domainInfo(): TDomainInfo {
@@ -90,10 +88,9 @@ open class Model(
         }
 
         /**
-        * **MUST** override, method in subclass.
-        * * Should return a DEEP copy (& no original references)
+         * **MUST** override, method in subclass.
+         * * Should return a DEEP copy (& no original references)
         **/
-        @OptIn(InternalSerializationApi::class)
         open fun toDomainInfoDeepCopy(): TDomainInfo {
 
             // This method is a lazy convenience using a Gson hack, and should really be overridden in each class.
@@ -102,34 +99,16 @@ open class Model(
                     gsonConfig.fromJson(it, this::class.java)
                 } as TDomainInfo
 
-            // LEAVE THIS HERE FOR NOW
-            //throw RuntimeException("DomainInfo:ToDomainInfo:toDeepCopyDomainInfo(): Must override this method")
-        }
-
-        /**
-        * This interface enforces all `{Domain}Info` objects to include a `deepDomainInfoCopy()` method
-        * * Simply add implements **`ToDomainInfo.deepCopyDomainInfo<ToDomainInfo<{Domain}>>`** to the class
-        *   definition, and the default `deepCopy()` method will be added.
-        **/
-        interface HasToDomainInfoDeepCopy<TToInfo : ToDomainInfo<out DomainInfo>> {
-
-            // Should be overridden in subclass
-            // Here as a default flat-copy implementation.
-            // Should return a deep copy (no original references)
-            open fun deepCopyDomainInfo(): DomainInfo
-            {
-                // This method is a lazy convenience, and should really be overridden in each class.
-                @Suppress("UNCHECKED_CAST")
-                return (this as TToInfo).toDomainInfoDeepCopy()
-            }
+            // LEAVE FOR REFERENCE
+            //throw RuntimeException("DomainInfo:ToDomainInfoDeepCopy:toDeepCopyDomainInfo(): Must override this method")
         }
     }
 
-    interface ToEntityInfo<T : EntityInfo> {
+    interface ToEntityInfo<T : InfoEntity> {
         fun toInfoEntity(): T // Should return a deep copy (no original references)
     }
 
-    interface ToDTOInfo<T : DTOInfo> {
+    interface ToDTOInfo<T : InfoDTO> {
         fun toInfoDTO(): T // Should return a deep copy (no original references)
     }
 }

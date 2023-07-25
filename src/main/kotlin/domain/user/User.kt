@@ -324,7 +324,7 @@ class User : Role<UserInfo>, IUUID2 {
         // Static constructors //
         /////////////////////////
 
-        fun fetchUser(id: UUID2<User>, context: Context): Result<User> {
+        suspend fun fetchUser(id: UUID2<User>, context: Context): Result<User> {
 
             // get the User's UserInfo
             val userInfoResult: Result<UserInfo> = context.userInfoRepo.fetchUserInfo(id)

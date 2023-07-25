@@ -33,7 +33,7 @@ class AccountInfo private constructor(
     val maxFinePennies: Int,
     private val timeStampToAccountAuditLogItemMap: MutableMap<Long, AccountAuditLogItem>
 ) : DomainInfo(id),
-    Model.ToDomainInfo<AccountInfo>
+    Model.ToDomainInfoDeepCopy<AccountInfo>
 {
     // Showing the object can use internal ways to track its own data that will not be directly exposed to the outside world.
     // Ie: we could have used a "Log" role here, but instead we just use a Simple Map.
@@ -465,7 +465,7 @@ class AccountInfo private constructor(
     }
 
     /////////////////////////////////
-    // ToDomainInfo implementation //
+    // ToDomainInfoDeepCopy implementation //
     /////////////////////////////////
 
     // note: currently no DB or API for UserInfo (so no .ToEntity() or .ToDTO())

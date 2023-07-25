@@ -44,7 +44,8 @@ interface Info<TInfo : Model> {
     // Default naive implementation, returns a deep copy of the Info object.
     // - Should be overloaded in the Info subclass to return a deep copy of the Info object.
     fun deepCopyInfo(): TInfo {
-        val gson = Gson()
+        val gson = Gson()   // intentionally not using Context.gsonConfig,
+                            // since it's not a necessary dependency in this case and keeps the separation of concerns.
 
         // hacky but works for flat/simple objects, but should be overridden in the subclass.
         @Suppress("UNCHECKED_CAST")
@@ -58,29 +59,19 @@ interface Info<TInfo : Model> {
     // Interfaces for Info     //
     /////////////////////////////
 
-    interface ToInfo<TInfo : Model> {
-//        fun id(): UUID2<*>    // Returns the UUID2 of the Info object
+    interface ToInfoDeepCopy<TInfo : Model> {
 
-        fun info(): TInfo? {           // Fetches (if necessary) and Returns the Info object
+        // Fetches (if necessary) and Returns the Info object for the Role.
+        fun info(): TInfo? {
             @Suppress("UNCHECKED_CAST")
             return this as TInfo
         }
 
-        // Should be overridden in the `{Domain}Info` subclass to return a deep copy of the Info object.
-        fun toDeepCopyInfo(): TInfo {
+        // Return a deep copy of the Info object.
+        // NOTE: Should override in the `{Domain}Info` subclass.
+        fun toInfoDeepCopy(): TInfo {
             @Suppress("UNCHECKED_CAST")
-            return (this as Info<TInfo>).deepCopyInfo()
-        }
-    }
-
-    // This interface used to enforce all {Domain}Info objects has a `deepCopy()` method.
-    // - Just add `implements ToInfo.hasDeepCopyInfo<ToInfo<{InfoClass}>>` to the class
-    //   definition, and the toDeepCopyInfo() method will be added.
-    interface HasToDeepCopyInfo<TInfo : ToInfo<*>> {
-        fun deepCopyInfo(): TInfo {
-            // This default implementation for deepCopyInfo() simply calls the toDeepCopyInfo() implemented in the subclass.
-            @Suppress("UNCHECKED_CAST")
-            return (this as TInfo).toDeepCopyInfo() as TInfo
+            return (this as Info<TInfo>).deepCopyInfo()  // uses default naive gson-based implementation
         }
     }
 
@@ -114,7 +105,7 @@ interface Info<TInfo : Model> {
         return Result.success(infoFromJson as TInfo)
     }
 
-    fun findRootClazz(infoClazz: Class<*>): Class<*> {
+    private fun findRootClazz(infoClazz: Class<*>): Class<*> {
         var rootClazz = infoClazz
 
         while (rootClazz.superclass.simpleName != "Object") {
@@ -127,7 +118,7 @@ interface Info<TInfo : Model> {
     companion object {
 
         // Create an Info object from a JSON string using Gson serialization
-        fun <TToInfo : ToInfo<*>?> createInfoFromJson(
+        fun <TToInfo : ToInfoDeepCopy<*>?> createInfoFromJson(
             json: String,
             infoClazz: Class<TToInfo>,  // type of `Info` object to create
             context: Context
@@ -151,7 +142,7 @@ interface Info<TInfo : Model> {
         }
 
         // Create an Info object from a JSON string using Kotlinx serialization
-        inline fun <reified TToInfo : ToInfo<*>?> createInfoFromJson(
+        inline fun <reified TToInfo : ToInfoDeepCopy<*>?> createInfoFromJson(
             json: String,
             context: Context
         ): TToInfo? {
@@ -164,7 +155,7 @@ interface Info<TInfo : Model> {
             } catch (e: Exception) {
                 context.log.d(
                     "Info:createInfoFromJson()", "Failed to createInfoFromJson() for " +
-                            "class: " + ToInfo::class.java.name + ", " +
+                            "class: " + ToInfoDeepCopy::class.java.name + ", " +
                             "json: " + json + ", " +
                             "exception: " + e
                 )

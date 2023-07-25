@@ -301,7 +301,7 @@ abstract class Role<TDomainInfo : DomainInfo> (
          * * ie: The `Library` Role object has a **`DomainInfo.LibraryInfo`** object which requires
          *   **`ToDomain<DomainInfo.LibraryInfo>`** to be implemented.
          *
-         * * The `Domain.EntityInfo` and `Domain.DTOInfo` layer are intentionally restricted to accept only `Domain` objects.
+         * * The `Domain.InfoEntity` and `Domain.InfoDTO` layer are intentionally restricted to accept only `Domain` objects.
         **/
         inline fun <reified TDomainInfo : DomainInfo>  // restrict to Domain subclasses, ie: Model.DomainInfo.*
         createInfoFromJson(

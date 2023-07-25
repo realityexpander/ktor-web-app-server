@@ -6,9 +6,9 @@ import common.log.ILog
 import common.log.Log
 import common.uuid2.UUID2
 import domain.book.Book
-import domain.book.data.local.EntityBookInfo
+import domain.book.data.local.BookInfoEntity
 import domain.book.data.network.BookInfoFileApi
-import domain.book.data.network.DTOBookInfo
+import domain.book.data.network.BookInfoDTO
 import domain.book.data.network.IBookInfoApi
 import domain.common.data.repo.Repo
 
@@ -23,24 +23,28 @@ import domain.common.data.repo.Repo
 
 open class BookInfoRepo(
     override val log: ILog = Log(),
-    override val bookInfoApi: IBookInfoApi = BookInfoFileApi(),
-    override val bookInfoDatabase: IBookInfoDatabase = BookInfoFileDatabase()
+
+    private val bookInfoApiFilename: String = BookInfoFileApi.DEFAULT_BOOKINFO_FILE_API_DATABASE_FILENAME,
+    override val bookInfoApi: IBookInfoApi = BookInfoFileApi(bookInfoApiFilename),
+
+    private val bookInfoDatabaseFilename: String = BookInfoFileDatabase.DEFAULT_BOOKINFO_FILE_DATABASE_FILENAME,
+    override val bookInfoDatabase: IBookInfoDatabase = BookInfoFileDatabase(bookInfoDatabaseFilename)
 ) : Repo(log), IBookInfoRepo {
 
     override suspend fun fetchBookInfo(id: UUID2<Book>): Result<BookInfo> {
         log.d(this, "bookId $id")
 
         // Make the request to API
-        val fetchBookApiResult: Result<DTOBookInfo> = bookInfoApi.fetchBookInfo(id)
+        val fetchBookApiResult: Result<BookInfoDTO> = bookInfoApi.fetchBookInfo(id)
         if (fetchBookApiResult.isFailure) {
 
             // API failed, now try to get from cached DB
-            val fetchBookDBResult: Result<EntityBookInfo> = bookInfoDatabase.fetchBookInfo(id)
+            val fetchBookDBResult: Result<BookInfoEntity> = bookInfoDatabase.fetchBookInfo(id)
             if (fetchBookDBResult.isFailure) {
                 return Result.failure(fetchBookDBResult.exceptionOrNull() ?: Exception("getBookInfo Error"))
             }
 
-            val bookInfo: EntityBookInfo = fetchBookDBResult.getOrNull()
+            val bookInfo: BookInfoEntity = fetchBookDBResult.getOrNull()
                 ?: return Result.failure(Exception("getBookInfo Error"))
             return Result.success(bookInfo.toDomainInfoDeepCopy())
         }
@@ -55,7 +59,7 @@ open class BookInfoRepo(
 
 
         // Cache to Local DB
-        val updateDBResult: Result<EntityBookInfo> = bookInfoDatabase.updateBookInfo(bookInfo.toInfoEntity())
+        val updateDBResult: Result<BookInfoEntity> = bookInfoDatabase.updateBookInfo(bookInfo.toInfoEntity())
         if (updateDBResult.isFailure) {
             return Result.failure(updateDBResult.exceptionOrNull() ?: Exception("updateBookInfo Error"))
         }
@@ -123,9 +127,9 @@ open class BookInfoRepo(
         log.d(this, "updateType: " + updateKind + ", id: " + bookInfo.id())
 
         // Make the API request
-        val apiChangeResult: Result<DTOBookInfo> = when (updateKind) {
+        val apiChangeResult: Result<BookInfoDTO> = when (updateKind) {
             UpdateKind.UPDATE -> {
-                val bookExistsResult: Result<DTOBookInfo> = bookInfoApi.fetchBookInfo(bookInfo.id())
+                val bookExistsResult: Result<BookInfoDTO> = bookInfoApi.fetchBookInfo(bookInfo.id())
                 if (bookExistsResult.isFailure)
                     return Result.failure((bookExistsResult.exceptionOrNull() ?: Exception("fetchBookInfo Error")))
 
@@ -140,9 +144,9 @@ open class BookInfoRepo(
         }
 
         // Save to Local DB
-        val dbChangeResult: Result<EntityBookInfo> = when (updateKind) {
+        val dbChangeResult: Result<BookInfoEntity> = when (updateKind) {
             UpdateKind.UPDATE -> {
-                val bookExistsResult: Result<EntityBookInfo> = bookInfoDatabase.fetchBookInfo(bookInfo.id())
+                val bookExistsResult: Result<BookInfoEntity> = bookInfoDatabase.fetchBookInfo(bookInfo.id())
                 if (bookExistsResult.isFailure)
                     return Result.failure((bookExistsResult.exceptionOrNull() ?: Exception("getBookInfo Error")))
 

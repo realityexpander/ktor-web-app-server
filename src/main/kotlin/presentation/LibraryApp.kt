@@ -8,7 +8,7 @@ import domain.account.Account
 import domain.account.data.AccountInfo
 import domain.book.Book
 import domain.book.data.BookInfo
-import domain.book.data.network.DTOBookInfo
+import domain.book.data.network.BookInfoDTO
 import domain.common.Role
 import domain.library.Library
 import domain.library.data.LibraryInfo
@@ -424,8 +424,8 @@ internal class LibraryApp(private val context: Context) {
                     }""".trimIndent()
 
                     try {
-                        val dtoBookInfo3 = DTOBookInfo(json, context)
-                        val book3: Book = Book(BookInfo(dtoBookInfo3), null, context)
+                        val bookInfoDTO3 = BookInfoDTO(json, context)
+                        val book3: Book = Book(BookInfo(bookInfoDTO3), null, context)
                         context.log.d(this, "Results of load BookInfo from DTO Json: " + book3.toJson())
                     } catch (e: Exception) {
                         context.log.e(this, "Exception: " + e.message)
@@ -453,8 +453,8 @@ internal class LibraryApp(private val context: Context) {
                     }""".trimIndent()
 
                     try {
-                        val dtoBookInfo3 = DTOBookInfo(json, context)
-                        val book3: Book = Book(dtoBookInfo3, null, context) // passing in DTO directly to Book constructor
+                        val bookInfoDTO3 = BookInfoDTO(json, context)
+                        val book3: Book = Book(bookInfoDTO3, null, context) // passing in DTO directly to Book constructor
                         context.log.d(this, "Results of load BookInfo from DTO Json: " + book3.toJson())
                     } catch (e: Exception) {
                         context.log.e(this, "Exception: " + e.message)

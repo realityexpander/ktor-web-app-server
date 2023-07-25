@@ -7,8 +7,8 @@ import domain.Context
 import domain.Context.Companion.gsonConfig
 import domain.book.data.BookInfo
 import domain.book.data.IBookInfoRepo
-import domain.book.data.local.EntityBookInfo
-import domain.book.data.network.DTOBookInfo
+import domain.book.data.local.BookInfoEntity
+import domain.book.data.network.BookInfoDTO
 import domain.common.Role
 import domain.library.Library
 import domain.library.PrivateLibrary
@@ -97,21 +97,21 @@ class Book : Role<BookInfo>, IUUID2 {
     //   separate from Domain layer        //
     /////////////////////////////////////////
 
-    constructor(bookInfoDTO: DTOBookInfo, sourceLibrary: Library?, context: Context) : this(
+    constructor(bookInfoDTO: BookInfoDTO, sourceLibrary: Library?, context: Context) : this(  // sourceLibrary is nullable
         BookInfo(bookInfoDTO),
         sourceLibrary,
         context
     )
 
-    constructor(bookInfoEntity: EntityBookInfo, sourceLibrary: Library, context: Context) : this(
+    constructor(bookInfoEntity: BookInfoEntity, sourceLibrary: Library, context: Context) : this(
         BookInfo(bookInfoEntity),
         sourceLibrary,
         context
     )
 
-    ////////////////////////
-    // Published Getters  //
-    ////////////////////////
+    ////////////////////////////////
+    // Published Simple Getters   //
+    ////////////////////////////////
 
     // Convenience method to get the Type-safe id from the Class
     override fun id(): UUID2<Book> {
@@ -128,7 +128,7 @@ class Book : Role<BookInfo>, IUUID2 {
     }
 
     /////////////////////////////////////
-    // IRole/UUID2 Required Overrides  //
+    // Role/UUID2 Required Overrides   //
     /////////////////////////////////////
 
     override suspend fun fetchInfoResult(): Result<BookInfo> {
@@ -150,6 +150,10 @@ class Book : Role<BookInfo>, IUUID2 {
     override fun uuid2TypeStr(): String {
         return UUID2.calcUUID2TypeStr(this.javaClass)
     }
+
+    ////////////////////////
+    // Business Logic     //
+    ////////////////////////
 
     val isBookFromPrivateLibrary: Boolean
         get() = sourceLibrary is PrivateLibrary

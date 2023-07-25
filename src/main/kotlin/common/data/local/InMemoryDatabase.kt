@@ -3,10 +3,10 @@ package common.data.local
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import common.data.network.FakeURL
-import domain.common.data.info.local.EntityInfo
+import domain.common.data.info.local.InfoEntity
 
 /**
- * InMemoryDatabase is an implementation of the IDatabase interface for the EntityInfo class.
+ * InMemoryDatabase is an implementation of the IDatabase interface for the InfoEntity class.
  *
  * This class is a stub for a real database implementation.
  *
@@ -16,7 +16,7 @@ import domain.common.data.info.local.EntityInfo
  * @since 0.12 Kotlin conversion
  */
 
-class InMemoryDatabase<TUUID2 : IUUID2, TEntity : EntityInfo> (
+class InMemoryDatabase<TUUID2 : IUUID2, TEntity : InfoEntity> (
     fakeUrl: FakeURL = FakeURL("memory://hash.map"),
     user: String = "admin",
     password: String = "password",

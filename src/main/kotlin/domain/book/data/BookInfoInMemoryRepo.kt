@@ -10,7 +10,7 @@ class BookInfoInMemoryRepo(
     private val bookInfoInMemoryApi: BookInfoInMemoryApi = BookInfoInMemoryApi(),
     private val bookInfoInMemoryDatabase: BookInfoInMemoryDatabase = BookInfoInMemoryDatabase()
 ) : BookInfoRepo(
-        log,
-        bookInfoInMemoryApi,
-        bookInfoInMemoryDatabase
+        log = log,
+        bookInfoApi = bookInfoInMemoryApi,
+        bookInfoDatabase = bookInfoInMemoryDatabase
     )   

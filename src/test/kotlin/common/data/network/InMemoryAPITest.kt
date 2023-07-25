@@ -2,7 +2,7 @@ package common.data.network
 
 import common.uuid2.UUID2.Companion.fromUUIDStrToUUID2
 import domain.book.Book
-import domain.book.data.network.DTOBookInfo
+import domain.book.data.network.BookInfoDTO
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 
@@ -13,9 +13,9 @@ import java.util.*
 class InMemoryAPITest {
 
     private val tempName = UUID.randomUUID().toString()
-    private val testApi = InMemoryAPI<Book, DTOBookInfo>()
+    private val testApi = InMemoryAPI<Book, BookInfoDTO>()
 
-    private val dtoBookInfo = DTOBookInfo(
+    private val bookInfoDTO = BookInfoDTO(
         id = "00000000-0000-0000-0000-000000000100".fromUUIDStrToUUID2(),
         title = "The Hobbit",
         author = "J.R.R. Tolkien",
@@ -33,7 +33,7 @@ class InMemoryAPITest {
         runBlocking {
 
             // • ARRANGE
-            testApi.addDtoInfo(dtoBookInfo)
+            testApi.addDtoInfo(bookInfoDTO)
 
             // • ACT
             val result = testApi.findAllUUID2ToDtoInfoMap()
@@ -42,7 +42,7 @@ class InMemoryAPITest {
             assertTrue(result.isSuccess, "Find all entities test failed, result is not success.")
             assertTrue(result.getOrNull() != null, "Find all entities test failed, result is null.")
             assertTrue(result.getOrNull()!!.isNotEmpty(), "Find all entities test failed, result is empty.")
-            assertTrue(result.getOrNull()!!.containsKey(dtoBookInfo.id()), "Find all entities test failed, result does not contain key.")
+            assertTrue(result.getOrNull()!!.containsKey(bookInfoDTO.id()), "Find all entities test failed, result does not contain key.")
         }
     }
 
@@ -51,15 +51,15 @@ class InMemoryAPITest {
         runBlocking {
 
             // • ARRANGE
-            testApi.addDtoInfo(dtoBookInfo)
+            testApi.addDtoInfo(bookInfoDTO)
 
             // • ACT
-            val result = testApi.fetchDtoInfo(dtoBookInfo.id())
+            val result = testApi.fetchDtoInfo(bookInfoDTO.id())
 
             // • ASSERT
             assertTrue(result.isSuccess, "Fetch entity test failed, result is not success.")
             assertTrue(result.getOrNull() != null, "Fetch entity test failed, result is null.")
-            assertEquals(dtoBookInfo, result.getOrNull(), "Fetch entity test failed, result does not match.")
+            assertEquals(bookInfoDTO, result.getOrNull(), "Fetch entity test failed, result does not match.")
         }
     }
 
@@ -68,21 +68,21 @@ class InMemoryAPITest {
         runBlocking {
 
             // • ARRANGE
-            val updatedDTOBookInfo = DTOBookInfo(
+            val updatedBookInfoDTO = BookInfoDTO(
                 id = "00000000-0000-0000-0000-000000000100".fromUUIDStrToUUID2(),
                 title = "The UPDATED Hobbit",
                 author = "J.R.R. Tolkien",
                 description = "UPDATED DESCRIPTION"
             )
-            testApi.addDtoInfo(dtoBookInfo)
+            testApi.addDtoInfo(bookInfoDTO)
 
             // • ACT
-            val result = testApi.updateDtoInfo(updatedDTOBookInfo)
+            val result = testApi.updateDtoInfo(updatedBookInfoDTO)
 
             // • ASSERT
             assertTrue(result.isSuccess, "Update entity test failed, result is not success.")
             assertTrue(result.getOrNull() != null, "Update entity test failed, result is null.")
-            assertEquals(updatedDTOBookInfo, result.getOrNull(), "Update entity test failed, result does not match.")
+            assertEquals(updatedBookInfoDTO, result.getOrNull(), "Update entity test failed, result does not match.")
         }
     }
 
@@ -91,10 +91,10 @@ class InMemoryAPITest {
         runBlocking {
 
             // • ARRANGE
-            testApi.addDtoInfo(dtoBookInfo)
+            testApi.addDtoInfo(bookInfoDTO)
 
             // • ACT
-            val result = testApi.addDtoInfo(dtoBookInfo)
+            val result = testApi.addDtoInfo(bookInfoDTO)
 
             // • ASSERT
             assertTrue(result.isFailure, "Add entity test failed, result is not failure.")
@@ -108,21 +108,21 @@ class InMemoryAPITest {
         runBlocking {
 
             // • ARRANGE
-            val updatedDTOBookInfo = DTOBookInfo(
+            val updatedBookInfoDTO = BookInfoDTO(
                 id = "00000000-0000-0000-0000-000000000100".fromUUIDStrToUUID2(),
                 title = "The UPDATED Hobbit",
                 author = "J.R.R. Tolkien",
                 description = "UPDATED DESCRIPTION"
             )
-            testApi.addDtoInfo(dtoBookInfo)
+            testApi.addDtoInfo(bookInfoDTO)
 
             // • ACT
-            val result = testApi.upsertDtoInfo(updatedDTOBookInfo)
+            val result = testApi.upsertDtoInfo(updatedBookInfoDTO)
 
             // • ASSERT
             assertTrue(result.isSuccess, "Upsert entity test failed, result is not success.")
             assertTrue(result.getOrNull() != null, "Upsert entity test failed, result is null.")
-            assertEquals(updatedDTOBookInfo, result.getOrNull(), "Upsert entity test failed, result does not match.")
+            assertEquals(updatedBookInfoDTO, result.getOrNull(), "Upsert entity test failed, result does not match.")
         }
     }
 
@@ -131,16 +131,15 @@ class InMemoryAPITest {
         runBlocking {
 
             // • ARRANGE
-            testApi.addDtoInfo(dtoBookInfo)
+            testApi.addDtoInfo(bookInfoDTO)
 
             // • ACT
-            val result = testApi.deleteDtoInfo(dtoBookInfo)
+            val result = testApi.deleteDtoInfo(bookInfoDTO)
 
             // • ASSERT
             assertTrue(result.isSuccess, "Delete entity test failed, result is not success.")
             assertTrue(result.getOrNull() != null, "Delete entity test failed, result is null.")
-            assertEquals(dtoBookInfo, result.getOrNull(), "Delete entity test failed, result does not match.")
+            assertEquals(bookInfoDTO, result.getOrNull(), "Delete entity test failed, result does not match.")
         }
     }
-
 }

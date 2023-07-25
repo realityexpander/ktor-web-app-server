@@ -2,15 +2,15 @@ package com.realityexpander.domain.book.data.local
 
 import common.uuid2.UUID2
 import domain.book.Book
-import domain.book.data.local.EntityBookInfo
+import domain.book.data.local.BookInfoEntity
 
 interface IBookInfoDatabase {
-    suspend fun fetchBookInfo(id: UUID2<Book>): Result<EntityBookInfo>
-    suspend fun allBookInfos(): Result<Map<UUID2<Book>, EntityBookInfo>>
-    suspend fun addBookInfo(bookInfo: EntityBookInfo): Result<EntityBookInfo>
-    suspend fun updateBookInfo(bookInfo: EntityBookInfo): Result<EntityBookInfo>
-    suspend fun upsertBookInfo(bookInfo: EntityBookInfo): Result<EntityBookInfo>
-    suspend fun deleteBookInfo(bookInfo: EntityBookInfo): Result<EntityBookInfo>
+    suspend fun fetchBookInfo(id: UUID2<Book>): Result<BookInfoEntity>
+    suspend fun allBookInfos(): Result<Map<UUID2<Book>, BookInfoEntity>>
+    suspend fun addBookInfo(bookInfo: BookInfoEntity): Result<BookInfoEntity>
+    suspend fun updateBookInfo(bookInfo: BookInfoEntity): Result<BookInfoEntity>
+    suspend fun upsertBookInfo(bookInfo: BookInfoEntity): Result<BookInfoEntity>
+    suspend fun deleteBookInfo(bookInfo: BookInfoEntity): Result<BookInfoEntity>
     suspend fun deleteDatabase(): Result<Unit>
 
     companion object {

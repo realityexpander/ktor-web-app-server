@@ -10,6 +10,7 @@ import domain.account.data.IAccountInfoRepo
 import domain.book.data.BookInfoRepo
 import domain.book.data.IBookInfoRepo
 import domain.library.data.ILibraryInfoRepo
+import domain.library.data.LibraryInfoInMemoryRepo
 import domain.library.data.LibraryInfoRepo
 import domain.user.data.IUserInfoRepo
 import domain.user.data.UserInfoInMemoryRepo
@@ -29,9 +30,6 @@ class Context(
     val gson: Gson,
     val log: ILog
 ) {
-    //////////////////////////////
-    // Static Constructors      //
-    //////////////////////////////
 
     sealed class ContextKind {
         object PRODUCTION : ContextKind()
@@ -39,6 +37,10 @@ class Context(
     }
 
     companion object {
+
+        //////////////////////////////
+        // Static Constructors      //
+        //////////////////////////////
 
         fun setupProductionInstance(log: ILog?): Context {
             return if (log == null)
@@ -67,15 +69,13 @@ class Context(
             }
         }
 
-        // Generate sensible default singletons for the PRODUCTION Application
+        // Generate singletons for the PRODUCTION Application
         private fun generateDefaultProductionContext(log: ILog): Context {
             return Context(
-//                BookInfoInMemoryRepo(log),
-                BookInfoRepo(log),
-                UserInfoInMemoryRepo(log),
-//                LibraryInfoInMemoryRepo(log),
-                LibraryInfoRepo(log),
-                AccountInfoInMemoryRepo(log),
+                BookInfoRepo(log),              // BookInfoInMemoryRepo(log)
+                UserInfoInMemoryRepo(log),      // UserInfoRepo(log)
+                LibraryInfoRepo(log),           // LibraryInfoInMemoryRepo(log)
+                AccountInfoInMemoryRepo(log),   // AccountInfoInMemoryRepo(log),
                 gsonConfig,
                 log
             )

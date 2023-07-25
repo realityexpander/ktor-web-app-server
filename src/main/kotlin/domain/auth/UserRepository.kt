@@ -1,11 +1,8 @@
 package com.realityexpander.domain.auth
 
 import com.realityexpander.common.data.local.JsonFileDatabase
-import common.uuid2.IUUID2
 import common.uuid2.UUID2
-import domain.common.data.HasId
-import domain.common.data.Model
-import domain.common.data.info.local.EntityInfo
+import domain.common.data.info.local.InfoEntity
 import domain.user.User
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
@@ -21,7 +18,7 @@ data class UserEntity(
     val clientIpAddressWhiteList: List<String> = listOf(),
     val passwordResetToken: String? = null,
     val passwordResetJwtToken: String? = null,
-) : EntityInfo(id) {
+) : InfoEntity(id) {
     override fun id(): UUID2<User> {
         return id
     }
