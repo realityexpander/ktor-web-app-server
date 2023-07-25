@@ -30,9 +30,15 @@ class UserInfoInMemoryRepo(log: ILog) : Repo(log), IUserInfoRepo {
             Result.failure(Exception("Repo.UserInfo, UserInfo not found, id:$id"))
     }
 
+    override suspend fun fetchAllUserInfo(): Result<List<UserInfo>> {
+        log.d(this, "fetchAllUserInfo")
+
+        // Simulate network/database
+        return Result.success(database.values.toList())
+    }
+
     override suspend fun updateUserInfo(userInfo: UserInfo): Result<UserInfo> {
-        val methodName = Thread.currentThread().stackTrace[2].methodName  // todo remove?
-        log.d(this, methodName + ", userId:" + userInfo.id())
+        log.d(this, "userId:" + userInfo.id())
 
         // Simulate network/database
         if (database.containsKey(userInfo.id())) {
@@ -44,13 +50,21 @@ class UserInfoInMemoryRepo(log: ILog) : Repo(log), IUserInfoRepo {
     }
 
     override suspend fun upsertUserInfo(userInfo: UserInfo): Result<UserInfo> {
-        val methodName = Thread.currentThread().stackTrace[2].methodName // todo remove?
-        log.d(this, methodName + ", userId:" + userInfo.id())
+        log.d(this, "userId:" + userInfo.id())
 
         // Simulate network/database
         database[userInfo.id()] = userInfo
 
         return Result.success(userInfo)
+    }
+
+    override suspend fun deleteUserInfo(userInfo: UserInfo): Result<Unit> {
+        log.d(this, "userId:" + userInfo.id())
+
+        // Simulate network/database
+        database.remove(userInfo.id())
+
+        return Result.success(Unit)
     }
 
     override suspend fun deleteDatabase(): Result<Unit> {

@@ -20,7 +20,7 @@ class AccountInfoInMemoryRepo(log: ILog) : Repo(log), IAccountInfoRepo {
     // simulate a local database on server (UUID2<Account> is the key)
     private val database: MutableMap<UUID2<Account>, AccountInfo> = mutableMapOf()
 
-    override fun fetchAccountInfo(id: UUID2<Account>): Result<AccountInfo> {
+    override suspend fun fetchAccountInfo(id: UUID2<Account>): Result<AccountInfo> {
         log.d(this, "id: $id")
 
         // Simulate network/database
@@ -30,7 +30,14 @@ class AccountInfoInMemoryRepo(log: ILog) : Repo(log), IAccountInfoRepo {
             Result.failure(Exception("Repo.AccountInfo, account not found, id: $id"))
     }
 
-    override fun updateAccountInfo(accountInfo: AccountInfo): Result<AccountInfo> {
+    override suspend fun fetchAllAccountInfo(): Result<List<AccountInfo>> {
+        log.d(this, "fetchAllAccountInfo")
+
+        // Simulate network/database
+        return Result.success(database.values.toList())
+    }
+
+    override suspend fun updateAccountInfo(accountInfo: AccountInfo): Result<AccountInfo> {
         log.d(this, "accountInfo.id: " + accountInfo.id())
 
         // Simulate network/database
@@ -41,12 +48,20 @@ class AccountInfoInMemoryRepo(log: ILog) : Repo(log), IAccountInfoRepo {
         return Result.failure(Exception("Repo.AccountInfo, account not found, id: " + accountInfo.id()))
     }
 
-    override fun upsertAccountInfo(accountInfo: AccountInfo): Result<AccountInfo> {
+    override suspend fun upsertAccountInfo(accountInfo: AccountInfo): Result<AccountInfo> {
         log.d(this, "accountInfo.id(): " + accountInfo.id())
 
         // Simulate network/database
         database[accountInfo.id()] = accountInfo
         return Result.success(accountInfo)
+    }
+
+    override suspend fun deleteAccountInfo(accountInfo: AccountInfo): Result<Unit> {
+        log.d(this, "accountInfo.id(): " + accountInfo.id())
+
+        // Simulate network/database
+        database.remove(accountInfo.id())
+        return Result.success(Unit)
     }
 
     override suspend fun deleteDatabase(): Result<Unit> {

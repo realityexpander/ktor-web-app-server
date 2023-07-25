@@ -104,7 +104,7 @@ class Account : Role<AccountInfo>, IUUID2 {
         // Static constructors //
         /////////////////////////
 
-        fun fetchAccount(
+        suspend fun fetchAccount(
             uuid2: UUID2<Account>,
             context: Context
         ): Result<Account> {

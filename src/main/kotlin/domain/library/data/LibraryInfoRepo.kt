@@ -7,6 +7,17 @@ import domain.common.data.repo.Repo
 import domain.library.Library
 import kotlinx.coroutines.runBlocking
 
+/**
+ * LibraryInfoRepo
+ *
+ * Simulates a persistent database using a local json file for the LibraryInfo.
+ *
+ * Note: Use Domain-specific language to define the API methods.
+ *
+ * @author Chris Athanas (realityexpanderdev@gmail.com)
+ * @since 0.12
+ */
+
 class LibraryInfoRepo(
     log: ILog,
     libraryRepoDatabaseFilename: String = DEFAULT_LIBRARYINFO_REPO_DATABASE_FILENAME,
@@ -48,7 +59,8 @@ class LibraryInfoRepo(
 
     override suspend fun updateLibraryInfo(libraryInfo: LibraryInfo): Result<LibraryInfo> {
         return try {
-            Result.success(database.updateEntity(libraryInfo) ?: throw Exception("Library not found, id: ${libraryInfo.id()}"))
+            Result.success(database.updateEntity(libraryInfo)
+                ?: throw Exception("Library not found, id: ${libraryInfo.id()}"))
         } catch (e: Exception) {
             return Result.failure(e)
         }
@@ -56,7 +68,8 @@ class LibraryInfoRepo(
 
     override suspend fun upsertLibraryInfo(libraryInfo: LibraryInfo): Result<LibraryInfo> {
         return try {
-            Result.success(database.upsertEntity(libraryInfo) ?: throw Exception("Library upsert error, id: ${libraryInfo.id()}"))
+            Result.success(database.upsertEntity(libraryInfo)
+                ?: throw Exception("Library upsert error, id: ${libraryInfo.id()}"))
         } catch (e: Exception) {
             return Result.failure(e)
         }

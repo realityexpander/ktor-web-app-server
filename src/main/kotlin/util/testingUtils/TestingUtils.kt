@@ -142,7 +142,7 @@ class TestingUtils(val context: Context) {
     // Account Repo  //
     ///////////////////
 
-    fun createFakeAccountInfoInAccountRepo(id: Int?): Result<AccountInfo> {
+    suspend fun createFakeAccountInfoInAccountRepo(id: Int?): Result<AccountInfo> {
         var someNumber = id
         if (someNumber == null) someNumber = 1
 
@@ -165,7 +165,7 @@ class TestingUtils(val context: Context) {
         return accountInfoResult
     }
 
-    fun populateAccountWithFakeAuditMessages(
+    suspend fun populateAccountWithFakeAuditMessages(
         accountId: UUID2<Account>,
         numberOfMessagesToCreate: Int
     ) {

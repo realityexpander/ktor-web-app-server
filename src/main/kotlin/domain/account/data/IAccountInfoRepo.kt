@@ -12,8 +12,10 @@ import domain.common.data.repo.IRepo
  */
 
 interface IAccountInfoRepo : IRepo {
-    fun fetchAccountInfo(id: UUID2<Account>): Result<AccountInfo>
-    fun updateAccountInfo(accountInfo: AccountInfo): Result<AccountInfo>
-    fun upsertAccountInfo(accountInfo: AccountInfo): Result<AccountInfo>
+    suspend fun fetchAccountInfo(id: UUID2<Account>): Result<AccountInfo>
+    suspend fun fetchAllAccountInfo(): Result<List<AccountInfo>>
+    suspend fun updateAccountInfo(accountInfo: AccountInfo): Result<AccountInfo>
+    suspend fun upsertAccountInfo(accountInfo: AccountInfo): Result<AccountInfo>
+    suspend fun deleteAccountInfo(accountInfo: AccountInfo): Result<Unit>
     suspend fun deleteDatabase(): Result<Unit>
 }

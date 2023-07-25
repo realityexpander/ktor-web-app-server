@@ -1,3 +1,4 @@
+import com.realityexpander.domain.account.data.AccountInfoRepo
 import common.uuid2.UUID2
 import domain.Context
 import domain.account.Account
@@ -13,6 +14,7 @@ import domain.common.Role
 import domain.library.data.LibraryInfo
 import domain.library.data.LibraryInfoRepo
 import domain.user.data.UserInfo
+import domain.user.data.UserInfoRepo
 import kotlinx.coroutines.*
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
@@ -46,12 +48,10 @@ class LibraryAppTest {
 
         // Modify the Production context into a Test context.
         return Context(
-            // prodContext.bookInfoRepo,
-            BookInfoRepo(testLog, TestingUtils.createTempFileName("bookInfoRepoDB")),
-            prodContext.userInfoRepo,
-            // prodContext.libraryInfoRepo,
-            LibraryInfoRepo(testLog, TestingUtils.createTempFileName("libraryInfoRepoDB")),
-            prodContext.accountInfoRepo,
+            BookInfoRepo(testLog, TestingUtils.createTempFileName("bookInfoRepoDB")), // prodContext.bookInfoRepo,
+            UserInfoRepo(testLog, TestingUtils.createTempFileName("userInfoRepoDB")), // prodContext.userInfoRepo,
+            LibraryInfoRepo(testLog, TestingUtils.createTempFileName("libraryInfoRepoDB")), // prodContext.libraryInfoRepo,
+            AccountInfoRepo(testLog, TestingUtils.createTempFileName("accountInfoRepoDB")), // prodContext.accountInfoRepo,
             prodContext.gson,
             testLog    // <--- Using the `TestLog` logger
         )
