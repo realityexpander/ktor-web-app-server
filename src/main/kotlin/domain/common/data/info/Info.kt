@@ -46,7 +46,7 @@ interface Info<TInfo : Model> {
     fun deepCopyInfo(): TInfo {
         val gson = Gson()
 
-        // hacky but works for flat/simple objects.
+        // hacky but works for flat/simple objects, but should be overridden in the subclass.
         @Suppress("UNCHECKED_CAST")
         return gson.fromJson(
             gson.toJson(this),
@@ -59,7 +59,7 @@ interface Info<TInfo : Model> {
     /////////////////////////////
 
     interface ToInfo<TInfo : Model> {
-        fun id(): UUID2<*>    // Returns the UUID2 of the Info object
+//        fun id(): UUID2<*>    // Returns the UUID2 of the Info object
 
         fun info(): TInfo? {           // Fetches (if necessary) and Returns the Info object
             @Suppress("UNCHECKED_CAST")

@@ -1,5 +1,6 @@
 package domain.book.data.local
 
+import com.realityexpander.domain.book.data.local.IBookInfoDatabase
 import common.data.local.IDatabase
 import common.data.local.InMemoryDatabase
 import common.data.network.FakeURL
@@ -9,7 +10,7 @@ import domain.book.Book
 /**
  * BookInfoInMemoryDatabase
  *
- * Simulates an In-Memory local database for BookInfo.
+ * Simulates an In-Memory local non-persisted database for EntityBookInfo.
  *
  * This class uses domain-specific language and wraps an implementation of the IDatabase interface
  * for EntityBookInfo.
@@ -19,37 +20,38 @@ import domain.book.Book
  */
 
 class BookInfoInMemoryDatabase constructor(
-    val database: IDatabase<Book, EntityBookInfo> = InMemoryDatabase(
-            FakeURL("memory://db.book.com"),
+    val database: IDatabase<Book, EntityBookInfo> =
+        InMemoryDatabase(
+            FakeURL("memory://db.bookInfo.ram"),
             "user",
             "password"
         )
-) {
-    suspend fun fetchBookInfo(id: UUID2<Book>): Result<EntityBookInfo> {
+) : IBookInfoDatabase {
+    override suspend fun fetchBookInfo(id: UUID2<Book>): Result<EntityBookInfo> {
         return database.fetchEntityInfo(id)
     }
 
-    suspend fun updateBookInfo(bookInfo: EntityBookInfo): Result<EntityBookInfo> {
+    override suspend fun allBookInfos(): Result<Map<UUID2<Book>, EntityBookInfo>> {
+        return database.findAllUUID2ToEntityInfoMap()
+    }
+
+    override suspend fun updateBookInfo(bookInfo: EntityBookInfo): Result<EntityBookInfo> {
         return database.updateEntityInfo(bookInfo)
     }
 
-    suspend fun addBookInfo(bookInfo: EntityBookInfo): Result<EntityBookInfo> {
+    override suspend fun addBookInfo(bookInfo: EntityBookInfo): Result<EntityBookInfo> {
         return database.addEntityInfo(bookInfo)
     }
 
-    suspend fun upsertBookInfo(bookInfo: EntityBookInfo): Result<EntityBookInfo> {
+    override suspend fun upsertBookInfo(bookInfo: EntityBookInfo): Result<EntityBookInfo> {
         return database.upsertEntityInfo(bookInfo)
     }
 
-    suspend fun deleteBookInfo(bookInfo: EntityBookInfo): Result<EntityBookInfo> {
+    override suspend fun deleteBookInfo(bookInfo: EntityBookInfo): Result<EntityBookInfo> {
         return database.deleteEntityInfo(bookInfo)
     }
 
-    suspend fun deleteDatabase(): Result<Unit> {
+    override suspend fun deleteDatabase(): Result<Unit> {
         return database.deleteAllEntityInfo()
-    }
-
-    suspend fun allBookInfos(): Map<UUID2<Book>, EntityBookInfo> {
-        return database.findAllUUID2ToEntityInfoMap()
     }
 }

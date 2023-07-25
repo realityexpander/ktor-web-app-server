@@ -1,10 +1,10 @@
 package domain.common.data.info.network
 
+import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.common.data.Model
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import java.util.*
 
 /**
  * DTOInfo is a data holder class for transferring data to/from the Domain from API.

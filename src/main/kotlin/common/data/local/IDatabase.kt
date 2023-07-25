@@ -1,7 +1,9 @@
 package common.data.local
 
+import com.realityexpander.common.data.local.JsonFileDatabase
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
+import domain.common.data.HasId
 import domain.common.data.info.local.EntityInfo
 
 /**
@@ -15,8 +17,7 @@ import domain.common.data.info.local.EntityInfo
 
 interface IDatabase<TUUID2 : IUUID2, TEntity : EntityInfo> {
     suspend fun fetchEntityInfo(id: UUID2<TUUID2>): Result<TEntity>
-    suspend fun fetchEntityInfo(id: String): Result<TEntity>
-    suspend fun findAllUUID2ToEntityInfoMap(): Map<UUID2<TUUID2>, TEntity>
+    suspend fun findAllUUID2ToEntityInfoMap(): Result<Map<UUID2<TUUID2>, TEntity>>
     suspend fun updateEntityInfo(entityInfo: TEntity): Result<TEntity>
     suspend fun addEntityInfo(entityInfo: TEntity): Result<TEntity>
     suspend fun upsertEntityInfo(entityInfo: TEntity): Result<TEntity>

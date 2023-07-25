@@ -1,12 +1,11 @@
 package domain.account
 
-import com.google.gson.Gson
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.Context
 import domain.Context.Companion.gsonConfig
 import domain.account.data.AccountInfo
-import domain.account.data.AccountInfoRepo
+import domain.account.data.IAccountInfoRepo
 import domain.common.Role
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -32,7 +31,7 @@ class Account : Role<AccountInfo>, IUUID2 {
         return id
     }
 
-    private val repo: AccountInfoRepo
+    private val repo: IAccountInfoRepo
 
     constructor(
         info: AccountInfo,
@@ -109,7 +108,7 @@ class Account : Role<AccountInfo>, IUUID2 {
             uuid2: UUID2<Account>,
             context: Context
         ): Result<Account> {
-            val repo: AccountInfoRepo = context.accountInfoRepo
+            val repo: IAccountInfoRepo = context.accountInfoRepo
             val infoResult: Result<AccountInfo> = repo.fetchAccountInfo(uuid2)
             if (infoResult.isFailure) return Result.failure(infoResult.exceptionOrNull()
                 ?: Exception("Account.fetchAccount, unknown failure"))

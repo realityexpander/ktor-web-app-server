@@ -6,7 +6,7 @@ import domain.common.data.repo.Repo
 import domain.user.User
 
 /**
- * UserInfoRepo is a repository for UserInfo objects.
+ * UserInfoInMemoryRepo is a repository for UserInfo objects.
  *
  * Holds User info for all the users in the system (simple CRUD operations).
  *
@@ -16,7 +16,7 @@ import domain.user.User
  * @since 0.12 Kotlin conversion
  */
 
-class UserInfoRepo(log: ILog) : Repo(log), IUserInfoRepo {
+class UserInfoInMemoryRepo(log: ILog) : Repo(log), IUserInfoRepo {
     // Simulate a database on a server somewhere
     private val database: MutableMap<UUID2<User>, UserInfo> = mutableMapOf()
 

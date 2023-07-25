@@ -30,6 +30,13 @@ class LibraryInfoInMemoryRepo(log: ILog) : Repo(log), ILibraryInfoRepo {
         } else Result.failure(Exception("Repo.LibraryInfo, Library not found, id: $id"))
     }
 
+    override suspend fun fetchAllLibraryInfo(): Result<List<LibraryInfo>> {
+        log.d(this, "fetchAllLibraryInfo")
+
+        // Simulate network/database
+        return Result.success(database.values.toList())
+    }
+
     override suspend fun updateLibraryInfo(libraryInfo: LibraryInfo): Result<LibraryInfo> {
         log.d(this, "libraryInfo.id: " + libraryInfo.id())
 
@@ -47,6 +54,14 @@ class LibraryInfoInMemoryRepo(log: ILog) : Repo(log), ILibraryInfoRepo {
         // Simulate network/database
         database[libraryInfo.id()] = libraryInfo
         return Result.success(libraryInfo)
+    }
+
+    override suspend fun deleteLibraryInfo(libraryInfo: LibraryInfo): Result<Unit> {
+        log.d(this, "libraryInfo.id: " + libraryInfo.id())
+
+        // Simulate network/database
+        database.remove(libraryInfo.id())
+        return Result.success(Unit)
     }
 
     override suspend fun deleteDatabase(): Result<Unit> {

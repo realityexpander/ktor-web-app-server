@@ -84,10 +84,10 @@ class TestingUtils(val context: Context) {
     suspend fun printBookInfoDBandAPIEntries() {
         print("\n")
         context.log.d(this, "DB Dump")
-        context.bookInfoRepo.printDB()
+        context.bookInfoRepo.printDB(context.log)
         print("\n")
         context.log.d(this, "API Dump")
-        context.bookInfoRepo.printAPI()
+        context.bookInfoRepo.printAPI(context.log)
         print("\n")
     }
 

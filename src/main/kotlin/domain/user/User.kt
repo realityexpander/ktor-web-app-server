@@ -1,6 +1,5 @@
 package domain.user
 
-import com.google.gson.Gson
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import common.uuid2.UUID2.Companion.toUUID2WithUUID2TypeOf
@@ -11,8 +10,9 @@ import domain.account.data.AccountInfo
 import domain.book.Book
 import domain.common.Role
 import domain.library.Library
+import domain.user.data.IUserInfoRepo
 import domain.user.data.UserInfo
-import domain.user.data.UserInfoRepo
+import domain.user.data.UserInfoInMemoryRepo
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -33,7 +33,7 @@ import kotlinx.serialization.encoding.Encoder
 
 @Serializable(with = UserSerializer::class)  // for kotlinx.serialization
 class User : Role<UserInfo>, IUUID2 {
-    private val repo: UserInfoRepo  // convenience reference to the UserInfoRepo in the Context
+    private val repo: IUserInfoRepo  // convenience reference to the UserInfoInMemoryRepo in the Context
 
     // User's Account Role Object
     private val account: Account

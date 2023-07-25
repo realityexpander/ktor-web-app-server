@@ -5,7 +5,7 @@ import domain.account.Account
 import domain.common.data.repo.IRepo
 
 /**
- * IAccountInfoRepo is an interface for the AccountInfoRepo class.
+ * IAccountInfoRepo is an interface for the AccountInfoInMemoryRepo class.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.12 Kotlin conversion

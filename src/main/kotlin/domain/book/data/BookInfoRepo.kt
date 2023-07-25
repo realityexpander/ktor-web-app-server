@@ -1,14 +1,15 @@
 package domain.book.data
 
+import com.realityexpander.domain.book.data.local.BookInfoFileDatabase
+import com.realityexpander.domain.book.data.local.IBookInfoDatabase
 import common.log.ILog
 import common.log.Log
 import common.uuid2.UUID2
 import domain.book.Book
-import domain.book.data.BookInfoRepo.UpdateKind.*
-import domain.book.data.local.BookInfoInMemoryDatabase
 import domain.book.data.local.EntityBookInfo
-import domain.book.data.network.BookInfoInMemoryApi
+import domain.book.data.network.BookInfoFileApi
 import domain.book.data.network.DTOBookInfo
+import domain.book.data.network.IBookInfoApi
 import domain.common.data.repo.Repo
 
 /**
@@ -16,27 +17,25 @@ import domain.common.data.repo.Repo
  *
  * Business logic for Book Repo (simple CRUD operations; converts to/from DTOs/Entities/Domains)
  *
- * Simulates a database on a server via in-memory HashMap.
- *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.12 Kotlin conversion
  */
 
-class BookInfoRepo(
-    private val bookInfoInMemoryApi: BookInfoInMemoryApi = BookInfoInMemoryApi(),
-    private val bookInfoInMemoryDatabase: BookInfoInMemoryDatabase = BookInfoInMemoryDatabase(),
-    override val log: ILog = Log()
+open class BookInfoRepo(
+    override val log: ILog = Log(),
+    override val bookInfoApi: IBookInfoApi = BookInfoFileApi(),
+    override val bookInfoDatabase: IBookInfoDatabase = BookInfoFileDatabase()
 ) : Repo(log), IBookInfoRepo {
 
     override suspend fun fetchBookInfo(id: UUID2<Book>): Result<BookInfo> {
         log.d(this, "bookId $id")
 
         // Make the request to API
-        val fetchBookApiResult: Result<DTOBookInfo> = bookInfoInMemoryApi.fetchBookInfo(id)
+        val fetchBookApiResult: Result<DTOBookInfo> = bookInfoApi.fetchBookInfo(id)
         if (fetchBookApiResult.isFailure) {
 
             // API failed, now try to get from cached DB
-            val fetchBookDBResult: Result<EntityBookInfo> = bookInfoInMemoryDatabase.fetchBookInfo(id)
+            val fetchBookDBResult: Result<EntityBookInfo> = bookInfoDatabase.fetchBookInfo(id)
             if (fetchBookDBResult.isFailure) {
                 return Result.failure(fetchBookDBResult.exceptionOrNull() ?: Exception("getBookInfo Error"))
             }
@@ -46,7 +45,7 @@ class BookInfoRepo(
             return Result.success(bookInfo.toDomainInfoDeepCopy())
         }
 
-        // Convert to Domain Model
+        // Convert to Domain Info
         val bookInfo: BookInfo =
             if (fetchBookApiResult.isSuccess)
                 fetchBookApiResult.getOrNull()?.toDomainInfoDeepCopy()
@@ -56,7 +55,7 @@ class BookInfoRepo(
 
 
         // Cache to Local DB
-        val updateDBResult: Result<EntityBookInfo> = bookInfoInMemoryDatabase.updateBookInfo(bookInfo.toInfoEntity())
+        val updateDBResult: Result<EntityBookInfo> = bookInfoDatabase.updateBookInfo(bookInfo.toInfoEntity())
         if (updateDBResult.isFailure) {
             return Result.failure(updateDBResult.exceptionOrNull() ?: Exception("updateBookInfo Error"))
         }
@@ -66,7 +65,7 @@ class BookInfoRepo(
 
     override suspend fun updateBookInfo(bookInfo: BookInfo): Result<BookInfo> {
         log.d(this, "bookInfo: $bookInfo")
-        val saveResult = saveBookInfoToApiAndDB(bookInfo, UPDATE)
+        val saveResult = saveBookInfoToApiAndDB(bookInfo, UpdateKind.UPDATE)
 
         if (saveResult.isFailure) {
             return Result.failure(saveResult.exceptionOrNull() ?: Exception("updateBookInfo Error"))
@@ -77,7 +76,7 @@ class BookInfoRepo(
 
     override suspend fun addBookInfo(bookInfo: BookInfo): Result<BookInfo> {
         log.d(this, "bookInfo: $bookInfo")
-        val saveResult = saveBookInfoToApiAndDB(bookInfo, ADD)
+        val saveResult = saveBookInfoToApiAndDB(bookInfo, UpdateKind.ADD)
 
         if (saveResult.isFailure) {
             return Result.failure(saveResult.exceptionOrNull() ?: Exception("addBookInfo Error"))
@@ -88,7 +87,7 @@ class BookInfoRepo(
 
     override suspend fun upsertBookInfo(bookInfo: BookInfo): Result<BookInfo> {
         log.d(this, "bookId: " + bookInfo.id())
-        val saveResult = saveBookInfoToApiAndDB(bookInfo, UPSERT)
+        val saveResult = saveBookInfoToApiAndDB(bookInfo, UpdateKind.UPSERT)
 
         if (saveResult.isFailure) {
             return Result.failure(saveResult.exceptionOrNull() ?: Exception("upsertBookInfo Error"))
@@ -101,8 +100,8 @@ class BookInfoRepo(
         log.d(this, "deleteDatabase")
 
         // Simulate network/database
-        bookInfoInMemoryApi.deleteDatabase()
-        bookInfoInMemoryDatabase.deleteDatabase()
+        bookInfoApi.deleteDatabase()
+        bookInfoDatabase.deleteDatabase()
         return Result.success(Unit)
     }
 
@@ -125,15 +124,15 @@ class BookInfoRepo(
 
         // Make the API request
         val apiChangeResult: Result<DTOBookInfo> = when (updateKind) {
-            UPDATE -> {
-                val bookExistsResult: Result<DTOBookInfo> = bookInfoInMemoryApi.fetchBookInfo(bookInfo.id())
+            UpdateKind.UPDATE -> {
+                val bookExistsResult: Result<DTOBookInfo> = bookInfoApi.fetchBookInfo(bookInfo.id())
                 if (bookExistsResult.isFailure)
                     return Result.failure((bookExistsResult.exceptionOrNull() ?: Exception("fetchBookInfo Error")))
 
-                bookInfoInMemoryApi.updateBookInfo(bookInfo.toInfoDTO())
+                bookInfoApi.updateBookInfo(bookInfo.toInfoDTO())
             }
-            UPSERT -> bookInfoInMemoryApi.upsertBookInfo(bookInfo.toInfoDTO())
-            ADD -> bookInfoInMemoryApi.addBookInfo(bookInfo.toInfoDTO())
+            UpdateKind.UPSERT -> bookInfoApi.upsertBookInfo(bookInfo.toInfoDTO())
+            UpdateKind.ADD -> bookInfoApi.addBookInfo(bookInfo.toInfoDTO())
             else -> return Result.failure(Exception("UpdateType not supported: $updateKind"))
         }
         if (apiChangeResult.isFailure) {
@@ -142,15 +141,15 @@ class BookInfoRepo(
 
         // Save to Local DB
         val dbChangeResult: Result<EntityBookInfo> = when (updateKind) {
-            UPDATE -> {
-                val bookExistsResult: Result<EntityBookInfo> = bookInfoInMemoryDatabase.fetchBookInfo(bookInfo.id())
+            UpdateKind.UPDATE -> {
+                val bookExistsResult: Result<EntityBookInfo> = bookInfoDatabase.fetchBookInfo(bookInfo.id())
                 if (bookExistsResult.isFailure)
                     return Result.failure((bookExistsResult.exceptionOrNull() ?: Exception("getBookInfo Error")))
 
-                bookInfoInMemoryDatabase.updateBookInfo(bookInfo.toInfoEntity())
+                bookInfoDatabase.updateBookInfo(bookInfo.toInfoEntity())
             }
-            UPSERT -> bookInfoInMemoryDatabase.upsertBookInfo(bookInfo.toInfoEntity())
-            ADD -> bookInfoInMemoryDatabase.addBookInfo(bookInfo.toInfoEntity())
+            UpdateKind.UPSERT -> bookInfoDatabase.upsertBookInfo(bookInfo.toInfoEntity())
+            UpdateKind.ADD -> bookInfoDatabase.addBookInfo(bookInfo.toInfoEntity())
             else -> return Result.failure(Exception("UpdateType not supported: $updateKind"))
         }
         if (dbChangeResult.isFailure) {
@@ -158,44 +157,5 @@ class BookInfoRepo(
         }
 
         return Result.success(bookInfo)
-    }
-
-    suspend fun upsertTestEntityBookInfoToDB(entityBookInfo: EntityBookInfo): Result<BookInfo> {
-        val upsertResult: Result<EntityBookInfo> = bookInfoInMemoryDatabase.upsertBookInfo(entityBookInfo)
-        if (upsertResult.isFailure) {
-            return Result.failure(upsertResult.exceptionOrNull() ?: Exception("upsertBookInfo DB Error"))
-        }
-        return Result.success(entityBookInfo.toDomainInfoDeepCopy())
-    }
-
-    suspend fun upsertTestDTOBookInfoToApi(dtoBookInfo: DTOBookInfo): Result<BookInfo> {
-        val upsertResult: Result<DTOBookInfo> = bookInfoInMemoryApi.upsertBookInfo(dtoBookInfo)
-        if (upsertResult.isFailure) {
-            return Result.failure(upsertResult.exceptionOrNull() ?: Exception("upsertBookInfo API Error"))
-        }
-        return Result.success(dtoBookInfo.toDomainInfoDeepCopy())
-    }
-
-    /////////////////////////////////////////////////////
-    // Debugging Methods                               //
-    //  - not part of interface or used in production) //
-    /////////////////////////////////////////////////////
-
-    suspend fun printDB() {
-        for ((key, value) in bookInfoInMemoryDatabase.allBookInfos().entries) {
-            log.d(this, "$key = $value")
-        }
-    }
-
-    suspend fun printAPI() {
-        val entries = bookInfoInMemoryApi.allBookInfos().getOrNull()?.entries
-        if (entries == null) {
-            log.d(this, "API is empty")
-            return
-        }
-
-        for ((key, value) in entries) {
-            log.d(this, "$key = $value")
-        }
     }
 }

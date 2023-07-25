@@ -1,11 +1,9 @@
 package common.data.network
 
-import common.uuid2.UUID2
-import common.uuid2.UUID2.Companion.fromUUIDString
+import common.uuid2.UUID2.Companion.fromUUIDStrToUUID2
 import domain.book.Book
 import domain.book.data.network.DTOBookInfo
 import kotlinx.coroutines.runBlocking
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 
 import org.junit.jupiter.api.Assertions.*
@@ -18,7 +16,7 @@ class InMemoryAPITest {
     private val testApi = InMemoryAPI<Book, DTOBookInfo>()
 
     private val dtoBookInfo = DTOBookInfo(
-        id = "00000000-0000-0000-0000-000000000100".fromUUIDString(),
+        id = "00000000-0000-0000-0000-000000000100".fromUUIDStrToUUID2(),
         title = "The Hobbit",
         author = "J.R.R. Tolkien",
         description = "The Hobbit, or There and Back Again is a children's fantasy novel by English author J. R. R. Tolkien. It was published on 21 September 1937 to wide critical acclaim, being nominated for the Carnegie Medal and awarded a prize from the New York Herald Tribune for best juvenile fiction. The book remains popular and is recognized as a classic in children's literature."
@@ -71,7 +69,7 @@ class InMemoryAPITest {
 
             // • ARRANGE
             val updatedDTOBookInfo = DTOBookInfo(
-                id = "00000000-0000-0000-0000-000000000100".fromUUIDString(),
+                id = "00000000-0000-0000-0000-000000000100".fromUUIDStrToUUID2(),
                 title = "The UPDATED Hobbit",
                 author = "J.R.R. Tolkien",
                 description = "UPDATED DESCRIPTION"
@@ -111,7 +109,7 @@ class InMemoryAPITest {
 
             // • ARRANGE
             val updatedDTOBookInfo = DTOBookInfo(
-                id = "00000000-0000-0000-0000-000000000100".fromUUIDString(),
+                id = "00000000-0000-0000-0000-000000000100".fromUUIDStrToUUID2(),
                 title = "The UPDATED Hobbit",
                 author = "J.R.R. Tolkien",
                 description = "UPDATED DESCRIPTION"

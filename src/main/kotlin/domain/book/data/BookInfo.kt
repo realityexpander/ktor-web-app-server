@@ -2,7 +2,7 @@ package domain.book.data
 
 import common.HumanDate
 import common.uuid2.UUID2
-import common.uuid2.UUID2.Companion.fromUUIDString
+import common.uuid2.UUID2.Companion.fromUUIDStrToUUID2
 import domain.book.Book
 import domain.book.data.local.EntityBookInfo
 import domain.book.data.network.DTOBookInfo
@@ -55,7 +55,7 @@ class BookInfo(
         isDeleted
     )
     constructor(uuidStr: String, title: String, author: String, description: String) : this(
-        uuidStr.fromUUIDString(),
+        uuidStr.fromUUIDStrToUUID2(),
         title,
         author,
         description,

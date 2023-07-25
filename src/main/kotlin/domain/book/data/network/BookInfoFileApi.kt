@@ -1,15 +1,13 @@
 package domain.book.data.network
 
-import common.data.network.FakeHttpClient
-import common.data.network.FakeURL
-import common.data.network.InMemoryAPI
+import common.data.network.FileApi
 import common.uuid2.UUID2
 import domain.book.Book
 
 /**
- * BookInfoInMemoryApi
+ * BookInfoFileApi
  *
- * Simulates an API using an in-memory database for the DTOBookInfo.
+ * Simulates a persistent network API using a local json file database for the DTOBookInfo.
  *
  * Note: Use Domain-specific language to define the API methods.
  *
@@ -17,11 +15,15 @@ import domain.book.Book
  * @since 0.12
  */
 
-class BookInfoInMemoryApi(
-    private val api: InMemoryAPI<Book, DTOBookInfo> = InMemoryAPI(
-        FakeURL("memory://api.book.com"),
-        FakeHttpClient()
-    )
+class BookInfoFileApi(
+    val bookInfoFileApiDatabaseFilename: String = DEFAULT_BOOKINFO_FILE_API_DATABASE_FILENAME,
+
+    // Use a file Api to persist the book info
+    private val api: FileApi<Book, DTOBookInfo> =
+        FileApi(
+            bookInfoFileApiDatabaseFilename,
+            DTOBookInfo.serializer()
+        )
 ) : IBookInfoApi {
 
     override suspend fun fetchBookInfo(id: UUID2<Book>): Result<DTOBookInfo> {
@@ -50,5 +52,9 @@ class BookInfoInMemoryApi(
 
     override suspend fun deleteDatabase(): Result<Unit> {
         return api.deleteAllDtoInfo()
+    }
+
+    companion object {
+        const val DEFAULT_BOOKINFO_FILE_API_DATABASE_FILENAME = "bookInfoFileApiDB.json"
     }
 }

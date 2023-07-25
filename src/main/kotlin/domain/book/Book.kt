@@ -1,13 +1,12 @@
 package domain.book
 
 
-import com.google.gson.Gson
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.Context
 import domain.Context.Companion.gsonConfig
 import domain.book.data.BookInfo
-import domain.book.data.BookInfoRepo
+import domain.book.data.IBookInfoRepo
 import domain.book.data.local.EntityBookInfo
 import domain.book.data.network.DTOBookInfo
 import domain.common.Role
@@ -39,7 +38,7 @@ import kotlinx.serialization.encoding.Encoder
 
 @Serializable(with = BookSerializer::class)  // for kotlinx.serialization
 class Book : Role<BookInfo>, IUUID2 {
-    private val repo: BookInfoRepo
+    private val repo: IBookInfoRepo
     private val sourceLibrary: Library // Book's source Library Role Object - owns this Book.
 
     constructor(

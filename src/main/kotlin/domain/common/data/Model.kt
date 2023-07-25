@@ -40,7 +40,7 @@ import java.util.*
  * @since 0.12 Kotlin conversion
  */
 
-// This interface enforces all Model objects to include an id() method
+// This interface is for all classes that have an id
 interface HasId<TKey : UUID2<*>> {
     abstract val id: TKey
     abstract fun id(): TKey
@@ -83,7 +83,6 @@ open class Model(
         * * Overridden method must return `id` with the correct type of `UUID2` for the Role.
         * * ie: `UUID2<User>` for a `User`, `UUID2<Book>` for a `Book`, etc.
         **/
-        fun id(): UUID2<*>
 
         fun domainInfo(): TDomainInfo {
             @Suppress("UNCHECKED_CAST")

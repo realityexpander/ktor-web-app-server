@@ -3,7 +3,6 @@ package common.data.local
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import common.data.network.FakeURL
-import common.uuid2.UUID2.Companion.fromUUIDString
 import domain.common.data.info.local.EntityInfo
 
 /**
@@ -18,40 +17,17 @@ import domain.common.data.info.local.EntityInfo
  */
 
 class InMemoryDatabase<TUUID2 : IUUID2, TEntity : EntityInfo> (
-    fakeUrl: FakeURL,
-    user: String,
-    password: String
-) : IDatabase<TUUID2, TEntity> {
-
-    private val fakeUrl: FakeURL
-    private val user: String
-    private val password: String
-
-    // Simulate a local database
+    fakeUrl: FakeURL = FakeURL("memory://hash.map"),
+    user: String = "admin",
+    password: String = "password",
     private val database: MutableMap<UUID2<TUUID2>, TEntity> = mutableMapOf()
-
-    init {
-        this.fakeUrl = fakeUrl
-        this.user = user
-        this.password = password
-    }
-
-    internal constructor() : this(FakeURL("memory://hash.map"), "admin", "password")
+) : IDatabase<TUUID2, TEntity> {
 
     override suspend fun fetchEntityInfo(id: UUID2<TUUID2>): Result<TEntity> {
         // Simulate the request
         val infoResult: TEntity = database[id]
             ?: return Result.failure(Exception("DB: Failed to get entityInfo, id: $id"))
         return Result.success(infoResult)
-    }
-
-    override suspend fun fetchEntityInfo(id: String): Result<TEntity> {
-        return try {
-            val uuid: UUID2<TUUID2> = id.fromUUIDString()
-            fetchEntityInfo(uuid)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
     }
 
     override suspend fun updateEntityInfo(entityInfo: TEntity): Result<TEntity> {
@@ -93,12 +69,12 @@ class InMemoryDatabase<TUUID2 : IUUID2, TEntity : EntityInfo> (
             Result.success(entityInfo)
     }
 
-    override suspend fun findAllUUID2ToEntityInfoMap(): Map<UUID2<TUUID2>, TEntity> {
-        val map: MutableMap<UUID2<TUUID2>, TEntity> = java.util.HashMap<UUID2<TUUID2>, TEntity>()
+    override suspend fun findAllUUID2ToEntityInfoMap(): Result<Map<UUID2<TUUID2>, TEntity>> {
+        val map: MutableMap<UUID2<TUUID2>, TEntity> = mutableMapOf()
         for ((key, value) in database.entries) {
             map[UUID2(key)] = value
         }
-        return map
+        return Result.success(map)
     }
 
     override suspend fun deleteAllEntityInfo(): Result<Unit> {

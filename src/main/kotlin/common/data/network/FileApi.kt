@@ -1,35 +1,38 @@
 package common.data.network
 
-import com.realityexpander.common.data.local.FileDatabase
+import com.realityexpander.common.data.local.JsonFileDatabase
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
+import domain.common.data.HasId
+import domain.common.data.Model
+import domain.common.data.info.network.DTOInfo
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.KSerializer
 import okhttp3.internal.toImmutableList
 
 /**
- * FileAPI
+ * FileApi
  *
- * A FileDatabase that implements the IAPI interface for DTOInfo.
+ * A JsonFileDatabase that implements the IAPI interface for DTOInfo.
  *
  * Simulates a REST API that is backed by a json file.
  * Data is persisted, so the database is not reset on each run.
  *
- * @param <TUUID2> The type of UUID2 to use for the database.
- * @param <TDTOInfo> The type of DTOInfo to use for the entities in the database.
+ * @param TDomain The type of UUID2 to use for the database. ie: User -> UUID2<User>
+ * @param TDTOInfo The type of DTOInfo for the entities in the database.
  * @param apiDatabaseFilename The filename of the database.
  * @param serializer The kotlinx json serializer to use for the database entities.
  * @param fakeUrl The fake URL to use for the API
  * @param client The fake HTTP client to use for the API
  */
 
-class FileAPI<TUUID2 : IUUID2, TDTOInfo : FileDatabase.HasId<UUID2<TUUID2>>>(
-    apiDatabaseFilename: String = DEFAULT_API_DB_FILENAME,
+class FileApi<TDomain : IUUID2, TDTOInfo : DTOInfo>(
+    apiDatabaseFilename: String = DEFAULT_FILE_API_DATABASE_FILENAME,
     serializer: KSerializer<TDTOInfo>,
-    private val fakeUrl: FakeURL = FakeURL("fakeHttp://fakeHost:22222"),
+    private val fakeUrl: FakeURL = FakeURL("fakeHttp://fakeApiHost:22222"),
     private val client: FakeHttpClient = FakeHttpClient()
-) : FileDatabase<UUID2<TUUID2>, TDTOInfo>(apiDatabaseFilename, serializer),
-    IAPI<TUUID2, TDTOInfo>
+) : JsonFileDatabase<TDomain, TDTOInfo>(apiDatabaseFilename, serializer),  // -> <UUID2<User>, UserEntity>
+    IAPI<TDomain, TDTOInfo>
 {
     init {
         runBlocking {
@@ -37,7 +40,7 @@ class FileAPI<TUUID2 : IUUID2, TDTOInfo : FileDatabase.HasId<UUID2<TUUID2>>>(
         }
     }
 
-    override suspend fun fetchDtoInfo(id: UUID2<TUUID2>): Result<TDTOInfo> {
+    override suspend fun fetchDtoInfo(id: UUID2<TDomain>): Result<TDTOInfo> {
         return try {
             val dtoInfo = super.findEntityById(id)
                 ?: return Result.failure(Exception("Entity not found"))
@@ -48,12 +51,15 @@ class FileAPI<TUUID2 : IUUID2, TDTOInfo : FileDatabase.HasId<UUID2<TUUID2>>>(
         }
     }
 
-    override suspend fun findAllUUID2ToDtoInfoMap(): Result<Map<UUID2<TUUID2>, TDTOInfo>> {
+    override suspend fun findAllUUID2ToDtoInfoMap(): Result<Map<UUID2<TDomain>, TDTOInfo>> {
         return try {
             val dtoInfoMap =
                 super.findAllEntities()
                     .toImmutableList()
                     .associateBy { it.id() }
+
+            @Suppress("UNCHECKED_CAST")
+            dtoInfoMap as Map<UUID2<TDomain>, TDTOInfo>
 
             Result.success(dtoInfoMap)
         } catch (e: Exception) {
@@ -82,6 +88,9 @@ class FileAPI<TUUID2 : IUUID2, TDTOInfo : FileDatabase.HasId<UUID2<TUUID2>>>(
     }
 
     override suspend fun upsertDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
+        @Suppress("UNCHECKED_CAST")
+        dtoInfo as HasId<UUID2<TDomain>>
+
         if(super.findEntityById(dtoInfo.id()) == null)
             super.addEntity(dtoInfo)
         else
@@ -111,6 +120,6 @@ class FileAPI<TUUID2 : IUUID2, TDTOInfo : FileDatabase.HasId<UUID2<TUUID2>>>(
     }
 
     companion object {
-        const val DEFAULT_API_DB_FILENAME = "apiDB.json"
+        const val DEFAULT_FILE_API_DATABASE_FILENAME = "apiDB.json"
     }
 }

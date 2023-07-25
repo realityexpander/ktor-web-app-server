@@ -1,5 +1,7 @@
 package common.uuid2
 
+import domain.common.data.HasId
+
 /**
  * **`IUUID2`** Marker interface.
  *
@@ -14,7 +16,7 @@ package common.uuid2
  * @since 0.12 Kotlin conversion
  */
 
-interface IUUID2 {
+interface IUUID2 : HasId<UUID2<*>> {
     fun uuid2TypeStr(): String // Returns the Type of the UUID2 as a String.
                                // - Usually the class inheritance hierarchy path of the object
                                // - ie: "Model.DomainInfo.BookInfo" or "Role.Book"

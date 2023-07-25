@@ -6,7 +6,7 @@ import domain.account.Account
 import domain.common.data.repo.Repo
 
 /**
- * AccountInfoRepo is a Repo for AccountInfo objects.
+ * AccountInfoInMemoryRepo is a Repo for AccountInfo objects.
  *
  * Holds Account info for all the users in the system (simple CRUD operations)
  *
@@ -16,7 +16,7 @@ import domain.common.data.repo.Repo
  * @since 0.12 Kotlin conversion
  */
 
-class AccountInfoRepo(log: ILog) : Repo(log), IAccountInfoRepo {
+class AccountInfoInMemoryRepo(log: ILog) : Repo(log), IAccountInfoRepo {
     // simulate a local database on server (UUID2<Account> is the key)
     private val database: MutableMap<UUID2<Account>, AccountInfo> = mutableMapOf()
 

@@ -1,12 +1,14 @@
 package domain.book.data.network
 
-import com.realityexpander.common.data.local.FileDatabase
+import com.realityexpander.common.data.local.JsonFileDatabase
 import com.realityexpander.jsonConfig
 import common.HumanDate
+import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.Context
 import domain.book.Book
 import domain.book.data.BookInfo
+import domain.common.data.HasId
 import domain.common.data.Model
 import domain.common.data.info.Info
 import domain.common.data.info.network.DTOInfo
@@ -15,9 +17,9 @@ import kotlinx.serialization.Serializable
 /**
  * DTOBookInfo
  *
- * A Data Transfer Object (DTO) that is used to transfer data between the
+ * A Data Transfer Object (DTO) that is used to transfer data between the API and the Domain layer.
  *
- * "Dumb" Data Transfer Object for BookInfo
+ * It's a "Dumb" Data Transfer Object for BookInfo
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.12 Kotlin conversion
@@ -37,11 +39,10 @@ class DTOBookInfo(
     Model.ToDomainInfo<BookInfo>,
     Model.ToDomainInfo.HasToDomainInfoDeepCopy<BookInfo>,
     Info.ToInfo<DTOBookInfo>,
-    Info.HasToDeepCopyInfo<DTOBookInfo>,
-    FileDatabase.HasId<UUID2<Book>>
+    Info.HasToDeepCopyInfo<DTOBookInfo>
 {
     constructor(json: String, context: Context) : this(jsonConfig.decodeFromString<DTOBookInfo>(json))
-    constructor() : this(UUID2.randomUUID2<Book>(), "", "", "")
+    constructor() : this(UUID2.randomUUID2<Book>(), "default", "default", "default")
 
     /////////////////////////////////////////////////////////////////////
     // EntityInfo <-> DomainInfo conversion                            //

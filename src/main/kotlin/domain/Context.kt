@@ -5,13 +5,14 @@ import com.google.gson.GsonBuilder
 import common.log.ILog
 import common.log.Log
 import common.uuid2.UUID2
-import domain.account.data.AccountInfoRepo
+import domain.account.data.AccountInfoInMemoryRepo
+import domain.account.data.IAccountInfoRepo
 import domain.book.data.BookInfoRepo
-import domain.book.data.local.BookInfoInMemoryDatabase
-import domain.book.data.network.BookInfoInMemoryApi
+import domain.book.data.IBookInfoRepo
 import domain.library.data.ILibraryInfoRepo
-import domain.library.data.LibraryInfoPersistentRepo
-import domain.user.data.UserInfoRepo
+import domain.library.data.LibraryInfoRepo
+import domain.user.data.IUserInfoRepo
+import domain.user.data.UserInfoInMemoryRepo
 
 /**
  * Context is a singleton class that holds all the repositories and utility classes.
@@ -21,10 +22,10 @@ import domain.user.data.UserInfoRepo
  */
 
 class Context(
-    val bookInfoRepo: BookInfoRepo,
-    val userInfoRepo: UserInfoRepo,
+    val bookInfoRepo: IBookInfoRepo,
+    val userInfoRepo: IUserInfoRepo,
     val libraryInfoRepo: ILibraryInfoRepo,
-    val accountInfoRepo: AccountInfoRepo,
+    val accountInfoRepo: IAccountInfoRepo,
     val gson: Gson,
     val log: ILog
 ) {
@@ -69,15 +70,12 @@ class Context(
         // Generate sensible default singletons for the PRODUCTION Application
         private fun generateDefaultProductionContext(log: ILog): Context {
             return Context(
-                BookInfoRepo(
-                    BookInfoInMemoryApi(),
-                    BookInfoInMemoryDatabase(),
-                    log
-                ),
-                UserInfoRepo(log),
+//                BookInfoInMemoryRepo(log),
+                BookInfoRepo(log),
+                UserInfoInMemoryRepo(log),
 //                LibraryInfoInMemoryRepo(log),
-                LibraryInfoPersistentRepo(log),
-                AccountInfoRepo(log),
+                LibraryInfoRepo(log),
+                AccountInfoInMemoryRepo(log),
                 gsonConfig,
                 log
             )

@@ -16,7 +16,7 @@ import kotlinx.serialization.Serializable
  *
  * Represents a database row for a Book.
  *
- * A Data Transfer Object (DTO) that is used to transfer data between the Domain Layer and the Data Layer.
+ * An "Dumb" Entity that is used to transfer data between the Domain Layer and the Data Layer.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.12 Kotlin conversion
@@ -85,7 +85,7 @@ class EntityBookInfo(
     /**
      * Entities don't have any business logic
      *
-     * * All "Info" changes are done in the domain layer.
+     * * All "Info" changes are done in the domain layer using BookInfo published methods.
     **/
 
     /////////////////////////////////

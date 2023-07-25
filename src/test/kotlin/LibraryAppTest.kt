@@ -10,7 +10,7 @@ import domain.book.Book
 import domain.book.data.local.EntityBookInfo
 import domain.common.Role
 import domain.library.data.LibraryInfo
-import domain.library.data.LibraryInfoPersistentRepo
+import domain.library.data.LibraryInfoRepo
 import domain.user.data.UserInfo
 import kotlinx.coroutines.*
 import org.junit.jupiter.api.AfterEach
@@ -48,7 +48,7 @@ class LibraryAppTest {
             prodContext.bookInfoRepo,
             prodContext.userInfoRepo,
             // prodContext.libraryInfoRepo,
-            LibraryInfoPersistentRepo(testLog, TestingUtils.createTempFileName("libraryInfoRepoDB")),
+            LibraryInfoRepo(testLog, TestingUtils.createTempFileName("libraryInfoRepoDB")),
             prodContext.accountInfoRepo,
             prodContext.gson,
             testLog    // <--- Using the `TestLog` logger
@@ -711,13 +711,13 @@ class LibraryAppTest {
             val roles = setupDefaultRolesAndScenario(context, testUtils)
             val user1InfoResult: Result<UserInfo> = testUtils.createFakeUserInfoInUserInfoRepo(1)
             assertNotNull(user1InfoResult)
-            assertTrue(user1InfoResult.isSuccess, "User01 should have been added to UserInfoRepo")
+            assertTrue(user1InfoResult.isSuccess, "User01 should have been added to UserInfoInMemoryRepo")
             val user1 = User(user1InfoResult.getOrThrow(), roles.account1, context)
             assertNotNull(user1)
 
             val user2InfoResult: Result<UserInfo> = testUtils.createFakeUserInfoInUserInfoRepo(2)
             assertNotNull(user2InfoResult)
-            assertTrue(user2InfoResult.isSuccess, "User2 should have been added to UserInfoRepo")
+            assertTrue(user2InfoResult.isSuccess, "User2 should have been added to UserInfoInMemoryRepo")
             val user2 = User(user2InfoResult.getOrThrow(), roles.account2, context)
             assertNotNull(user2)
 

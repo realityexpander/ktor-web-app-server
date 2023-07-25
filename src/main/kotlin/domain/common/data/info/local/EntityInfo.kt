@@ -5,6 +5,7 @@ import common.uuid2.UUID2
 import domain.common.data.Model
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+import java.util.*
 
 /**
  * EntityInfo
@@ -16,10 +17,8 @@ import kotlinx.serialization.Transient
  */
 
 @Serializable
-open class EntityInfo protected constructor(
+open class EntityInfo(
     @Transient            // prevent kotlinx serialization
     @kotlin.jvm.Transient // prevent gson serialization
-    override val id: UUID2<*> = UUID2.randomUUID2(UUID2::class.java)
-) : Model(id) {
-    constructor() : this(UUID2.randomUUID2(UUID2::class.java))
-}
+    override val id: UUID2<*> = UUID2.randomUUID2<IUUID2>()
+) : Model(id)

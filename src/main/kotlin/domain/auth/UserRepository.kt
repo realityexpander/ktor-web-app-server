@@ -1,7 +1,11 @@
 package com.realityexpander.domain.auth
 
-import com.realityexpander.common.data.local.FileDatabase
+import com.realityexpander.common.data.local.JsonFileDatabase
+import common.uuid2.IUUID2
 import common.uuid2.UUID2
+import domain.common.data.HasId
+import domain.common.data.Model
+import domain.common.data.info.local.EntityInfo
 import domain.user.User
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
@@ -17,7 +21,7 @@ data class UserEntity(
     val clientIpAddressWhiteList: List<String> = listOf(),
     val passwordResetToken: String? = null,
     val passwordResetJwtToken: String? = null,
-) : FileDatabase.HasId<UUID2<User>> {
+) : EntityInfo(id) {
     override fun id(): UUID2<User> {
         return id
     }
@@ -28,7 +32,7 @@ class UserRepository(
     private val authTokenToUserIdLookup: MutableMap<TokenStr, UUID2<User>> = mutableMapOf(),
     private val authJwtTokenToUserIdLookup: MutableMap<JwtTokenStr, UUID2<User>> = mutableMapOf(),
     private val emailToUserIdLookup: MutableMap<EmailStr, UUID2<User>> = mutableMapOf()
-) : FileDatabase<UUID2<User>, UserEntity>(usersDatabaseFilename, UserEntity.serializer()) {
+) : JsonFileDatabase<User, UserEntity>(usersDatabaseFilename, UserEntity.serializer()) {
 
     init {
         runBlocking {

@@ -1,9 +1,9 @@
 package common.uuid2
 
 import com.google.gson.GsonBuilder
-import common.uuid2.UUID2.Companion.fromUUID
-import common.uuid2.UUID2.Companion.fromUUID2String
-import common.uuid2.UUID2.Companion.fromUUIDString
+import common.uuid2.UUID2.Companion.fromUUIDToUUID2
+import common.uuid2.UUID2.Companion.fromUUID2StrToTypedUUID2
+import common.uuid2.UUID2.Companion.fromUUIDStrToUUID2
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -19,7 +19,7 @@ import java.util.*
 
 open class Role(
     @Transient
-    open val id: UUID2<*> = UUID2.createFakeUUID2(1, IUUID2::class.java)
+    open val id: UUID2<*> = UUID2.createFakeUUID2<IUUID2>(1)
 )
 
 class User(
@@ -30,6 +30,10 @@ class User(
     override fun uuid2TypeStr(): String {
         return UUID2.calcUUID2TypeStr(this.javaClass)
     }
+
+    override fun id(): UUID2<*> {
+        return id
+    }
 }
 
 class Book(
@@ -39,6 +43,10 @@ class Book(
     override fun uuid2TypeStr(): String {
         return UUID2.calcUUID2TypeStr(this.javaClass)
     }
+
+    override fun id(): UUID2<*> {
+        return id
+    }
 }
 
 class Library(
@@ -47,6 +55,10 @@ class Library(
 ) : Role(id), IUUID2 {
     override fun uuid2TypeStr(): String {
         return UUID2.calcUUID2TypeStr(this.javaClass)
+    }
+
+    override fun id(): UUID2<*> {
+        return id
     }
 }
 
@@ -60,7 +72,7 @@ class UUID2Test {
     @Test
     fun `Deserialized UUID2 string is Correct`() {
         // • ARRANGE
-        val book1200Id: UUID2<Book> = UUID2.createFakeUUID2(1200, Book::class.java)
+        val book1200Id: UUID2<Book> = UUID2.createFakeUUID2<Book>(1200)
         val expectedUUID2Str = "UUID2:Role.Book@00000000-0000-0000-0000-000000001200"
 
         // • ACT
@@ -77,11 +89,11 @@ class UUID2Test {
     @Test
     fun `Create new UUID2 from UUID2 string are Equal`() {
         // • ARRANGE
-        val book1200Id: UUID2<Book> = UUID2.createFakeUUID2(1200, Book::class.java)
+        val book1200Id: UUID2<Book> = UUID2.createFakeUUID2<Book>(1200)
         val book1200UUID2Str: String = book1200Id.toString()
 
         // • ACT
-        val book1200aId: UUID2<Book> = book1200UUID2Str.fromUUID2String()
+        val book1200aId: UUID2<Book> = book1200UUID2Str.fromUUID2StrToTypedUUID2<Book>()
 
         // • ASSERT
         assertEquals(book1200Id, book1200aId)
@@ -90,7 +102,7 @@ class UUID2Test {
     @Test
     fun `Create new UUID2 from another UUID2 are Equal`() {
         // • ARRANGE
-        val book1200Id: UUID2<Book> = UUID2.createFakeUUID2(1200, Book::class.java)
+        val book1200Id: UUID2<Book> = UUID2.createFakeUUID2<Book>(1200)
 
         // • ACT
         val book1200aId: UUID2<Book> = UUID2(book1200Id)
@@ -102,13 +114,13 @@ class UUID2Test {
     @Test
     fun `UUID2 values with equal UUIDs using onlyUUIDEquals are Equal`() {
         // • ARRANGE
-        val book1200Id: UUID2<Book> = UUID2.createFakeUUID2(1200, Book::class.java)
-        val user1200Id: UUID2<User> = UUID2.createFakeUUID2(1200, User::class.java)
-        val user9999Id: UUID2<User> = UUID2.createFakeUUID2(9999, User::class.java)
+        val book1200Id: UUID2<Book> = UUID2.createFakeUUID2<Book>(1200)
+        val user1200Id: UUID2<User> = UUID2.createFakeUUID2<User>(1200)
+        val user9999Id: UUID2<User> = UUID2.createFakeUUID2<User>(9999)
 
         // • ACT
-        val isEqual: Boolean = book1200Id.isOnlyUUIDEqual(user1200Id)
-        val isNotEqual: Boolean = book1200Id.isOnlyUUIDEqual(user9999Id)
+        val isEqual: Boolean = book1200Id.isEqualUUIDValue(user1200Id)
+        val isNotEqual: Boolean = book1200Id.isEqualUUIDValue(user9999Id)
 
         // • ASSERT
         assertTrue(isEqual)
@@ -118,8 +130,8 @@ class UUID2Test {
     @Test
     fun `Equal UUID2 values are Equal`() {
         // • ARRANGE
-        val book9999Id: UUID2<Book> = UUID2.createFakeUUID2(9999, Book::class.java)
-        val book9999Ida: UUID2<Book> = UUID2.createFakeUUID2(9999, Book::class.java)
+        val book9999Id: UUID2<Book> = UUID2.createFakeUUID2<Book>(9999)
+        val book9999Ida: UUID2<Book> = UUID2.createFakeUUID2<Book>(9999)
 
         // • ACT
         assertEquals(book9999Id, book9999Ida)
@@ -132,7 +144,7 @@ class UUID2Test {
 
         // • ACT
         try {
-            val book1200aId: UUID2<Book> = invalidUUID2Str.fromUUID2String()
+            val book1200aId: UUID2<Book> = invalidUUID2Str.fromUUID2StrToTypedUUID2<Book>()
             fail(Exception("Expected IllegalArgumentException"))
         } catch (e: IllegalArgumentException) {
             // • ASSERT
@@ -149,7 +161,7 @@ class UUID2Test {
 
         // • ACT
         try {
-            val book1200aId: UUID2<Book> = invalidUUID2Str.fromUUID2String()
+            val book1200aId: UUID2<Book> = invalidUUID2Str.fromUUID2StrToTypedUUID2<Book>()
 
             // This is only here to satisfy the compiler warnings.  It should never be reached.
             System.err.printf("SHOULD NEVER SEE THIS - book1200aId=%s", book1200aId)
@@ -169,7 +181,7 @@ class UUID2Test {
         val book1200IdStr: String = book1200Id.toString()
 
         // • ACT
-        val book1200aId: UUID2<Book> = book1200IdStr.fromUUID2String()
+        val book1200aId: UUID2<Book> = book1200IdStr.fromUUID2StrToTypedUUID2<Book>()
 
         // • ASSERT
         assertEquals(book1200Id, book1200aId)
@@ -182,7 +194,7 @@ class UUID2Test {
 
         // • ACT
         try {
-            val book1200aId: UUID2<Book> = invalidUUID2Str.fromUUID2String()
+            val book1200aId: UUID2<Book> = invalidUUID2Str.fromUUID2StrToTypedUUID2<Book>()
             fail("Expected IllegalArgumentException")
         } catch (e: IllegalArgumentException) {
             // • ASSERT
@@ -198,7 +210,7 @@ class UUID2Test {
         val book1200uuid: UUID = UUID2.createFakeUUID2<Book>(1200, Book::class.java).uuid()
 
         // • ACT
-        val book1200aId: UUID2<Book> = book1200uuid.fromUUID()
+        val book1200aId: UUID2<Book> = book1200uuid.fromUUIDToUUID2()
 
         // • ASSERT
         assertEquals(book1200uuid,book1200aId.uuid())
@@ -211,7 +223,7 @@ class UUID2Test {
 
         // • ACT
         try {
-            val book1200aId: UUID2<Book> = invalidUUID2Str.fromUUID2String()
+            val book1200aId: UUID2<Book> = invalidUUID2Str.fromUUID2StrToTypedUUID2<Book>()
             fail("Expected IllegalArgumentException")
         } catch (e: IllegalArgumentException) {
             // • ASSERT
@@ -228,7 +240,7 @@ class UUID2Test {
         val book1200uuidStr: String = book1200uuid.toString()
 
         // • ACT
-        val book1200aUuid: UUID = book1200uuidStr.fromUUIDString<Book>().uuid()
+        val book1200aUuid: UUID = book1200uuidStr.fromUUIDStrToUUID2<Book>().uuid()
 
         // • ASSERT
         assertEquals(book1200uuid, book1200aUuid)
@@ -241,7 +253,7 @@ class UUID2Test {
 
         // • ACT
         try {
-            val book1200aId: UUID2<Book> = invalidUUIDStr.fromUUIDString()
+            val book1200aId: UUID2<Book> = invalidUUIDStr.fromUUIDStrToUUID2()
             fail("Expected IllegalArgumentException")
         } catch (e: IllegalArgumentException) {
             // • ASSERT
@@ -254,10 +266,10 @@ class UUID2Test {
     @Test
     fun `Deserializing a Role JSON containing a mutableMap using Gson Uuid2HashMapJsonDeserializer is Success`() {
         // • ARRANGE
-        val book1200: Book = Book(UUID2.createFakeUUID2(1200, Book::class.java), "The Hobbit")
-        val book1201: Book = Book(UUID2.createFakeUUID2(1201, Book::class.java), "The Fellowship of the Ring")
+        val book1200: Book = Book(UUID2.createFakeUUID2<Book>(1200), "The Hobbit")
+        val book1201: Book = Book(UUID2.createFakeUUID2<Book>(1201), "The Fellowship of the Ring")
         val user01 = User(
-            UUID2.createFakeUUID2(1, User::class.java),
+            UUID2.createFakeUUID2<User>(1),
             "Bilbo Baggins",
             mutableMapOf<UUID2<Book>, Long>().apply {
                 put(book1200.id, 1L)
@@ -286,9 +298,13 @@ class UUID2Test {
     }
 
     // Represents an unknown UUID2 type
-    class UnknownUUID2TypeEntity(val id: UUID2<*>) : IUUID2 {
+    class UnknownUUID2TypeEntity(override val id: UUID2<*>) : IUUID2 {
         override fun uuid2TypeStr(): String {
             return UUID2.calcUUID2TypeStr(this.javaClass)
+        }
+
+        override fun id(): UUID2<*> {
+            return id
         }
     }
 
@@ -297,7 +313,7 @@ class UUID2Test {
         // • ARRANGE
         val unknownUUID2TypeEntity = UnknownUUID2TypeEntity(UUID2.createFakeUUID2(9999, UnknownUUID2TypeEntity::class.java))
         val user01 = User(
-            UUID2.createFakeUUID2(1, User::class.java),
+            UUID2.createFakeUUID2<User>(1),
             "Bilbo Baggins",
             mutableMapOf<UUID2<Book>, Long>().apply {
                 @Suppress("UNCHECKED_CAST")
@@ -306,7 +322,6 @@ class UUID2Test {
         )
 
         // create a Gson instance with the Uuid2MapJsonDeserializer registered
-        println("▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ Warning is expected for this test. ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼")
         val gson = GsonBuilder()
                 .registerTypeAdapter(MutableMap::class.java, UUID2.Uuid2MapJsonDeserializer())
                 .setPrettyPrinting()
@@ -314,7 +329,9 @@ class UUID2Test {
         val user01Json: String = gson.toJson(user01)
 
         assertThrows(RuntimeException::class.java) {
+
             // • ACT
+            println("▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ Warning & Runtime Exception is normal and expected for this test. ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼")
             val user01a: User = gson.fromJson(user01Json, User::class.java)
         }
 

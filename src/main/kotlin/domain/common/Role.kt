@@ -4,7 +4,7 @@ import com.google.gson.JsonSyntaxException
 import com.realityexpander.jsonConfig
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
-import common.uuid2.UUID2.Companion.fromUUID
+import common.uuid2.UUID2.Companion.fromUUIDToUUID2
 import domain.Context
 import domain.common.data.info.DomainInfo
 import domain.common.data.info.Info
@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicReference
 abstract class Role<TDomainInfo : DomainInfo> (
     @Transient            // prevent kotlinx serialization
     @kotlin.jvm.Transient // prevent gson serialization
-    open val id: UUID2<*> = UUID2.randomUUID2<IUUID2>(),
+    override val id: UUID2<*> = UUID2.randomUUID2<IUUID2>(),
     override val info: AtomicReference<TDomainInfo> = AtomicReference<TDomainInfo>(null),
     protected val context: Context
 ) : Info<TDomainInfo>,
@@ -101,7 +101,7 @@ abstract class Role<TDomainInfo : DomainInfo> (
         uuid: UUID,
         info: TDomainInfo?,
         context: Context
-    ) : this(uuid.fromUUID<IUUID2>(), AtomicReference<TDomainInfo>(info), context)
+    ) : this(uuid.fromUUIDToUUID2<IUUID2>(), AtomicReference<TDomainInfo>(info), context)
 
     /////////////////////
     // Simple getters  //
@@ -159,9 +159,10 @@ abstract class Role<TDomainInfo : DomainInfo> (
     /////////////////////////////////////////////////////
 
     /**
-     * Defines how to fetch the `{Domain}Info` object from server
+     * Defines how to fetch the `{Domain}Info` object from server/database/file/somewhere.
      *
-     * * **REQUIRED** - **MUST** be overridden & implemented in subclasses
+     * * **REQUIRED** - **MUST** be overridden & implemented in subclasses.
+     *
      **/
     override suspend fun fetchInfoResult(): Result<TDomainInfo> {
         return Result.failure(Exception("Not Implemented, should be implemented in subclass."))
@@ -174,10 +175,11 @@ abstract class Role<TDomainInfo : DomainInfo> (
      *
      * * Call **`super.updateFetchInfoResult(newInfo)`** to update the **`info<TDomainInfo>`** object
      * * The caller decides when appropriate, ie: optimistic updates, or after server confirms update.
+     *
      **/
     abstract override suspend fun updateInfo(updatedInfo: TDomainInfo): Result<TDomainInfo>
 
-    // NOTE: Should be implemented by subclasses but not required
+    // Should be implemented by subclasses but not required.
     override fun toString(): String {
 
         // default toString() implementation
