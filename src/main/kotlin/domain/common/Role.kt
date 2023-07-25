@@ -163,7 +163,7 @@ abstract class Role<TDomainInfo : DomainInfo> (
      *
      * * **REQUIRED** - **MUST** be overridden & implemented in subclasses.
      *
-     **/
+    **/
     override suspend fun fetchInfoResult(): Result<TDomainInfo> {
         return Result.failure(Exception("Not Implemented, should be implemented in subclass."))
     }
@@ -176,7 +176,7 @@ abstract class Role<TDomainInfo : DomainInfo> (
      * * Call **`super.updateFetchInfoResult(newInfo)`** to update the **`info<TDomainInfo>`** object
      * * The caller decides when appropriate, ie: optimistic updates, or after server confirms update.
      *
-     **/
+    **/
     abstract override suspend fun updateInfo(updatedInfo: TDomainInfo): Result<TDomainInfo>
 
     // Should be implemented by subclasses but not required.
@@ -201,10 +201,10 @@ abstract class Role<TDomainInfo : DomainInfo> (
     }
 
     /**
-    * Returns the Info<T> object if it has been fetched, otherwise fetches and returns Result.
-    *
-    * * Used to access the Info object without having to handle the Result<T> object.
-    * * NOTE: A cached Info<T> object is returned if it has been fetched, otherwise a new Info<T> object is fetched.
+     * Returns the Info<T> object if it has been fetched, otherwise fetches and returns Result.
+     *
+     * * Used to access the Info object without having to handle the Result<T> object.
+     * * NOTE: A cached Info<T> object is returned if it has been fetched, otherwise a new Info<T> object is fetched.
     **/
     override suspend fun fetchInfo(): TDomainInfo? {
         if (isInfoFetched) {
@@ -236,7 +236,7 @@ abstract class Role<TDomainInfo : DomainInfo> (
      * * If `Info` is not fetched, it attempts to fetch it.
      *
      * * Note: BOOP Exception: The "returning null" behavior is to make the call site error handling code smaller.
-     **/
+    **/
     override suspend fun fetchInfoFailureReason(): String? {
         if (!isInfoFetched) {
             if (fetchInfoResult().isFailure) {

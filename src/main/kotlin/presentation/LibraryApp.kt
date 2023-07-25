@@ -17,6 +17,7 @@ import domain.user.data.UserInfo
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.time.Instant
 
 @OptIn(DelicateCoroutinesApi::class)
@@ -26,7 +27,7 @@ internal class LibraryApp(private val context: Context) {
     // This is just a reference to how to use the Domain Layer.
     
     init {
-        GlobalScope.launch {
+        runBlocking {
 
             //context = Context.setupINSTANCE(context);  // For implementing a static Context. LEAVE for reference
             val testUtils = TestingUtils(context)
