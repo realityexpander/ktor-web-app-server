@@ -45,7 +45,7 @@ class LibraryAppTest {
 
     private fun setupDefaultTestContext(): Context {
         val testLog = TestLog(!shouldDisplayAllDebugLogs) // false = print all logs to console, including info/debug
-        val prodContext = Context.setupProductionInstance(testLog)
+        val prodContext = Context.setupContextInstance(testLog)
 
         // Modify the Production context into a Test context.
         return Context(

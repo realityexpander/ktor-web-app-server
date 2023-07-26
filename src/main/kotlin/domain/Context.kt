@@ -2,17 +2,21 @@ package domain
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.realityexpander.domain.account.data.AccountInfoRepo
 import common.log.ILog
 import common.log.Log
 import common.uuid2.UUID2
 import domain.account.data.AccountInfoInMemoryRepo
 import domain.account.data.IAccountInfoRepo
+import domain.book.data.BookInfoInMemoryRepo
 import domain.book.data.BookInfoRepo
 import domain.book.data.IBookInfoRepo
 import domain.library.data.ILibraryInfoRepo
+import domain.library.data.LibraryInfoInMemoryRepo
 import domain.library.data.LibraryInfoRepo
 import domain.user.data.IUserInfoRepo
 import domain.user.data.UserInfoInMemoryRepo
+import domain.user.data.UserInfoRepo
 
 /**
  * Context is a singleton class that holds all the repositories and utility classes.
@@ -30,51 +34,57 @@ class Context(
     val log: ILog
 ) {
 
-    sealed class ContextKind {
-        object PRODUCTION : ContextKind()
-        object TESTING : ContextKind()
-    }
-
     companion object {
 
         //////////////////////////////
         // Static Constructors      //
         //////////////////////////////
 
-        fun setupProductionInstance(log: ILog?): Context {
-            return if (log == null)
-                setupInstance(
-                    ContextKind.PRODUCTION,
-                    Log()
-                )
-            else
-                setupInstance(
-                    ContextKind.PRODUCTION,
-                    log
-                )
-        }
-
-        fun setupInstance(
-            contextKind: ContextKind,
-            log: ILog,
-            context: Context = generateDefaultProductionContext(log)
+        fun setupContextInstance(
+            log: ILog = Log(),
+            context: Context = createDefaultProductionContext(log)  // pass in a custom context for testing
         ): Context {
-            return when (contextKind) {
-                ContextKind.PRODUCTION -> generateDefaultProductionContext(log)
-                ContextKind.TESTING -> {
-                    println("Context.setupInstance(): contextType=TESTING, using passed in Context")
-                    context
-                }
-            }
+            return context
         }
 
         // Generate singletons for the PRODUCTION Application
-        private fun generateDefaultProductionContext(log: ILog): Context {
+        private fun createDefaultProductionContext(log: ILog): Context {
             return Context(
-                BookInfoRepo(log),              // BookInfoInMemoryRepo(log)
-                UserInfoInMemoryRepo(log),      // UserInfoRepo(log)
-                LibraryInfoRepo(log),           // LibraryInfoInMemoryRepo(log)
-                AccountInfoInMemoryRepo(log),   // AccountInfoInMemoryRepo(log),
+                BookInfoRepo(log),      // BookInfoInMemoryRepo(log)
+                UserInfoRepo(log),      // UserInfoInMemoryRepo(log)
+                LibraryInfoRepo(log),   // LibraryInfoInMemoryRepo(log)
+                AccountInfoRepo(log),   // AccountInfoInMemoryRepo(log),
+                gsonConfig,
+                log
+            )
+        }
+
+        // Generate singletons for the TESTING Application
+        // - uses in-memory repositories
+        fun createDefaultTestInMemoryContext(log: ILog): Context {
+            return Context(
+                BookInfoInMemoryRepo(log),
+                UserInfoInMemoryRepo(log),
+                LibraryInfoInMemoryRepo(log),
+                AccountInfoInMemoryRepo(log),
+                gsonConfig,
+                log
+            )
+        }
+
+        // Generate singletons for the TESTING Application
+        // - uses file-based repositories
+        fun createDefaultTestFileContext(log: ILog): Context {
+            return Context(
+                BookInfoRepo(log,
+                    bookInfoApiFilename = "test-bookInfoDB.json",
+                    bookInfoDatabaseFilename ="test-bookInfoAPI.json"),
+                UserInfoRepo(log,
+                    userRepoDatabaseFilename ="test-userInfoRepoDatabase.json"),
+                LibraryInfoRepo(log,
+                    libraryInfoRepoDatabaseFilename ="test-libraryInfoRepoDatabase.json"),
+                AccountInfoRepo(log,
+                    accountInfoRepoDatabaseFilename ="test-accountInfoRepoDatabase.json"),
                 gsonConfig,
                 log
             )

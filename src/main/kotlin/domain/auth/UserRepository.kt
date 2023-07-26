@@ -8,6 +8,9 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import util.*
 
+// Note: Not part of the LibraryApp hierarchy YET.
+// This is a standalone repository for the Ktor Auth.
+
 @Serializable
 data class UserEntity(
     override val id: UUID2<User>,
@@ -25,7 +28,7 @@ data class UserEntity(
 }
 
 class UserRepository(
-    usersDatabaseFilename: String = DEFAULT_USERS_DATABASE_FILENAME,
+    usersDatabaseFilename: String = DEFAULT_USER_REPOSITORY_DATABASE_FILENAME,
     private val authTokenToUserIdLookup: MutableMap<TokenStr, UUID2<User>> = mutableMapOf(),
     private val authJwtTokenToUserIdLookup: MutableMap<JwtTokenStr, UUID2<User>> = mutableMapOf(),
     private val emailToUserIdLookup: MutableMap<EmailStr, UUID2<User>> = mutableMapOf()
@@ -141,6 +144,6 @@ class UserRepository(
     }
 
     companion object {
-        const val DEFAULT_USERS_DATABASE_FILENAME = "usersDB.json"
+        const val DEFAULT_USER_REPOSITORY_DATABASE_FILENAME = "userRepositoryDB.json"
     }
 }

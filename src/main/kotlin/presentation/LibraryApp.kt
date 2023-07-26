@@ -14,20 +14,16 @@ import domain.library.Library
 import domain.library.data.LibraryInfo
 import domain.user.User
 import domain.user.data.UserInfo
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.time.Instant
 
 fun main() {
 
     // Setup App Context Object singletons
-    val productionContext = Context.setupProductionInstance(Log())
+    val productionContext = Context.createDefaultTestFileContext(Log())
     LibraryApp(productionContext)
 }
 
-@OptIn(DelicateCoroutinesApi::class)
 internal class LibraryApp(private val context: Context) {
     // Library App - Domain Layer Root Object
     // Note: All of this has been moved to the tests.
@@ -707,6 +703,13 @@ internal class LibraryApp(private val context: Context) {
                         throw RuntimeException("containsKey(Book 1400) should have failed")
                 }
             }
+
+            // Delete the databases
+            context.libraryInfoRepo.deleteDatabase()
+            context.bookInfoRepo.deleteDatabase()
+            context.userInfoRepo.deleteDatabase()
+            context.accountInfoRepo.deleteDatabase()
+
             context.log.d(
                 this,
                 """

@@ -5,6 +5,7 @@ import com.realityexpander.domain.auth.UserRepository
 import common.uuid2.UUID2
 import common.uuid2.UUID2.Companion.fromUUID2StrToUUID2
 import domain.user.User
+import domain.user.data.UserInfoInMemoryRepo
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -16,6 +17,7 @@ import java.util.*
 class UserRepositoryTest {
 
     private val tempName = UUID.randomUUID().toString()
+
     private val userRepo = UserRepository(
         usersDatabaseFilename = "test-$tempName-usersDB.json",
     )

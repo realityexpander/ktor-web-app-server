@@ -278,8 +278,8 @@ open class UUID2<TUUID2 : IUUID2> {
     }
 
     // For Gson
-    // Note: Deserializes all JSON Numbers to Longs for all Entity Number JSON values.
-    // - For consistent number deserialization due to GSON defaulting to convert numbers to Doubles.
+    // Note: Deserializes all JSON Numbers to Long integers for all Entity Number JSON values.
+    // - For consistent number deserialization due to GSON default is o convert JSON numbers to Doubles.
     class Uuid2MapJsonDeserializer: JsonDeserializer<MutableMap<UUID2<*>, *>?> {
 
         @Throws(JsonParseException::class)

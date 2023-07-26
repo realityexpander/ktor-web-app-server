@@ -119,6 +119,10 @@ val userRepository = UserRepository()
 
 fun Application.module() {
 
+    /////////////////////
+    // SERVER SETUP    //
+    /////////////////////
+
     installServer(Compression) {
         gzip()
     }
@@ -146,10 +150,7 @@ fun Application.module() {
         }
     }
 
-    /////////////////////////
-    // SETUP KTOR CLIENT   //
-    /////////////////////////
-
+    // Setup Ktor client
     val client = HttpClient(OkHttp) {
         install(Logging) {
             logger = Logger.DEFAULT
@@ -173,10 +174,7 @@ fun Application.module() {
         }
     }
 
-    /////////////////////////////
-    // SETUP AUTHENTICATION    //
-    /////////////////////////////
-
+    // Setup Authentication password service for hashing passwords
     val passwordService = ArgonPasswordService(
         pepper = applicationConfig.pepper // pepper is used to make the password hash unique
     )
@@ -187,14 +185,14 @@ fun Application.module() {
     val audience = environment.config.config("ktor").property("jwt.audience").getString()
     val apiRealm = environment.config.config("ktor").property("jwt.realm").getString()
 
-    // Setup JWT Authentication
+    // Setup JWT authentication
     val jwtService = JwtService(
         secret = secret,
         issuer = issuer,
         audience = audience,
     )
 
-    // Setup JWT & Bearer Authentication
+    // Setup JWT & bearer authentication
     installServer(Authentication) {
 
         jwt("auth-jwt") {
@@ -284,7 +282,8 @@ fun Application.module() {
     //////////////
 
     routing {
-        // setup CORS
+
+//        // setup CORS
 //        options("*") {
 //            call.response.header("Access-Control-Allow-Origin", "*")
 //            call.response.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
@@ -578,6 +577,7 @@ fun Application.module() {
                     return@post
                 }
             }
+
         }
 
         // api routes are protected by authentication
@@ -689,6 +689,11 @@ fun Application.module() {
                     File("${Constants.USER_IMAGES_PATH}/$tempFilename").delete()
                     call.respond(HttpStatusCode.InternalServerError, "Error")
                 }
+            }
+
+            get("/api/users") {
+                val users = userRepository.findAllUsers()
+                call.respond(jsonConfig.encodeToString(users))
             }
         }
 

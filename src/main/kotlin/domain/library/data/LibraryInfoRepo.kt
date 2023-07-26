@@ -20,12 +20,12 @@ import kotlinx.coroutines.runBlocking
 
 class LibraryInfoRepo(
     log: ILog,
-    libraryRepoDatabaseFilename: String = DEFAULT_LIBRARYINFO_REPO_DATABASE_FILENAME,
+    libraryInfoRepoDatabaseFilename: String = DEFAULT_LIBRARYINFO_REPO_DATABASE_FILENAME,
 
     // Use a file database to persist the library info
     private val database: JsonFileDatabase<Library, LibraryInfo> = object :
         JsonFileDatabase<Library, LibraryInfo>(
-            libraryRepoDatabaseFilename,
+            libraryInfoRepoDatabaseFilename,
             LibraryInfo.serializer()
         ) {
         init {

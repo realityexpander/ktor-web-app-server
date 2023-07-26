@@ -23,12 +23,12 @@ import kotlinx.coroutines.runBlocking
 
 class AccountInfoRepo(
     log: ILog,
-    accountRepoDatabaseFilename: String = DEFAULT_LIBRARYINFO_REPO_DATABASE_FILENAME,
+    accountInfoRepoDatabaseFilename: String = DEFAULT_LIBRARYINFO_REPO_DATABASE_FILENAME,
 
     // Use a file database to persist the account info
     private val database: JsonFileDatabase<Account, AccountInfo> = object :
         JsonFileDatabase<Account, AccountInfo>(
-            accountRepoDatabaseFilename,
+            accountInfoRepoDatabaseFilename,
             AccountInfo.serializer()
         ) {
         init {
