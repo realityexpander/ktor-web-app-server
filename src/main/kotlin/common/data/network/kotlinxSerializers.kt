@@ -35,19 +35,19 @@ object AnySerializer : KSerializer<Any> {
     }
 }
 
-object ResultSerializer : KSerializer<Result<*>> {
-    override val descriptor = PrimitiveSerialDescriptor("SerializedResult", PrimitiveKind.STRING)
+@Serializable
+sealed class SerializedResult(
+    val result: String,  // "Success" or "Failure"
+) {
+    @Serializable
+    data class Success(val value: String) : SerializedResult("Success")
 
     @Serializable
-    sealed class SerializedResult(
-        val result: String,  // "Success" or "Failure"
-    ) {
-        @Serializable
-        data class Success(val value: String) : SerializedResult("Success")
+    class Failure(val errorMessage: String) : SerializedResult("Failure")
+}
 
-        @Serializable
-        class Failure(val errorMessage: String) : SerializedResult("Failure")
-    }
+object ResultSerializer : KSerializer<Result<*>> {
+    override val descriptor = PrimitiveSerialDescriptor("SerializedResult", PrimitiveKind.STRING)
 
     override fun deserialize(decoder: Decoder): Result<*> {
         val valueStr = decoder.decodeString()

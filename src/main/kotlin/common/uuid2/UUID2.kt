@@ -626,3 +626,6 @@ object UUIDSerializer : KSerializer<UUID> {
         encoder.encodeString(value.toString())
     }
 }
+
+@Serializable
+data class UUID2Result(val uuid2: UUID2<*>)

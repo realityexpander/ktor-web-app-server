@@ -1,9 +1,18 @@
 package domain.book
 
 
+import com.realityexpander.authRepo
+import com.realityexpander.common.data.network.PairSerializer
+import com.realityexpander.common.data.network.ResultSerializer
+import com.realityexpander.common.data.network.SerializedResult
+import com.realityexpander.jsonConfig
+import com.realityexpander.libraryAppContext
+import common.log.Log
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
+import common.uuid2.UUID2Result
 import domain.Context
+import domain.Context.Companion.createDefaultTestInMemoryContext
 import domain.Context.Companion.gsonConfig
 import domain.book.data.BookInfo
 import domain.book.data.IBookInfoRepo
@@ -14,9 +23,9 @@ import domain.library.Library
 import domain.library.PrivateLibrary
 import domain.library.data.LibraryInfo
 import domain.user.User
+import io.ktor.websocket.*
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
@@ -286,10 +295,20 @@ object BookSerializer : KSerializer<Book> {
     override val descriptor = PrimitiveSerialDescriptor("Book", PrimitiveKind.STRING)
 
     override fun deserialize(decoder: Decoder): Book {
-        return gsonConfig.fromJson(decoder.decodeString(), Book::class.java)  // todo use kotlinx serialization instead of gson
+        libraryAppContext.log.e(this,"WARNING: BookSerializer.deserialize() called - DO NOT USE IN PRODUCTION." +
+                "Should only be used for debugging/testing. Use the Book constructor instead.")
+
+        @Suppress("UNCHECKED_CAST")
+        return Book(UUID2Result.serializer().deserialize(decoder).uuid2 as UUID2<Book>,
+            null,
+            libraryAppContext
+        )
     }
 
     override fun serialize(encoder: Encoder, value: Book) {
-        encoder.encodeString(value.toString())
+        encoder.encodeSerializableValue( // unlike `encodeString`, this will NOT add quotes around the string
+            UUID2Result.serializer(),
+            UUID2Result(value.id())
+        )
     }
 }

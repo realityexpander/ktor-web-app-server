@@ -106,7 +106,7 @@ class User : Role<UserInfo>, IUUID2 {
     }
 
     override suspend fun updateInfo(updatedInfo: UserInfo): Result<UserInfo> {
-        context.log.d(this, "User (" + id() + "),  userInfo: " + updatedInfo)
+        context.log.d(this, "User (" + id() + ")")
 
         // Optimistically Update the cached UserInfo
         super.updateFetchInfoResult(Result.success(updatedInfo))

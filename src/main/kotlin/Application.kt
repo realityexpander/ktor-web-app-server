@@ -807,15 +807,15 @@ fun Application.module() {
                 val bookId = call.parameters["bookId"]?.toString()
                 val libraryId = call.parameters["libraryId"]?.toString()
                 bookId ?: run {
-                    call.respondJson(mapOf("error" to "Invalid bookId"), HttpStatusCode.BadRequest)
+                    call.respondJson(mapOf("error" to "Missing bookId"), HttpStatusCode.BadRequest)
                     return@post
                 }
                 libraryId ?: run {
-                    call.respondJson(mapOf("error" to "Invalid libraryId"), HttpStatusCode.BadRequest)
+                    call.respondJson(mapOf("error" to "Missing libraryId"), HttpStatusCode.BadRequest)
                     return@post
                 }
                 val userId = call.getUserId() ?: run {
-                    call.respondJson(mapOf("error" to "Invalid userId"), HttpStatusCode.BadRequest)
+                    call.respondJson(mapOf("error" to "Missing userId"), HttpStatusCode.BadRequest)
                     return@post
                 }
 
@@ -835,18 +835,22 @@ fun Application.module() {
                 val bookId = call.parameters["bookId"]?.toString()
                 val libraryId = call.parameters["libraryId"]?.toString()
                 bookId ?: run {
-                    call.respondJson(mapOf("error" to "Invalid bookId"), HttpStatusCode.BadRequest)
+                    call.respondJson(mapOf("error" to "Missing bookId"), HttpStatusCode.BadRequest)
                     return@post
                 }
                 libraryId ?: run {
-                    call.respondJson(mapOf("error" to "Invalid libraryId"), HttpStatusCode.BadRequest)
+                    call.respondJson(mapOf("error" to "Missing libraryId"), HttpStatusCode.BadRequest)
+                    return@post
+                }
+                val userId = call.getUserId() ?: run {
+                    call.respondJson(mapOf("error" to "Missing userId"), HttpStatusCode.BadRequest)
                     return@post
                 }
 
                 // Create Role objects
                 val library = Library(libraryId.fromUUID2StrToTypedUUID2<Library>(), libraryAppContext)
                 val book = Book(bookId.fromUUID2StrToTypedUUID2<Book>(), library, libraryAppContext)
-                val user = User(UUID2(User::class.java), libraryAppContext)
+                val user = User(userId, libraryAppContext)
 
                 // • ACTION: Check in Book to Library from User
                 val checkInBookResult = library.checkInBookFromUser(book, user)
