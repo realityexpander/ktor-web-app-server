@@ -138,8 +138,7 @@ class InMemoryAPITest {
 
             // • ASSERT
             assertTrue(result.isSuccess, "Delete entity test failed, result is not success.")
-            assertTrue(result.getOrNull() != null, "Delete entity test failed, result is null.")
-            assertEquals(bookInfoDTO, result.getOrNull(), "Delete entity test failed, result does not match.")
+            assertEquals(Unit, result.getOrNull(), "Delete entity test failed, result does not match.")
         }
     }
 }

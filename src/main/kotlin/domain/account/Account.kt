@@ -1,10 +1,11 @@
 package domain.account
 
+import com.realityexpander.libraryAppContext
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import common.uuid2.UUID2.Companion.toUUID2WithUUID2TypeOf
+import common.uuid2.UUID2Result
 import domain.Context
-import domain.Context.Companion.gsonConfig
 import domain.account.data.AccountInfo
 import domain.account.data.IAccountInfoRepo
 import domain.common.Role
@@ -216,10 +217,19 @@ object AccountSerializer : KSerializer<Account> {
     override val descriptor = PrimitiveSerialDescriptor("Account", PrimitiveKind.STRING)
 
     override fun deserialize(decoder: Decoder): Account {
-        return gsonConfig.fromJson(decoder.decodeString(), Account::class.java)  // todo use kotlinx serialization instead of gson
+        libraryAppContext.log.e(this,"WARNING: AccountSerializer.deserialize() called - DO NOT USE IN PRODUCTION." +
+                "Should only be used for debugging/testing. Use the Account constructor instead.")
+
+        @Suppress("UNCHECKED_CAST")
+        return Account(UUID2Result.serializer().deserialize(decoder).uuid2 as UUID2<Account>,
+            libraryAppContext
+        )
     }
 
     override fun serialize(encoder: Encoder, value: Account) {
-        encoder.encodeString(value.toString())
+        encoder.encodeSerializableValue( // unlike `encodeString`, this will NOT add quotes around the string
+            UUID2Result.serializer(),
+            UUID2Result(value.id())
+        )
     }
 }

@@ -1,9 +1,10 @@
 package domain.library
 
+import com.realityexpander.libraryAppContext
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
+import common.uuid2.UUID2Result
 import domain.Context
-import domain.Context.Companion.gsonConfig
 import domain.book.Book
 import domain.common.Role
 import domain.library.data.ILibraryInfoRepo
@@ -488,10 +489,19 @@ object LibrarySerializer : KSerializer<Library> {
     override val descriptor = PrimitiveSerialDescriptor("Library", PrimitiveKind.STRING)
 
     override fun deserialize(decoder: Decoder): Library {
-        return gsonConfig.fromJson(decoder.decodeString(), Library::class.java)  // todo use kotlinx serialization instead of gson
+        libraryAppContext.log.e(this,"WARNING: LibrarySerializer.deserialize() called - DO NOT USE IN PRODUCTION." +
+                "Should only be used for debugging/testing. Use the Library constructor instead.")
+
+        @Suppress("UNCHECKED_CAST")
+        return Library(UUID2Result.serializer().deserialize(decoder).uuid2 as UUID2<Library>,
+            libraryAppContext
+        )
     }
 
     override fun serialize(encoder: Encoder, value: Library) {
-        encoder.encodeString(value.toString())
+        encoder.encodeSerializableValue( // unlike `encodeString`, this will NOT add quotes around the string
+            UUID2Result.serializer(),
+            UUID2Result(value.id())
+        )
     }
 }
