@@ -116,10 +116,7 @@ class LibraryAppTest {
             // Populate the library with 10 books
             testUtils.populateLibraryWithFakeBooks(library1InfoId, 10)
 
-            /////////////////////////////////
-            // • Create Accounts for Users //
-            /////////////////////////////////
-
+            // • Create Accounts for Users
             val accountInfo1Result = testUtils.createFakeAccountInfoInAccountRepo(1)
             val accountInfo2Result = testUtils.createFakeAccountInfoInAccountRepo(2)
             assertNotNull(accountInfo1Result)
@@ -129,16 +126,13 @@ class LibraryAppTest {
             val accountInfo1: AccountInfo = accountInfo1Result.getOrThrow()
             val accountInfo2: AccountInfo = accountInfo2Result.getOrThrow()
 
-            // Create & populate User1 in the User Repo for the Context
+            // • Create & populate User1 in the User Repo for the Context
             val user1InfoResult: Result<UserInfo> = testUtils.createFakeUserInfoInUserInfoRepo(1)
             assertNotNull(user1InfoResult)
             assertTrue(user1InfoResult.isSuccess)
             val user1Info: UserInfo = user1InfoResult.getOrThrow()
 
-            ///////////////////////////
-            // Create Default Roles  //
-            ///////////////////////////
-
+            // • Create Default Roles
             val account1 = Account(accountInfo1, context)
             assertNotNull(account1)
             val library1 = Library(library1InfoId, context)

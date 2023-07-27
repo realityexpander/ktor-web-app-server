@@ -20,8 +20,10 @@ import domain.Context
 import domain.account.Account
 import domain.account.data.AccountInfo
 import domain.book.Book
+import domain.book.data.BookInfo
 import domain.library.Library
 import domain.library.PrivateLibrary
+import domain.library.data.LibraryInfo
 import domain.user.User
 import domain.user.data.UserInfo
 import io.ktor.client.*
@@ -738,164 +740,184 @@ fun Application.module() {
             // Library App API //
             /////////////////////
 
-            // USER
+            route("/library") {
 
-            get("/library/fetchUserInfo/{id}") {
-                val id = call.parameters["id"]?.toString()
-                id ?: run {
-                    call.respondJson(mapOf("error" to "Invalid id"), HttpStatusCode.BadRequest)
-                    return@get
+                ////////////////
+                // • USER     //
+                ////////////////
+
+                get("/fetchUserInfo/{id}") {
+                    val id = call.parameters["id"]?.toString()
+                    id ?: run {
+                        call.respondJson(mapOf("error" to "Invalid id"), HttpStatusCode.BadRequest)
+                        return@get
+                    }
+
+                    val user = User(id.fromUUID2StrToTypedUUID2<User>(), libraryAppContext)
+                    val userInfoResult = user.fetchInfoResult()
+
+                    val statusJson = resultToStatusCodeJson<UserInfo>(userInfoResult)
+                    call.respond(statusJson.statusCode, statusJson.json)
                 }
 
-                val user = User(id.fromUUID2StrToTypedUUID2<User>(), libraryAppContext)
-                val userInfo = user.info()
-                call.respond(jsonConfig.encodeToString(userInfo))
-            }
+                post("/createUser") {
+                    val userInfo = call.receive<UserInfo>()
 
-            post("/library/createUser") {
-                val userInfo = call.receive<UserInfo>()
+                    // • ACTION: Create User
+                    val upsertUserInfoResult = libraryAppContext.userInfoRepo.upsertUserInfo(userInfo)
 
-                // • ACTION: Create User
-                val upsertUserInfoResult = libraryAppContext.userInfoRepo.upsertUserInfo(userInfo)
+                    // Create Role objects
+                    val user = User(userInfo.id, libraryAppContext)
+                    val account = Account(user.id.uuid.toUUID2WithUUID2TypeOf<Account>(), libraryAppContext)
 
-                // Create Role objects
-                val user = User(userInfo.id, libraryAppContext)
-                val account = Account(user.id.uuid.toUUID2WithUUID2TypeOf<Account>(), libraryAppContext)
+                    // • ACTION: Register Account for User
+                    val registerAccountResult = account.registerUser(user)
+                    if (registerAccountResult.isFailure) {
+                        //call.respondJson(mapOf("error" to (registerAccountResult.exceptionOrNull()?.localizedMessage ?: "Unknown Error")), HttpStatusCode.BadRequest)
+                        val statusJson = resultToStatusCodeJson<AccountInfo>(registerAccountResult)
+                        call.respond(statusJson.statusCode, statusJson.json)
+                        return@post
+                    }
 
-                // • ACTION: Register Account for User
-                val registerAccountResult = account.registerUser(user)
-                if (registerAccountResult.isFailure) {
-                    //call.respondJson(mapOf("error" to (registerAccountResult.exceptionOrNull()?.localizedMessage ?: "Unknown Error")), HttpStatusCode.BadRequest)
+                    val statusJson = resultToStatusCodeJson<UserInfo>(upsertUserInfoResult)
+                    call.respond(statusJson.statusCode, statusJson.json)
+                }
+
+                ////////////////
+                // • ACCOUNT  //
+                ////////////////
+
+                get("/fetchAccountInfo/{id}") {
+                    val id = call.parameters["id"]?.toString()
+                    id ?: run {
+                        call.respondJson(mapOf("error" to "Invalid id"), HttpStatusCode.BadRequest)
+                        return@get
+                    }
+
+                    val account = Account(id.fromUUID2StrToTypedUUID2<Account>(), libraryAppContext)
+                    val accountInfoResult = account.fetchInfoResult()
+
+                    val statusJson = resultToStatusCodeJson<AccountInfo>(accountInfoResult)
+                    call.respond(statusJson.statusCode, statusJson.json)
+                }
+
+                ////////////////
+                // • LIBRARY  //
+                ////////////////
+
+                get("/fetchLibraryInfo/{id}") {
+                    val id = call.parameters["id"]?.toString()
+                    id ?: run {
+                        call.respondJson(mapOf("error" to "Invalid id"), HttpStatusCode.BadRequest)
+                        return@get
+                    }
+
+                    val library = Library(id.fromUUID2StrToTypedUUID2<Library>(), libraryAppContext)
+                    val libraryInfoResult = library.fetchInfoResult()
+
+                    val statusJson = resultToStatusCodeJson<LibraryInfo>(libraryInfoResult)
+                    call.respond(statusJson.statusCode, statusJson.json)
+                }
+
+                post("/checkOutBookFromLibrary/{bookId}/{libraryId}") {
+                    val bookId = call.parameters["bookId"]?.toString()
+                    val libraryId = call.parameters["libraryId"]?.toString()
+                    bookId ?: run {
+                        call.respondJson(mapOf("error" to "Missing bookId"), HttpStatusCode.BadRequest)
+                        return@post
+                    }
+                    libraryId ?: run {
+                        call.respondJson(mapOf("error" to "Missing libraryId"), HttpStatusCode.BadRequest)
+                        return@post
+                    }
+                    val userId = call.getUserId() ?: run {
+                        call.respondJson(mapOf("error" to "Missing userId"), HttpStatusCode.BadRequest)
+                        return@post
+                    }
+
+                    // Create Role objects
+                    val library = Library(libraryId.fromUUID2StrToTypedUUID2<Library>(), libraryAppContext)
+                    val book = Book(bookId.fromUUID2StrToTypedUUID2<Book>(), library, libraryAppContext)
+                    val user = User(userId, libraryAppContext)
+
+                    // • ACTION: Check out Book from Library to User
+                    val checkOutBookResult = library.checkOutBookToUser(book, user)
+
+                    val statusJson = resultToStatusCodeJson<Book>(checkOutBookResult)
+                    call.respond(statusJson.statusCode, statusJson.json)
+                }
+
+                post("/checkInBookToLibrary/{bookId}/{libraryId}") {
+                    val bookId = call.parameters["bookId"]?.toString()
+                    val libraryId = call.parameters["libraryId"]?.toString()
+                    bookId ?: run {
+                        call.respondJson(mapOf("error" to "Missing bookId"), HttpStatusCode.BadRequest)
+                        return@post
+                    }
+                    libraryId ?: run {
+                        call.respondJson(mapOf("error" to "Missing libraryId"), HttpStatusCode.BadRequest)
+                        return@post
+                    }
+                    val userId = call.getUserId() ?: run {
+                        call.respondJson(mapOf("error" to "Missing userId"), HttpStatusCode.BadRequest)
+                        return@post
+                    }
+
+                    // Create Role objects
+                    val library = Library(libraryId.fromUUID2StrToTypedUUID2<Library>(), libraryAppContext)
+                    val book = Book(bookId.fromUUID2StrToTypedUUID2<Book>(), library, libraryAppContext)
+                    val user = User(userId, libraryAppContext)
+
+                    // • ACTION: Check in Book to Library from User
+                    val checkInBookResult = library.checkInBookFromUser(book, user)
+
+                    val statusJson = resultToStatusCodeJson<Book>(checkInBookResult)
+                    call.respond(statusJson.statusCode, statusJson.json)
+                }
+
+                ////////////////
+                // • BOOK     //
+                ////////////////
+
+                get("/fetchBookInfo/{id}") {
+                    val id = call.parameters["id"]?.toString()
+                    id ?: run {
+                        call.respondJson(mapOf("error" to "Invalid id"), HttpStatusCode.BadRequest)
+                        return@get
+                    }
+
+                    val book = Book(id.fromUUID2StrToTypedUUID2<Book>(), libraryAppContext)
+                    val bookInfoResult = book.fetchInfoResult()
+
+                    val statusJson = resultToStatusCodeJson<BookInfo>(bookInfoResult)
+                    call.respond(statusJson.statusCode, statusJson.json)
+                }
+
+                post("/registerAccount/{userId}") {
+                    val userId = call.parameters["userId"]?.toString()
+                    userId ?: run {
+                        call.respondJson(mapOf("error" to "Invalid userId"), HttpStatusCode.BadRequest)
+                        return@post
+                    }
+
+                    // Create Role objects
+                    val user = User(userId.fromUUID2StrToTypedUUID2<User>(), libraryAppContext)
+                    val account = Account(user.id.uuid.toUUID2WithUUID2TypeOf<Account>(), libraryAppContext)
+
+                    // • ACTION: Register Account for User
+                    val registerAccountResult = account.registerUser(user)
+
                     val statusJson = resultToStatusCodeJson<AccountInfo>(registerAccountResult)
                     call.respond(statusJson.statusCode, statusJson.json)
-                    return@post
                 }
 
-                val statusJson = resultToStatusCodeJson<UserInfo>(upsertUserInfoResult)
-                call.respond(statusJson.statusCode, statusJson.json)
+                // 404 catch-all route for library app
+                get("/{...}") {
+                    val route = call.request.path()
+                    call.respondJson(mapOf("error" to "Invalid route for Library: $route"), HttpStatusCode.NotFound)
+                }
             }
 
-            // ACCOUNT
-
-            get("/library/fetchAccountInfo/{id}") {
-                val id = call.parameters["id"]?.toString()
-                id ?: run {
-                    call.respondJson(mapOf("error" to "Invalid id"), HttpStatusCode.BadRequest)
-                    return@get
-                }
-
-                val account = Account(id.fromUUID2StrToTypedUUID2<Account>(), libraryAppContext)
-                val accountInfo = account.info()
-                call.respond(jsonConfig.encodeToString(accountInfo))
-            }
-
-            // LIBRARY
-
-            get("/library/fetchLibraryInfo/{id}") {
-                val id = call.parameters["id"]?.toString()
-                id ?: run {
-                    call.respondJson(mapOf("error" to "Invalid id"), HttpStatusCode.BadRequest)
-                    return@get
-                }
-
-                val library = Library(id.fromUUID2StrToTypedUUID2<Library>(), libraryAppContext)
-                val libraryInfo = library.info()
-                call.respond(jsonConfig.encodeToString(libraryInfo))
-            }
-
-            post("/library/checkOutBookFromLibrary/{bookId}/{libraryId}") {
-                val bookId = call.parameters["bookId"]?.toString()
-                val libraryId = call.parameters["libraryId"]?.toString()
-                bookId ?: run {
-                    call.respondJson(mapOf("error" to "Missing bookId"), HttpStatusCode.BadRequest)
-                    return@post
-                }
-                libraryId ?: run {
-                    call.respondJson(mapOf("error" to "Missing libraryId"), HttpStatusCode.BadRequest)
-                    return@post
-                }
-                val userId = call.getUserId() ?: run {
-                    call.respondJson(mapOf("error" to "Missing userId"), HttpStatusCode.BadRequest)
-                    return@post
-                }
-
-                // Create Role objects
-                val library = Library(libraryId.fromUUID2StrToTypedUUID2<Library>(), libraryAppContext)
-                val book = Book(bookId.fromUUID2StrToTypedUUID2<Book>(), library, libraryAppContext)
-                val user = User(userId, libraryAppContext)
-
-                // • ACTION: Check out Book from Library to User
-                val checkOutBookResult = library.checkOutBookToUser(book, user)
-
-                val statusJson = resultToStatusCodeJson<Book>(checkOutBookResult)
-                call.respond(statusJson.statusCode, statusJson.json)
-            }
-
-            post ("/library/checkInBookToLibrary/{bookId}/{libraryId}") {
-                val bookId = call.parameters["bookId"]?.toString()
-                val libraryId = call.parameters["libraryId"]?.toString()
-                bookId ?: run {
-                    call.respondJson(mapOf("error" to "Missing bookId"), HttpStatusCode.BadRequest)
-                    return@post
-                }
-                libraryId ?: run {
-                    call.respondJson(mapOf("error" to "Missing libraryId"), HttpStatusCode.BadRequest)
-                    return@post
-                }
-                val userId = call.getUserId() ?: run {
-                    call.respondJson(mapOf("error" to "Missing userId"), HttpStatusCode.BadRequest)
-                    return@post
-                }
-
-                // Create Role objects
-                val library = Library(libraryId.fromUUID2StrToTypedUUID2<Library>(), libraryAppContext)
-                val book = Book(bookId.fromUUID2StrToTypedUUID2<Book>(), library, libraryAppContext)
-                val user = User(userId, libraryAppContext)
-
-                // • ACTION: Check in Book to Library from User
-                val checkInBookResult = library.checkInBookFromUser(book, user)
-
-                val statusJson = resultToStatusCodeJson<Book>(checkInBookResult)
-                call.respond(statusJson.statusCode, statusJson.json)
-            }
-
-            // BOOK
-
-            get("/library/fetchBookInfo/{id}") {
-                val id = call.parameters["id"]?.toString()
-                id ?: run {
-                    call.respondJson(mapOf("error" to "Invalid id"), HttpStatusCode.BadRequest)
-                    return@get
-                }
-
-                val book = Book(id.fromUUID2StrToTypedUUID2<Book>(), libraryAppContext)
-                val bookInfo = book.info()
-                call.respond(jsonConfig.encodeToString(bookInfo))
-            }
-
-            post("/library/registerAccount/{userId}") {
-                val userId = call.parameters["userId"]?.toString()
-                userId ?: run {
-                    call.respondJson(mapOf("error" to "Invalid userId"), HttpStatusCode.BadRequest)
-                    return@post
-                }
-
-                // Create Role objects
-                val user = User(userId.fromUUID2StrToTypedUUID2<User>(), libraryAppContext)
-                val account = Account(user.id.uuid.toUUID2WithUUID2TypeOf<Account>(), libraryAppContext)
-
-                // • ACTION: Register Account for User
-                val registerAccountResult = account.registerUser(user)
-
-                val statusJson = resultToStatusCodeJson<AccountInfo>(registerAccountResult)
-                call.respond(statusJson.statusCode, statusJson.json)
-            }
-
-            // 404 catch-all route for library app
-            get("/library/{...}") {
-                val route = call.request.path()
-                call.respondJson(mapOf("error" to "Invalid route for Library: $route"), HttpStatusCode.NotFound)
-            }
 
         }
 
