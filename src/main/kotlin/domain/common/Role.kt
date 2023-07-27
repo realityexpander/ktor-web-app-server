@@ -201,9 +201,9 @@ abstract class Role<TDomainInfo : DomainInfo> (
     }
 
     /**
-     * Returns the Info<T> object if it has been fetched, otherwise fetches and returns Result.
+     * Returns the Info<T> object if it has been fetched, otherwise fetches and returns SerializedResult.
      *
-     * * Used to access the Info object without having to handle the Result<T> object.
+     * * Used to access the Info object without having to handle the SerializedResult<T> object.
      * * NOTE: A cached Info<T> object is returned if it has been fetched, otherwise a new Info<T> object is fetched.
     **/
     override suspend fun fetchInfo(): TDomainInfo? {

@@ -4,6 +4,8 @@ package common.uuid2
 
 import com.google.gson.*
 import common.uuid2.UUID2.Companion.fromUUID2StrToUUID2
+import common.uuid2.UUID2.Companion.fromUUIDToUUID2
+import domain.common.data.HasId
 import io.ktor.util.reflect.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -68,7 +70,7 @@ import kotlin.reflect.*
 open class UUID2<TUUID2 : IUUID2> {
 
     @Serializable(with = UUIDSerializer::class)
-    private val uuid: UUID
+    val uuid: UUID
 
     // Class Inheritance Path of the object the UUID refers to. '.' separated.
     var uuid2Type: String
@@ -365,14 +367,6 @@ open class UUID2<TUUID2 : IUUID2> {
         // The White-listed UUID2Type list for deserialization
         private var typeStrToClazzMap: MutableMap<String, KClass<out IUUID2>> = mutableMapOf()
 
-        fun registerUUID2TypeForWhiteListDeserialization(
-            typeStr: String,
-            clazz: KClass<out IUUID2>
-        ): Map<String, KClass<out IUUID2>> {
-            typeStrToClazzMap[typeStr] = clazz
-
-            return typeStrToClazzMap.toImmutableMap()
-        }
         fun registerUUID2TypeForWhiteListDeserialization(clazz: KClass<out IUUID2>) : Map<String, KClass<out IUUID2>> {
             return registerUUID2TypeForWhiteListDeserialization(calcUUID2TypeStr(clazz),  clazz)
         }
@@ -380,6 +374,14 @@ open class UUID2<TUUID2 : IUUID2> {
             clazzList.forEach { clazz ->
                 registerUUID2TypeForWhiteListDeserialization(calcUUID2TypeStr(clazz),  clazz)
             }
+
+            return typeStrToClazzMap.toImmutableMap()
+        }
+        private fun registerUUID2TypeForWhiteListDeserialization(
+            typeStr: String,
+            clazz: KClass<out IUUID2>
+        ): Map<String, KClass<out IUUID2>> {
+            typeStrToClazzMap[typeStr] = clazz
 
             return typeStrToClazzMap.toImmutableMap()
         }
@@ -438,7 +440,8 @@ open class UUID2<TUUID2 : IUUID2> {
         }
 
         @Throws(IllegalArgumentException::class)
-        fun <TUUID2 : IUUID2> String.fromUUID2StrToTypedUUID2(): UUID2<TUUID2> {
+        fun <TUUID2 : IUUID2>
+            String.fromUUID2StrToTypedUUID2(): UUID2<TUUID2> {
             val uuid2FormattedString = this.trim()
             // format example:
             //
@@ -469,15 +472,23 @@ open class UUID2<TUUID2 : IUUID2> {
             return UUID2(UUID.fromString(uuidStr), uuid2TypeStr)
         }
 
-        fun <TUUID2 : IUUID2> UUID2<*>.toUUID2WithUUID2TypeOf(kClazz: KClass<TUUID2>): UUID2<TUUID2> {
+        fun <TUUID2 : IUUID2>
+            UUID2<*>.toUUID2WithUUID2TypeOf(kClazz: KClass<TUUID2>): UUID2<TUUID2> {
             return UUID2(this.uuid, kClazz.java)
         }
 
-        fun <TUUID2 : IUUID2> UUID.fromUUIDToUUID2(): UUID2<TUUID2> {
+        inline fun <reified TDomain : IUUID2>
+            UUID.toUUID2WithUUID2TypeOf(): UUID2<TDomain> {
+            return UUID2(this.fromUUIDToUUID2<TDomain>(), TDomain::class.java)
+        }
+
+        fun <TUUID2 : IUUID2>
+            UUID.fromUUIDToUUID2(): UUID2<TUUID2> {
             return UUID2(this)
         }
 
-        fun <TUUID2 : IUUID2> String.fromUUIDStrToUUID2(): UUID2<TUUID2> {
+        fun <TUUID2 : IUUID2>
+            String.fromUUIDStrToUUID2(): UUID2<TUUID2> {
             return UUID2(UUID.fromString(this))
         }
 
@@ -485,13 +496,16 @@ open class UUID2<TUUID2 : IUUID2> {
         // Random Generators          //
         ////////////////////////////////
 
-        fun <TUUID2 : IUUID2> randomUUID2(): UUID2<TUUID2> {
+        fun <TUUID2 : IUUID2>
+            randomUUID2(): UUID2<TUUID2> {
             return UUID2(UUID.randomUUID())
         }
-        fun <TUUID2 : IUUID2> randomUUID2(clazz: Class<TUUID2>): UUID2<TUUID2> {
+        fun <TUUID2 : IUUID2>
+            randomUUID2(clazz: Class<TUUID2>): UUID2<TUUID2> {
             return UUID2(UUID.randomUUID(), clazz)
         }
-        fun <TUUID2 : IUUID2> randomUUID2(kClazz: KClass<TUUID2>): UUID2<TUUID2> {
+        fun <TUUID2 : IUUID2>
+            randomUUID2(kClazz: KClass<TUUID2>): UUID2<TUUID2> {
             return UUID2(UUID.randomUUID(), kClazz.java)
         }
 
@@ -500,7 +514,8 @@ open class UUID2<TUUID2 : IUUID2> {
         ////////////////////////////////////
 
         @Suppress("UNCHECKED_CAST")
-        fun <TUUID2 : IUUID2> createFakeUUID2(nullableId: Int?, nullableClazz: Class<TUUID2>?): UUID2<TUUID2> {
+        fun <TUUID2 : IUUID2>
+            createFakeUUID2(nullableId: Int?, nullableClazz: Class<TUUID2>?): UUID2<TUUID2> {
             val id: Int = nullableId ?: 1
             if (id > 999999999) throw IllegalArgumentException("id cannot be greater than 999999999")
             val clazz: Class<TUUID2> = nullableClazz ?: IUUID2::class.java as Class<TUUID2>
@@ -513,7 +528,8 @@ open class UUID2<TUUID2 : IUUID2> {
         }
 
         @Suppress("UNCHECKED_CAST")
-        fun <TUUID2 : IUUID2> createFakeUUID2(nullableId: Int?, nullableKClazz: KClass<TUUID2>?): UUID2<TUUID2> {
+        fun <TUUID2 : IUUID2>
+            createFakeUUID2(nullableId: Int?, nullableKClazz: KClass<TUUID2>?): UUID2<TUUID2> {
             val id: Int = nullableId ?: 1
             if (id > 999999999) throw IllegalArgumentException("id cannot be greater than 999999999")
             val clazz: Class<TUUID2> = nullableKClazz?.java ?: IUUID2::class.java as Class<TUUID2>
@@ -583,6 +599,7 @@ open class UUID2<TUUID2 : IUUID2> {
         }
     }
 }
+
 
 // For kotlinx serialization
 object UUID2Serializer : KSerializer<UUID2<*>> {

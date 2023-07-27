@@ -16,6 +16,7 @@ import domain.common.data.info.local.InfoEntity
  * @since 0.12 Kotlin conversion
  */
 
+@Suppress("UNUSED_PARAMETER")
 class InMemoryDatabase<TUUID2 : IUUID2, TEntity : InfoEntity> (
     fakeUrl: FakeURL = FakeURL("memory://hash.map"),
     user: String = "admin",

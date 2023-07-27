@@ -3,7 +3,6 @@ package domain.book.data.network
 import com.realityexpander.jsonConfig
 import common.HumanDate
 import common.uuid2.UUID2
-import domain.Context
 import domain.book.Book
 import domain.book.data.BookInfo
 import domain.common.data.Model
@@ -39,7 +38,7 @@ class BookInfoDTO(
     Model.ToDomainInfoDeepCopy<BookInfo>,
     Info.ToInfoDeepCopy<BookInfoDTO>
 {
-    constructor(json: String, context: Context) : this(jsonConfig.decodeFromString<BookInfoDTO>(json))
+    constructor(json: String) : this(jsonConfig.decodeFromString<BookInfoDTO>(json))
     constructor() : this(UUID2.randomUUID2<Book>(), "default", "default", "default")
 
     /////////////////////////////////////////////////////////////////////

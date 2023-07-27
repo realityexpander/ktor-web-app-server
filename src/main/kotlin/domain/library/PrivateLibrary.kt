@@ -74,7 +74,7 @@ class PrivateLibrary : Library, IUUID2 {
     }
     constructor(
         bookId: UUID2<Book>,
-        @Suppress("unused")
+        @Suppress("UNUSED_PARAMETER")
         isForOnlyOneBook: Boolean,  // note: always `true` for this constructor.
         context: Context
     ) : super(UUID2(bookId.uuid(), Library::class.java), context) // make the LibraryId match the BookId
@@ -109,7 +109,6 @@ class PrivateLibrary : Library, IUUID2 {
         // Automatically upsert the User into the Library's User Register
         // - Private libraries are open to all users, so we don't need to check if the user is registered.
         val addRegisteredUserResult = libraryInfo.registerUser(user.id())
-            ?: return Result.failure(Exception("Failed to register User in Library, userId: " + user.id()))
         if (addRegisteredUserResult.isFailure) return Result.failure(Exception("Failed to register User in Library, userId: " + user.id()))
 
         if (!isForOnlyOneBook) {

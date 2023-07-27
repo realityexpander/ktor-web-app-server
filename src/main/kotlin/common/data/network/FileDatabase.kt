@@ -33,7 +33,7 @@ class FileDatabase<TDomain : IUUID2, TEntityInfo : InfoEntity>(
     entityKSerializer: KSerializer<TEntityInfo>,
     private val fakeUrl: FakeURL = FakeURL("fakeHttp://fakeDatabaseHost:44444"),
     private val fakeClient: FakeHttpClient = FakeHttpClient()
-) : JsonFileDatabase<TDomain, TEntityInfo>(apiDatabaseFilename, entityKSerializer),  // -> <UUID2<User>, UserEntity>
+) : JsonFileDatabase<TDomain, TEntityInfo>(apiDatabaseFilename, entityKSerializer),  // -> <UUID2<User>, UserAuthEntity>
     IDatabase<TDomain, TEntityInfo>
 {
     init {

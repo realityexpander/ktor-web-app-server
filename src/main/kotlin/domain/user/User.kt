@@ -19,6 +19,7 @@ import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import util.JsonString
 
 /**
  * User Role
@@ -57,7 +58,7 @@ class User : Role<UserInfo>, IUUID2 {
         context.log.d(this, "User (" + id().toString() + ") created from id with no Info")
     }
     constructor(
-        userInfoJson: String,
+        userInfoJson: JsonString,
         clazzOfUserInfo: Class<UserInfo>,  // class type of json object
         account: Account,
         context: Context
@@ -66,10 +67,12 @@ class User : Role<UserInfo>, IUUID2 {
         repo = context.userInfoRepo
         context.log.d(this, "User (" + id().toString() + ") created Json with class: " + clazzOfUserInfo.name)
     }
-    constructor(userInfoJson: String, account: Account, context: Context) :
+    constructor(userInfoJson: JsonString, account: Account, context: Context) :
         this(userInfoJson, UserInfo::class.java, account, context)
     constructor(account: Account, context: Context) :
         this(account.id().toUUID2WithUUID2TypeOf(User::class) , account, context)
+    constructor(id: UUID2<User>, context: Context) :
+        this(id, Account(id.toUUID2WithUUID2TypeOf(Account::class), context), context)
 
     /////////////////////////
     // Simple Getters      //
@@ -178,6 +181,18 @@ class User : Role<UserInfo>, IUUID2 {
         
         accountInfo()?.let { accountInfo ->
             return accountInfo.isAccountInGoodStanding
+        }
+
+        context.log.e(this, "User (" + id() + ") - AccountInfo is null")
+        return false
+    }
+
+    suspend fun isAccountActive(): Boolean {
+        // Note: This delegates to this User's internal Account Role object.
+        context.log.d(this, "User (" + id() + ")")
+
+        accountInfo()?.let { accountInfo ->
+            return accountInfo.isAccountActive
         }
 
         context.log.e(this, "User (" + id() + ") - AccountInfo is null")

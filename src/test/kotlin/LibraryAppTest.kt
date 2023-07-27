@@ -576,7 +576,7 @@ class LibraryAppTest {
 
             // • ACT & ASSERT
             try {
-                val dtoBook10Info = BookInfoDTO(json, context)
+                val dtoBook10Info = BookInfoDTO(json)
                 assertNotNull(dtoBook10Info)
                 val book10 = Book(BookInfo(dtoBook10Info), null, context)
                 assertNotNull(book10)
@@ -643,7 +643,7 @@ class LibraryAppTest {
 
             // • ACT & ASSERT
             try {
-                val entityBook10Info = BookInfoEntity(json, context)
+                val entityBook10Info = BookInfoEntity(json)
                 assertNotNull(entityBook10Info)
                 val book10 = Book(BookInfo(entityBook10Info), null, context)
                 assertNotNull(book10)

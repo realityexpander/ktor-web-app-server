@@ -30,7 +30,7 @@ class FileApi<TDomain : IUUID2, TDTOInfo : InfoDTO>(
     serializer: KSerializer<TDTOInfo>,
     private val fakeUrl: FakeURL = FakeURL("fakeHttp://fakeApiHost:22222"),
     private val client: FakeHttpClient = FakeHttpClient()
-) : JsonFileDatabase<TDomain, TDTOInfo>(apiDatabaseFilename, serializer),  // -> <UUID2<User>, UserEntity>
+) : JsonFileDatabase<TDomain, TDTOInfo>(apiDatabaseFilename, serializer),  // -> <UUID2<User>, UserAuthEntity>
     IAPI<TDomain, TDTOInfo>
 {
     init {

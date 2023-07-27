@@ -24,14 +24,14 @@ import java.util.*
  */
 
 @Serializable
-class AccountInfo private constructor(
+data class AccountInfo(
     override val id: UUID2<Account>,  // UUID should match User's UUID
     val name: String,
     val accountStatus: AccountStatus,
     val currentFinePennies: Int,
     val maxAcceptedBooks: Int,
     val maxFinePennies: Int,
-    private val timeStampToAccountAuditLogItemMap: MutableMap<Long, AccountAuditLogItem>
+    private val timeStampToAccountAuditLogItemMap: MutableMap<Long, AccountAuditLogItem> = mutableMapOf()
 ) : DomainInfo(id),
     Model.ToDomainInfoDeepCopy<AccountInfo>
 {
@@ -76,7 +76,7 @@ class AccountInfo private constructor(
     }
 
     @Serializable
-    internal class AccountAuditLogItem(
+    class AccountAuditLogItem(
         val timeStampLongMillis: Long = System.currentTimeMillis(),
         val operation: String = "Default Operation",
         private val entries: Map<String, String> = mutableMapOf()
@@ -344,6 +344,10 @@ class AccountInfo private constructor(
     /////////////////////////////////////////
     // Published Testing Helper Methods    //
     /////////////////////////////////////////
+
+    fun addAuditLogMessage(message: String) {
+        addAuditLogEntry("message", message)
+    }
 
     fun addTestAuditLogMessage(message: String) {
         addAuditLogEntry("addTestAuditLogMessage", message)

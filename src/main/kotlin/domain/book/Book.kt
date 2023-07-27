@@ -21,6 +21,7 @@ import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import util.JsonString
 
 /**
  * Book Role
@@ -63,7 +64,7 @@ class Book : Role<BookInfo>, IUUID2 {
         context.log.d("Book<init>", "Book (" + id() + ") created using id with no Info")
     }
     constructor(
-        bookInfoJson: String,
+        bookInfoJson: JsonString,
         clazz: Class<BookInfo>,
         sourceLibrary: Library?,
         context: Context
@@ -83,13 +84,14 @@ class Book : Role<BookInfo>, IUUID2 {
 
         context.log.d("Book<init>", "Book (" + id() + ") created using id with no Info")
     }
-    constructor(bookInfoJson: String, sourceLibrary: Library?, context: Context) : this(
+    constructor(bookInfoJson: JsonString, sourceLibrary: Library?, context: Context) : this(
         bookInfoJson,
         BookInfo::class.java,
         sourceLibrary,
         context
     )
-    constructor(bookInfoJson: String, context: Context) : this(bookInfoJson, BookInfo::class.java, null, context)
+    constructor(bookInfoJson: JsonString, context: Context) : this(bookInfoJson, BookInfo::class.java, null, context)
+    constructor(id: UUID2<Book>, context: Context) : this(id, null, context)
 
     /////////////////////////////////////////
     // Entity 🡒 Domain 🡐 DTO        //

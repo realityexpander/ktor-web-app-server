@@ -2,6 +2,9 @@ package com.realityexpander
 
 import com.github.slugify.Slugify
 import com.realityexpander.Constants.APPLICATION_PROPERTIES_FILE
+import com.realityexpander.common.data.network.AnySerializer
+import com.realityexpander.common.data.network.PairSerializer
+import com.realityexpander.common.data.network.ResultSerializer
 import com.realityexpander.domain.auth.*
 import com.realityexpander.domain.todo.ToDoStatus
 import com.realityexpander.domain.todo.Todo
@@ -11,11 +14,16 @@ import com.realityexpander.domain.todo.TodoResponse
 import com.realityexpander.domain.remote.fileUpload.FileUploadResponse
 import com.realityexpander.domain.remote.fileUpload.save
 import common.uuid2.UUID2
+import common.uuid2.UUID2.Companion.fromUUID2StrToTypedUUID2
+import common.uuid2.UUID2.Companion.toUUID2WithUUID2TypeOf
+import domain.Context
 import domain.account.Account
+import domain.account.data.AccountInfo
 import domain.book.Book
 import domain.library.Library
 import domain.library.PrivateLibrary
 import domain.user.User
+import domain.user.data.UserInfo
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.okhttp.*
@@ -35,10 +43,12 @@ import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
+import util.JsonString
 import util.JwtTokenStr
 import util.getClientIpAddressFromRequest
 import util.respondJson
@@ -62,6 +72,12 @@ val jsonConfig = Json {
     coerceInputValues = true
     encodeDefaults = true
     allowStructuredMapKeys = true
+    serializersModule = kotlinx.serialization.modules.SerializersModule {
+        contextual(kotlin.Result::class, ResultSerializer)
+        contextual(Pair::class, PairSerializer)
+        contextual(Any::class, AnySerializer)
+        contextual(AccountInfo::class, AccountInfo.serializer())
+    }
 }
 
 @Serializable
@@ -106,7 +122,6 @@ val applicationConfig =
         ApplicationProperties()
     }
 
-// Load the User Repo
 // Setup the UUID2 types for UUID2 deserialization
 val uuid2WhiteList = UUID2.registerUUID2TypesForWhiteListDeserialization(listOf(
     Book::class,
@@ -115,8 +130,14 @@ val uuid2WhiteList = UUID2.registerUUID2TypesForWhiteListDeserialization(listOf(
     User::class,
     Account::class
 ))
-val userRepository = UserRepository()
 
+// Load the User Repository
+val authRepo = AuthenticationRepository()
+
+// Setup the LibraryApp
+val libraryAppContext = Context.setupContextInstance()
+
+@OptIn(InternalSerializationApi::class)
 fun Application.module() {
 
     /////////////////////
@@ -218,7 +239,7 @@ fun Application.module() {
                 val email = pl.getClaim("email").asString()
                 val clientIpAddress = pl.getClaim("clientIpAddress").asString()
 
-                val user = userRepository.findUserByEmail(email)
+                val user = authRepo.findUserByEmail(email)
                 if (user != null && user.clientIpAddressWhiteList.contains(clientIpAddress)) {
                     JWTPrincipal(pl)
                 } else {
@@ -253,7 +274,7 @@ fun Application.module() {
                     else
                         this.request.cookies["authenticationToken"]
 
-                val user = userRepository.findUserByAuthToken(authenticationToken)
+                val user = authRepo.findUserByAuthToken(authenticationToken)
                 user?.let {
                     if (user.clientIpAddressWhiteList.contains(clientIpAddress)) {
                         UserIdPrincipal(user.email)// success
@@ -298,14 +319,14 @@ fun Application.module() {
         // Log a user in
         suspend fun ApplicationCall.login(
             clientIpAddress: String,
-            user: UserEntity
+            user: UserAuthEntity
         ) {
             // Generate a new session auth token
             val token = UUID.randomUUID().toString()
 
             // Generate a new session auth JWT token
             val jwtToken = jwtService.generateLoginAuthToken(user, clientIpAddress)
-            userRepository.updateUser(
+            authRepo.updateUser(
                 user.copy(
                     authJwtToken = jwtToken,
                     authToken = token
@@ -317,6 +338,22 @@ fun Application.module() {
                 "jwtToken" to jwtToken,
                 "clientIpAddress" to clientIpAddress,
             ))
+        }
+
+        suspend fun ApplicationCall.getUserId(): UUID2<User>? {
+            return  principal<UserIdPrincipal>()?.let {
+                val userId = authRepo.findUserByEmail(it.name)?.id
+                    ?: run {
+                        respondJson(mapOf("error" to "Invalid userId, email: ${it.name}"), HttpStatusCode.BadRequest)
+                        return null
+                    }
+
+                userId
+            } ?: run {
+                respondJson(mapOf("error" to "Invalid UserIdPrincipal"), HttpStatusCode.BadRequest)
+                return null
+            }
+
         }
 
         rateLimit(RateLimitName("auth-routes")) {
@@ -337,11 +374,11 @@ fun Application.module() {
                     if (email != null && password != null) {
 
                         // note: only allow one user per email address.
-                        userRepository.findUserByEmail(email) ?: run {
+                        authRepo.findUserByEmail(email) ?: run {
 
                             val passwordHash = passwordService.getSaltedPepperedPasswordHash(password)
 
-                            val newUser = UserEntity(
+                            val newUser = UserAuthEntity(
                                 id = UUID2(User::class.java),
                                 email = email,
                                 password = passwordHash,
@@ -349,13 +386,13 @@ fun Application.module() {
                                 authJwtToken = "",
                                 clientIpAddressWhiteList = listOf(clientIpAddress),
                             )
-                            userRepository.addUser(newUser)
+                            authRepo.addUser(newUser)
 
                             call.login(clientIpAddress, newUser)
                             return@post
                         }
 
-                        call.respondJson(mapOf("error" to "UserEntity already exists"), HttpStatusCode.Conflict)
+                        call.respondJson(mapOf("error" to "UserAuthEntity already exists"), HttpStatusCode.Conflict)
                         return@post
                     }
                     call.respondJson(mapOf("error" to "Invalid email or password"), HttpStatusCode.BadRequest)
@@ -378,7 +415,7 @@ fun Application.module() {
 
                     if (email != null && password != null) {
                         // check if the user exists
-                        var user = userRepository.findUserByEmail(email)
+                        var user = authRepo.findUserByEmail(email)
                         user ?: run {
                             val error = mapOf("error" to "User does not exist, please register.")
                             call.respondText(
@@ -407,7 +444,7 @@ fun Application.module() {
                             val newClientIpWhitelistAddresses = user.clientIpAddressWhiteList.toMutableList()
 
                             newClientIpWhitelistAddresses.add(clientIpAddress)
-                            user = userRepository.updateUser(user.copy(clientIpAddressWhiteList = newClientIpWhitelistAddresses))
+                            user = authRepo.updateUser(user.copy(clientIpAddressWhiteList = newClientIpWhitelistAddresses))
                         }
 
                         call.login(clientIpAddress, user)
@@ -430,9 +467,9 @@ fun Application.module() {
                     val token = params["jwtToken"] as JwtTokenStr?
 
                     token?.let {
-                        val user = userRepository.findUserByAuthJwtToken(token)
+                        val user = authRepo.findUserByAuthJwtToken(token)
                         user?.let {
-                            userRepository.updateUser(
+                            authRepo.updateUser(
                                 user.copy(
                                     authToken = "",
                                     authJwtToken = ""
@@ -460,7 +497,7 @@ fun Application.module() {
                 }
 
                 // check if the user exists
-                val user = userRepository.findUserByEmail(emailAddress)
+                val user = authRepo.findUserByEmail(emailAddress)
                 user ?: run {
                     call.respondJson(mapOf("error" to "User does not exist"), HttpStatusCode.BadRequest) // todo: Dont reveal this information
                     return@get
@@ -472,7 +509,7 @@ fun Application.module() {
 
                 // save the password reset token to the user's account
                 user.let {
-                    userRepository.updateUser(
+                    authRepo.updateUser(
                         user.copy(
                             passwordResetToken = passwordResetToken,
                             passwordResetJwtToken = passwordResetJwtToken
@@ -516,7 +553,7 @@ fun Application.module() {
 
                 // find the user with the password reset token
                 // val user = usersDb.values.find { it.passwordResetToken == passwordResetToken } // checks UUID old way - NOTE: LEAVE for reference
-                val user = userRepository.findUserByPasswordResetJwtToken(passwordResetToken)
+                val user = authRepo.findUserByPasswordResetJwtToken(passwordResetToken)
                 user?.let {
                     // validate the password reset token
                     // new way using JWT
@@ -568,7 +605,7 @@ fun Application.module() {
                             passwordResetToken = "",
                             passwordResetJwtToken = ""
                         )
-                    userRepository.updateUser(updatedUser)
+                    authRepo.updateUser(updatedUser)
 
                     call.respondJson(map = mapOf("success" to "Password updated"))
                     return@post
@@ -691,14 +728,176 @@ fun Application.module() {
                 }
             }
 
-            get("/api/users") {
-                val users = userRepository.findAllUsers()
-                call.respond(jsonConfig.encodeToString(users))
+            // 404 route for api
+            get("/api/{...}") {
+                val route = call.request.path()
+                call.respondJson(mapOf("error" to "Invalid route for Api: $route"), HttpStatusCode.NotFound)
             }
+
+            /////////////////////
+            // Library App API //
+            /////////////////////
+
+            // USER
+
+            get("/library/fetchUserInfo/{id}") {
+                val id = call.parameters["id"]?.toString()
+                id ?: run {
+                    call.respondJson(mapOf("error" to "Invalid id"), HttpStatusCode.BadRequest)
+                    return@get
+                }
+
+                val user = User(id.fromUUID2StrToTypedUUID2<User>(), libraryAppContext)
+                val userInfo = user.info()
+                call.respond(jsonConfig.encodeToString(userInfo))
+            }
+
+            post("/library/createUser") {
+                val userInfo = call.receive<UserInfo>()
+
+                // • ACTION: Create User
+                val upsertUserInfoResult = libraryAppContext.userInfoRepo.upsertUserInfo(userInfo)
+
+                // Create Role objects
+                val user = User(userInfo.id, libraryAppContext)
+                val account = Account(user.id.uuid.toUUID2WithUUID2TypeOf<Account>(), libraryAppContext)
+
+                // • ACTION: Register Account for User
+                val registerAccountResult = account.registerUser(user)
+                if (registerAccountResult.isFailure) {
+                    //call.respondJson(mapOf("error" to (registerAccountResult.exceptionOrNull()?.localizedMessage ?: "Unknown Error")), HttpStatusCode.BadRequest)
+                    val statusJson = resultToStatusCodeJson<AccountInfo>(registerAccountResult)
+                    call.respond(statusJson.statusCode, statusJson.json)
+                    return@post
+                }
+
+                val statusJson = resultToStatusCodeJson<UserInfo>(upsertUserInfoResult)
+                call.respond(statusJson.statusCode, statusJson.json)
+            }
+
+            // ACCOUNT
+
+            get("/library/fetchAccountInfo/{id}") {
+                val id = call.parameters["id"]?.toString()
+                id ?: run {
+                    call.respondJson(mapOf("error" to "Invalid id"), HttpStatusCode.BadRequest)
+                    return@get
+                }
+
+                val account = Account(id.fromUUID2StrToTypedUUID2<Account>(), libraryAppContext)
+                val accountInfo = account.info()
+                call.respond(jsonConfig.encodeToString(accountInfo))
+            }
+
+            // LIBRARY
+
+            get("/library/fetchLibraryInfo/{id}") {
+                val id = call.parameters["id"]?.toString()
+                id ?: run {
+                    call.respondJson(mapOf("error" to "Invalid id"), HttpStatusCode.BadRequest)
+                    return@get
+                }
+
+                val library = Library(id.fromUUID2StrToTypedUUID2<Library>(), libraryAppContext)
+                val libraryInfo = library.info()
+                call.respond(jsonConfig.encodeToString(libraryInfo))
+            }
+
+            post("/library/checkOutBookFromLibrary/{bookId}/{libraryId}") {
+                val bookId = call.parameters["bookId"]?.toString()
+                val libraryId = call.parameters["libraryId"]?.toString()
+                bookId ?: run {
+                    call.respondJson(mapOf("error" to "Invalid bookId"), HttpStatusCode.BadRequest)
+                    return@post
+                }
+                libraryId ?: run {
+                    call.respondJson(mapOf("error" to "Invalid libraryId"), HttpStatusCode.BadRequest)
+                    return@post
+                }
+                val userId = call.getUserId() ?: run {
+                    call.respondJson(mapOf("error" to "Invalid userId"), HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                // Create Role objects
+                val library = Library(libraryId.fromUUID2StrToTypedUUID2<Library>(), libraryAppContext)
+                val book = Book(bookId.fromUUID2StrToTypedUUID2<Book>(), library, libraryAppContext)
+                val user = User(userId, libraryAppContext)
+
+                // • ACTION: Check out Book from Library to User
+                val checkOutBookResult = library.checkOutBookToUser(book, user)
+
+                val statusJson = resultToStatusCodeJson<Book>(checkOutBookResult)
+                call.respond(statusJson.statusCode, statusJson.json)
+            }
+
+            post ("/library/checkInBookToLibrary/{bookId}/{libraryId}") {
+                val bookId = call.parameters["bookId"]?.toString()
+                val libraryId = call.parameters["libraryId"]?.toString()
+                bookId ?: run {
+                    call.respondJson(mapOf("error" to "Invalid bookId"), HttpStatusCode.BadRequest)
+                    return@post
+                }
+                libraryId ?: run {
+                    call.respondJson(mapOf("error" to "Invalid libraryId"), HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                // Create Role objects
+                val library = Library(libraryId.fromUUID2StrToTypedUUID2<Library>(), libraryAppContext)
+                val book = Book(bookId.fromUUID2StrToTypedUUID2<Book>(), library, libraryAppContext)
+                val user = User(UUID2(User::class.java), libraryAppContext)
+
+                // • ACTION: Check in Book to Library from User
+                val checkInBookResult = library.checkInBookFromUser(book, user)
+
+                val statusJson = resultToStatusCodeJson<Book>(checkInBookResult)
+                call.respond(statusJson.statusCode, statusJson.json)
+            }
+
+            // BOOK
+
+            get("/library/fetchBookInfo/{id}") {
+                val id = call.parameters["id"]?.toString()
+                id ?: run {
+                    call.respondJson(mapOf("error" to "Invalid id"), HttpStatusCode.BadRequest)
+                    return@get
+                }
+
+                val book = Book(id.fromUUID2StrToTypedUUID2<Book>(), libraryAppContext)
+                val bookInfo = book.info()
+                call.respond(jsonConfig.encodeToString(bookInfo))
+            }
+
+            post("/library/registerAccount/{userId}") {
+                val userId = call.parameters["userId"]?.toString()
+                userId ?: run {
+                    call.respondJson(mapOf("error" to "Invalid userId"), HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                // Create Role objects
+                val user = User(userId.fromUUID2StrToTypedUUID2<User>(), libraryAppContext)
+                val account = Account(user.id.uuid.toUUID2WithUUID2TypeOf<Account>(), libraryAppContext)
+
+                // • ACTION: Register Account for User
+                val registerAccountResult = account.registerUser(user)
+
+                val statusJson = resultToStatusCodeJson<AccountInfo>(registerAccountResult)
+                call.respond(statusJson.statusCode, statusJson.json)
+            }
+
+            // 404 catch-all route for library app
+            get("/library/{...}") {
+                val route = call.request.path()
+                call.respondJson(mapOf("error" to "Invalid route for Library: $route"), HttpStatusCode.NotFound)
+            }
+
         }
 
         authenticate("auth-jwt") {
 
+            @Suppress("UNUSED_VARIABLE")
             get("/api/hello") {
                 try {
                     val principal =
@@ -730,5 +929,32 @@ fun Application.module() {
             defaultPage = "index.html"
             filesPath = "/Volumes/TRS-83/dev/WebAppPlayground"
         }
+    }
+}
+
+data class StatusJson(
+    val json: JsonString,
+    val statusCode: HttpStatusCode,
+)
+
+inline fun <reified T> resultToStatusCodeJson(
+    result: Result<T>,
+) : StatusJson {
+
+    if (result.isSuccess) {
+        return StatusJson(
+            com.realityexpander.jsonConfig.encodeToString(result.getOrThrow()),
+            HttpStatusCode.OK
+        )
+    } else {
+        return StatusJson(
+            com.realityexpander.jsonConfig.encodeToString(
+                mapOf(
+                    "error" to (result.exceptionOrNull()?.localizedMessage
+                        ?: result.exceptionOrNull()?.message
+                        ?: "Unknown error")
+                )),
+            HttpStatusCode.BadRequest
+        )
     }
 }

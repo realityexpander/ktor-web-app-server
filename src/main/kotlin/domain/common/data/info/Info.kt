@@ -30,7 +30,7 @@ interface Info<TInfo : Model> {
     val isInfoFetched: Boolean                 // Return true if Info has been successfully fetched from server/DB.
 
     suspend fun fetchInfo(): TInfo?                           // Fetch data for the Info from server/DB.
-    suspend fun fetchInfoResult(): Result<TInfo>              // Fetch Result<T> for the Info from server/DB.
+    suspend fun fetchInfoResult(): Result<TInfo>              // Fetch SerializedResult<T> for the Info from server/DB.
     suspend fun updateInfo(updatedInfo: TInfo): Result<TInfo> // Update Info to server/DB.
     suspend fun refreshInfo(): Result<TInfo>                  // Set Info data to `null` and fetches Info from server/DB.
     suspend fun fetchInfoFailureReason(): String?             // Performs fetch for Info and returns failure reason, or `null` if successful.
@@ -102,7 +102,7 @@ interface Info<TInfo : Model> {
             return Result.failure(e)
         }
 
-        return Result.success(infoFromJson as TInfo)
+        return Result.success(infoFromJson)
     }
 
     private fun findRootClazz(infoClazz: Class<*>): Class<*> {

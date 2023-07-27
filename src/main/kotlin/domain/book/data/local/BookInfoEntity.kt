@@ -3,7 +3,6 @@ package domain.book.data.local
 import com.realityexpander.jsonConfig
 import common.HumanDate
 import common.uuid2.UUID2
-import domain.Context
 import domain.book.Book
 import domain.book.data.BookInfo
 import domain.common.data.Model
@@ -36,7 +35,7 @@ class BookInfoEntity(
     Model.ToDomainInfoDeepCopy<BookInfo>,
     Info.ToInfoDeepCopy<BookInfoEntity>
 {
-    constructor(json: String, context: Context) : this(jsonConfig.decodeFromString<BookInfoEntity>(json))
+    constructor(json: String) : this(jsonConfig.decodeFromString<BookInfoEntity>(json))
 
     ////////////////////////////////////////////////////////////
     // InfoDTO <-> DomainInfo conversion                      //

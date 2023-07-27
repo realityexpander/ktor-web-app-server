@@ -87,14 +87,13 @@ class LibraryInfo(
 
     suspend fun checkOutPublicLibraryBookToUser(book: Book, user: User): Result<Book> {
         //  if(!book.isBookFromPublicLibrary())   // todo - should only allow public library books to be checked out from public libraries?
-        //    return new Result.Failure<>(new IllegalArgumentException("Book is not from a public library, bookId: " + book.id()));
+        //    return new SerializedResult.Failure<>(new IllegalArgumentException("Book is not from a public library, bookId: " + book.id()));
 
         val checkedOutUUID2Book: Result<UUID2<Book>> = checkOutPublicLibraryBookIdToUserId(book.id(), user.id())
         if (checkedOutUUID2Book.isFailure) 
             return Result.failure(checkedOutUUID2Book.exceptionOrNull() ?: Exception("Error checking out book, bookId: " + book.id()))
 
         val acceptBookResult: Result<ArrayList<Book>> = user.acceptBook(book)
-
         return if (acceptBookResult.isFailure)
             Result.failure(acceptBookResult.exceptionOrNull() ?: Exception("Error accepting book, bookId: " + book.id()))
         else
@@ -106,7 +105,7 @@ class LibraryInfo(
         if (!isKnownUserId(userId))
             return Result.failure(IllegalArgumentException("UserId is not known, userId: $userId"))
         if (!isBookIdAvailableToCheckout(bookId))
-            return Result.failure(IllegalArgumentException("Book is not in inventory, bookId: $bookId"))
+            return Result.failure(IllegalArgumentException("Book is not in inventory, bookId: $bookId, libraryId: $id"))
         if (isBookIdCheckedOutByUserId(bookId, userId))
             return Result.failure(IllegalArgumentException("Book is already checked out by User, bookId: $bookId, userId: $userId"))
 
@@ -132,7 +131,7 @@ class LibraryInfo(
 
     suspend fun checkInPublicLibraryBookFromUser(book: Book, user: User): Result<Book> {
         //    if(!book.isBookFromPublicLibrary()) // todo - should only allow public library books to be checked in?
-        //        return new Result.Failure<>(new IllegalArgumentException("Book is not from a public library, bookId: " + book.id()));
+        //        return new SerializedResult.Failure<>(new IllegalArgumentException("Book is not from a public library, bookId: " + book.id()));
 
         val returnedBookIdResult: Result<UUID2<Book>> = checkInPublicLibraryBookIdFromUserId(book.id(), user.id())
         if (returnedBookIdResult.isFailure) return Result.failure(returnedBookIdResult.exceptionOrNull()
@@ -147,7 +146,7 @@ class LibraryInfo(
 
     suspend fun checkInPrivateLibraryBookFromUser(book: Book, user: User): Result<Book> {
         //    if(!book.isBookFromPrivateLibrary()) // todo - should not allow private library books to be checked in from public library?
-        //        return new Result.Failure<>(new IllegalArgumentException("Book is not from private library, bookId: " + book.id()));
+        //        return new SerializedResult.Failure<>(new IllegalArgumentException("Book is not from private library, bookId: " + book.id()));
 
         // Automatically register any user that is checking in book.
         if(!isKnownUserId(user.id()))

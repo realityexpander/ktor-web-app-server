@@ -1,11 +1,10 @@
 package domain.auth
 
-import com.realityexpander.domain.auth.UserEntity
-import com.realityexpander.domain.auth.UserRepository
+import com.realityexpander.domain.auth.UserAuthEntity
+import com.realityexpander.domain.auth.AuthenticationRepository
 import common.uuid2.UUID2
 import common.uuid2.UUID2.Companion.fromUUID2StrToUUID2
 import domain.user.User
-import domain.user.data.UserInfoInMemoryRepo
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -14,15 +13,15 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import java.util.*
 
-class UserRepositoryTest {
+class AuthenticationRepositoryTest {
 
     private val tempName = UUID.randomUUID().toString()
 
-    private val userRepo = UserRepository(
-        usersDatabaseFilename = "test-$tempName-usersDB.json",
+    private val userRepo = AuthenticationRepository(
+        userAuthDatabaseFilename = "test-$tempName-usersDB.json",
     )
     @Suppress("UNCHECKED_CAST") // for UUID2<User>
-    private val user = UserEntity(
+    private val user = UserAuthEntity(
         id = "UUID2:Role.User@a4cdc86e-b2da-4c87-a0c4-313b8672692c".fromUUID2StrToUUID2() as UUID2<User>,
         email = "a@b.c",
         password =

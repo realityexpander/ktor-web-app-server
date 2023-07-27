@@ -10,6 +10,7 @@ fun ApplicationCall.getClientIpAddressFromRequest(suggestedClientIpAddress: Stri
     val ipFromForwardedForHeader = call.request.header("X-Forwarded-For")
     val ipFromCookies = call.request.cookies["clientIpAddress"]
 
+    @Suppress("UNUSED_VARIABLE")
     return if (ipFromForwardedForHeader != null) {
         ipFromForwardedForHeader.toString()
     } else {

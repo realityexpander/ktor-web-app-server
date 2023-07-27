@@ -16,6 +16,7 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import okhttp3.internal.toImmutableMap
+import util.JsonString
 
 /**
  * Library Role
@@ -41,7 +42,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
         context.log.d("Library<Init>", "Library (" + id() + ") created from Info")
     }
     constructor(
-        libraryInfoJson: String,
+        libraryInfoJson: JsonString,
         clazz: Class<LibraryInfo>,
         context: Context
     ) : super(libraryInfoJson, clazz, context) {
@@ -57,7 +58,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
 
         context.log.d("Library<Init>", "Library (" + id() + ") created using id with no Info")
     }
-    constructor(libraryInfoJson: String, context: Context) : this(libraryInfoJson, LibraryInfo::class.java, context)
+    constructor(libraryInfoJson: JsonString, context: Context) : this(libraryInfoJson, LibraryInfo::class.java, context)
     constructor(context: Context) : this(UUID2.randomUUID2(Library::class.java), context)
 
     ////////////////////////////////
@@ -107,7 +108,8 @@ open class Library : Role<LibraryInfo>, IUUID2 {
         if (isUnableToFindOrRegisterUser(user)) return Result.failure(Exception("User is not known, userId: " + user.id()))
 
         // Note: this calls a wrapper to the User's Account Role object
-        if (!user.isAccountInGoodStanding()) return Result.failure(Exception("User Account is not active, userId: " + user.id()))
+        if (!user.isAccountActive()) return Result.failure(Exception("User Account is not Active or not unregistered, userId: " + user.id()))
+        if (!user.isAccountInGoodStanding()) return Result.failure(Exception("User Account is not in Good Standing, userId: " + user.id()))
 
         // Note: this calls a wrapper to the User's Account Role object
         if (user.hasReachedMaxAmountOfAcceptedPublicLibraryBooks()) return Result.failure(Exception("User has reached max num Books accepted, userId: " + user.id()))
@@ -268,7 +270,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
     /////////////////////////////////
 
     // Note: This Library Role Object enforces the rule:
-    //   - if a User is not known, they are added as a new user.   // todo change to Result<> return type
+    //   - if a User is not known, they are added as a new user.   // todo change to SerializedResult<> return type
     suspend fun isUnableToFindOrRegisterUser(user: User): Boolean {
         context.log.d(this, "Library(${id()}) - userId ${user.id()}")
         if (fetchInfoFailureReason() != null) return true
@@ -317,7 +319,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
                 ?: false
     }
 
-    suspend fun isBookCheckedOutByAnyUser(book: Book): Boolean {  // todo return Result<>?
+    suspend fun isBookCheckedOutByAnyUser(book: Book): Boolean {  // todo return SerializedResult<>?
         context.log.d(this, "Library(${id()}) - bookId ${book.id()}")
 
         return if (fetchInfoFailureReason() != null)

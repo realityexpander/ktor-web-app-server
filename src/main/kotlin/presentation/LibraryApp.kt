@@ -1,3 +1,5 @@
+@file:Suppress("ConstantConditionIf", "REDUNDANT_LABEL_WARNING")
+
 package presentation
 
 import TestingUtils
@@ -24,7 +26,7 @@ fun main() {
     LibraryApp(productionContext)
 }
 
-internal class LibraryApp(private val context: Context) {
+private class LibraryApp(private val context: Context) {
     // Library App - Domain Layer Root Object
     // Note: All of this has been moved to the tests.
     // This is just a reference to how to use the Domain Layer.
@@ -38,6 +40,7 @@ internal class LibraryApp(private val context: Context) {
             testUtils.populateFakeBooksInBookInfoRepoDBandAPI()
 
             // Create fake AccountInfo
+            @Suppress("UNUSED_VARIABLE")
             val accountInfo = AccountInfo(
                 UUID2.createFakeUUID2<Account>(1),
                 "User Name 1"
@@ -430,7 +433,7 @@ internal class LibraryApp(private val context: Context) {
                     """.trimIndent()
 
                     try {
-                        val bookInfoDTO3 = BookInfoDTO(json, context)
+                        val bookInfoDTO3 = BookInfoDTO(json)
                         val book3: Book = Book(BookInfo(bookInfoDTO3), null, context)
                         context.log.d(this, "Results of load BookInfo from DTO Json: " + book3.toJson())
                     } catch (e: Exception) {
@@ -460,7 +463,7 @@ internal class LibraryApp(private val context: Context) {
                     """.trimIndent()
 
                     try {
-                        val bookInfoDTO3 = BookInfoDTO(json, context)
+                        val bookInfoDTO3 = BookInfoDTO(json)
                         val book3: Book = Book(bookInfoDTO3, null, context) // passing in DTO directly to Book constructor
                         context.log.d(this, "Results of load BookInfo from DTO Json: " + book3.toJson())
                     } catch (e: Exception) {

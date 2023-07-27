@@ -2,17 +2,20 @@ package domain.account
 
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
+import common.uuid2.UUID2.Companion.toUUID2WithUUID2TypeOf
 import domain.Context
 import domain.Context.Companion.gsonConfig
 import domain.account.data.AccountInfo
 import domain.account.data.IAccountInfoRepo
 import domain.common.Role
+import domain.user.User
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import util.JsonString
 
 /**
  * Account Role Object
@@ -43,7 +46,7 @@ class Account : Role<AccountInfo>, IUUID2 {
         context.log.d(this, "Account ($id) created from Info")
     }
     constructor(
-        accountInfoJson: String,
+        accountInfoJson: JsonString,
         clazz: Class<AccountInfo>,
         context: Context
     ) : super(accountInfoJson, clazz, context) {
@@ -60,7 +63,7 @@ class Account : Role<AccountInfo>, IUUID2 {
         this.id = id
         context.log.d(this, "Account(" + this.id + ") created using id with no Info")
     }
-    constructor(json: String, context: Context) : this(json, AccountInfo::class.java, context)
+    constructor(json: JsonString, context: Context) : this(json, AccountInfo::class.java, context)
     constructor(context: Context) : this(UUID2.randomUUID2<Account>(), context)
 
     /////////////////////////////////////
@@ -87,9 +90,38 @@ class Account : Role<AccountInfo>, IUUID2 {
     }
 
     ///////////////////////////////////////////
-    // Account Role Business Logic Methods //
-    // - Methods to modify it's LibraryInfo  //
+    // Account Role Business Logic Methods   //
+    // - Methods to modify it's AccountInfo  //
     ///////////////////////////////////////////
+
+    suspend fun registerUser(user: User): Result<AccountInfo> {
+        context.log.d(this, "Account(" + this.id.toString() + ") - registerUser"); // LEAVE for debugging
+
+        // Check if the user is already registered
+        if (this.context
+                .accountInfoRepo
+                .fetchAccountInfo(
+                    user.id.toUUID2WithUUID2TypeOf(Account::class))
+                .isSuccess) {
+            return Result.failure(Exception("Account is already registered to a User, userId: " + user.id))
+        }
+
+        val accountInfo = AccountInfo(
+            id = user.id.uuid.toUUID2WithUUID2TypeOf<Account>(),
+            name = user.info()?.name ?: "Name not found",
+            accountStatus = AccountInfo.AccountStatus.ACTIVE,
+            currentFinePennies = 0,
+            maxAcceptedBooks = 10,
+            maxFinePennies = 1000,
+        )
+        accountInfo.addAuditLogMessage("Account created")
+        context.accountInfoRepo.upsertAccountInfo(accountInfo)
+
+        // Update the Info
+        super.updateFetchInfoResult(Result.success(accountInfo))
+
+        return Result.success(accountInfo)
+    }
 
     fun DumpDB(context: Context) {
         println()

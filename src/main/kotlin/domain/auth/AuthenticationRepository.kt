@@ -12,7 +12,7 @@ import util.*
 // This is a standalone repository for the Ktor Auth.
 
 @Serializable
-data class UserEntity(
+data class UserAuthEntity(
     override val id: UUID2<User>,
     val email: String,
     val password: PasswordString,
@@ -27,12 +27,12 @@ data class UserEntity(
     }
 }
 
-class UserRepository(
-    usersDatabaseFilename: String = DEFAULT_USER_REPOSITORY_DATABASE_FILENAME,
+class AuthenticationRepository(
+    userAuthDatabaseFilename: String = DEFAULT_AUTHENTICATION_REPOSITORY_DATABASE_FILENAME,
     private val authTokenToUserIdLookup: MutableMap<TokenStr, UUID2<User>> = mutableMapOf(),
     private val authJwtTokenToUserIdLookup: MutableMap<JwtTokenStr, UUID2<User>> = mutableMapOf(),
     private val emailToUserIdLookup: MutableMap<EmailStr, UUID2<User>> = mutableMapOf()
-) : JsonFileDatabase<User, UserEntity>(usersDatabaseFilename, UserEntity.serializer()) {
+) : JsonFileDatabase<User, UserAuthEntity>(userAuthDatabaseFilename, UserAuthEntity.serializer()) {
 
     init {
         runBlocking {
@@ -40,47 +40,47 @@ class UserRepository(
         }
     }
 
-    suspend fun findAllUsers(): List<UserEntity> {
+    suspend fun findAllUsers(): List<UserAuthEntity> {
         return super.findAllEntities()
     }
 
-    suspend fun findUserById(id: UUID2<User>): UserEntity? {
+    suspend fun findUserById(id: UUID2<User>): UserAuthEntity? {
         return super.findEntityById(id)
     }
 
-    suspend fun findUserByEmail(email: EmailStr): UserEntity? {
+    suspend fun findUserByEmail(email: EmailStr): UserAuthEntity? {
         return emailToUserIdLookup[email]?.let { id -> super.findEntityById(id) }
     }
 
-    suspend fun findUserByAuthToken(authToken: TokenStr?): UserEntity? {
+    suspend fun findUserByAuthToken(authToken: TokenStr?): UserAuthEntity? {
         if (authToken == null) return null
         return authTokenToUserIdLookup[authToken]?.let { id -> super.findEntityById(id) }
     }
 
-    suspend fun findUserByAuthJwtToken(authJwtToken: JwtTokenStr?): UserEntity? {
+    suspend fun findUserByAuthJwtToken(authJwtToken: JwtTokenStr?): UserAuthEntity? {
         if (authJwtToken == null) return null
         return authJwtTokenToUserIdLookup[authJwtToken]?.let { id -> super.findEntityById(id) }
     }
 
-    suspend fun findUserByPasswordResetToken(passwordResetToken: String): UserEntity? {
+    suspend fun findUserByPasswordResetToken(passwordResetToken: String): UserAuthEntity? {
         return super.toDatabaseCopy().values.find { it.passwordResetToken == passwordResetToken }
     }
 
-    suspend fun findUserByPasswordResetJwtToken(passwordResetJwtToken: String): UserEntity? {
+    suspend fun findUserByPasswordResetJwtToken(passwordResetJwtToken: String): UserAuthEntity? {
         return super.toDatabaseCopy().values.find { it.passwordResetJwtToken == passwordResetJwtToken }
     }
 
-    suspend fun addUser(user: UserEntity) {
+    suspend fun addUser(user: UserAuthEntity) {
         super.addEntity(user)
     }
 
-    suspend fun updateUser(user: UserEntity): UserEntity {
+    suspend fun updateUser(user: UserAuthEntity): UserAuthEntity {
         super.updateEntity(user)
 
         return user;
     }
 
-    suspend fun deleteUser(user: UserEntity) {
+    suspend fun deleteUser(user: UserAuthEntity) {
         super.deleteEntity(user)
     }
 
@@ -125,25 +125,25 @@ class UserRepository(
 
     ///////////////////////// PRIVATE METHODS /////////////////////////
 
-    private suspend fun updateAuthTokenToEmailLookupTable(usersDb: Map<UUID2<User>, UserEntity>) {
+    private suspend fun updateAuthTokenToEmailLookupTable(usersDb: Map<UUID2<User>, UserAuthEntity>) {
         for (user in usersDb.values) {
             authTokenToUserIdLookup[user.authToken] = user.id
         }
     }
 
-    private suspend fun updateAuthJwtTokenToEmailLookupTable(usersDb: Map<UUID2<User>, UserEntity>) {
+    private suspend fun updateAuthJwtTokenToEmailLookupTable(usersDb: Map<UUID2<User>, UserAuthEntity>) {
         for (user in usersDb.values) {
             authJwtTokenToUserIdLookup[user.authJwtToken] = user.id
         }
     }
 
-    private suspend fun updateEmailToIdLookupTable(usersDb: Map<UUID2<User>, UserEntity>) {
+    private suspend fun updateEmailToIdLookupTable(usersDb: Map<UUID2<User>, UserAuthEntity>) {
         for (user in usersDb.values) {
             emailToUserIdLookup[user.email] = user.id
         }
     }
 
     companion object {
-        const val DEFAULT_USER_REPOSITORY_DATABASE_FILENAME = "userRepositoryDB.json"
+        const val DEFAULT_AUTHENTICATION_REPOSITORY_DATABASE_FILENAME = "userRepositoryDB.json"
     }
 }
