@@ -12,7 +12,6 @@ import domain.common.Role
 import domain.library.Library
 import domain.user.data.IUserInfoRepo
 import domain.user.data.UserInfo
-import domain.user.data.UserInfoInMemoryRepo
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -153,7 +152,7 @@ class User : Role<UserInfo>, IUUID2 {
             findAllAcceptedBooks()
     }
 
-    suspend fun unacceptBook(book: Book): Result<ArrayList<UUID2<Book>>> {
+    suspend fun unAcceptBook(book: Book): Result<ArrayList<UUID2<Book>>> {
         context.log.d(this, "User (" + id() + "), bookId: " + book.id())
         fetchInfoFailureReason()?.let { return Result.failure(Exception(it)) }
 

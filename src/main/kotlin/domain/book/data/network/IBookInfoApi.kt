@@ -9,6 +9,6 @@ interface IBookInfoApi {
     suspend fun addBookInfo(bookInfo: BookInfoDTO): Result<BookInfoDTO>
     suspend fun updateBookInfo(bookInfo: BookInfoDTO): Result<BookInfoDTO>
     suspend fun upsertBookInfo(bookInfo: BookInfoDTO): Result<BookInfoDTO>
-    suspend fun deleteBookInfo(bookInfo: BookInfoDTO): Result<BookInfoDTO>
+    suspend fun deleteBookInfo(bookInfo: BookInfoDTO): Result<Unit>
     suspend fun deleteDatabase(): Result<Unit>
 }

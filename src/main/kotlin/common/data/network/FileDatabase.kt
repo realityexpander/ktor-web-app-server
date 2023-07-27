@@ -81,11 +81,14 @@ class FileDatabase<TDomain : IUUID2, TEntityInfo : InfoEntity>(
         }
     }
 
-    override suspend fun deleteEntityInfo(entityInfo: TEntityInfo): Result<TEntityInfo> {
+    override suspend fun deleteEntityInfo(entityInfo: TEntityInfo): Result<Unit> {
         return try {
-            super.deleteEntity(entityInfo)
+            @Suppress("UNCHECKED_CAST")
+            if(super.findEntityById(entityInfo.id() as UUID2<TDomain>) == null)
+                return Result.failure(Exception("Entity not found"))
 
-            Result.success(entityInfo)
+            super.deleteEntity(entityInfo)
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }

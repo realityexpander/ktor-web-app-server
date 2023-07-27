@@ -137,7 +137,7 @@ class LibraryInfo(
         if (returnedBookIdResult.isFailure) return Result.failure(returnedBookIdResult.exceptionOrNull()
             ?: Exception("Error checking in book, bookId: " + book.id()))
 
-        val unacceptBookResult: Result<ArrayList<UUID2<Book>>> = user.unacceptBook(book)
+        val unacceptBookResult: Result<ArrayList<UUID2<Book>>> = user.unAcceptBook(book)
         return if (unacceptBookResult.isFailure) return Result.failure(unacceptBookResult.exceptionOrNull()
             ?: Exception("Error unaccepting book, bookId: " + book.id()))
         else
@@ -158,7 +158,7 @@ class LibraryInfo(
             return Result.failure(checkInBookResult.exceptionOrNull()
                 ?: Exception("Error checking in book, bookId: " + book.id()))
 
-        val unacceptBookResult: Result<ArrayList<UUID2<Book>>> = user.unacceptBook(book)
+        val unacceptBookResult: Result<ArrayList<UUID2<Book>>> = user.unAcceptBook(book)
         return if (unacceptBookResult.isFailure)
             return Result.failure(unacceptBookResult.exceptionOrNull()
                 ?: Exception("Error unaccepting book, bookId: " + book.id()))

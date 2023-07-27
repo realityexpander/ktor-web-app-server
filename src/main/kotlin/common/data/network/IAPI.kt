@@ -18,7 +18,7 @@ interface IAPI<TUUID2 : IUUID2, TDTOInfo> {
     suspend fun addDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo>
     suspend fun updateDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo>
     suspend fun upsertDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo>
-    suspend fun deleteDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo>
+    suspend fun deleteDtoInfo(dtoInfo: TDTOInfo): Result<Unit>
     suspend fun deleteAllDtoInfo(): Result<Unit>
 }
 

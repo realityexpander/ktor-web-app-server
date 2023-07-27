@@ -47,7 +47,7 @@ class BookInfoInMemoryDatabase constructor(
         return database.upsertEntityInfo(bookInfo)
     }
 
-    override suspend fun deleteBookInfo(bookInfo: BookInfoEntity): Result<BookInfoEntity> {
+    override suspend fun deleteBookInfo(bookInfo: BookInfoEntity): Result<Unit> {
         return database.deleteEntityInfo(bookInfo)
     }
 

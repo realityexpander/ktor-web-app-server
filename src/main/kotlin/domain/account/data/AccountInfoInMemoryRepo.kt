@@ -58,6 +58,8 @@ class AccountInfoInMemoryRepo(log: ILog) : Repo(log), IAccountInfoRepo {
 
     override suspend fun deleteAccountInfo(accountInfo: AccountInfo): Result<Unit> {
         log.d(this, "accountInfo.id(): " + accountInfo.id())
+        if(!database.containsKey(accountInfo.id()))
+            return Result.failure(Exception("Repo.AccountInfo, account not found, id: " + accountInfo.id()))
 
         // Simulate network/database
         database.remove(accountInfo.id())

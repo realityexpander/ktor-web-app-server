@@ -622,27 +622,29 @@ fun Application.module() {
         // api routes are protected by authentication
         authenticate("auth-bearer") {
 
-            get("/api/todo_echo") {
-                val body = call.receiveText()
-                try {
-                    val todos = jsonConfig.decodeFromString<TodoResponse>(body)
+            route("/api") {
 
-                    call.respond(jsonConfig.encodeToString(todos))
-                    return@get
-
-                } catch (e: Exception) {
-                    call.respondJson(mapOf("error" to e.localizedMessage), HttpStatusCode.BadRequest)
-                    return@get
-                }
-            }
-
-            get("/api/todos") {
-                // make call to local database server
-                val response = client.get(applicationConfig.databaseBaseUrl + "/todos")
-                if (response.status.value == 200) {
+                get("/todo_echo") {
+                    val body = call.receiveText()
                     try {
-                        val body = response.body<String>()
                         val todos = jsonConfig.decodeFromString<TodoResponse>(body)
+
+                        call.respond(jsonConfig.encodeToString(todos))
+                        return@get
+
+                    } catch (e: Exception) {
+                        call.respondJson(mapOf("error" to e.localizedMessage), HttpStatusCode.BadRequest)
+                        return@get
+                    }
+                }
+
+                get("/todos") {
+                    // make call to local database server
+                    val response = client.get(applicationConfig.databaseBaseUrl + "/todos")
+                    if (response.status.value == 200) {
+                        try {
+                            val body = response.body<String>()
+                            val todos = jsonConfig.decodeFromString<TodoResponse>(body)
 
 //                    // Simulate this server editing data before sending it back to the client
 //                    val todo = todos[0]
@@ -653,87 +655,88 @@ fun Application.module() {
 //                    call.response.apply {
 //                        headers.append("Content-Type", "application/json")
 //                    }
-                        call.respond(jsonConfig.encodeToString(todos))
-                        return@get
+                            call.respond(jsonConfig.encodeToString(todos))
+                            return@get
 
-                    } catch (e: Exception) {
-                        call.respondJson(mapOf("error" to e.localizedMessage), response.status)
-                        return@get
-                    }
-                }
-
-                call.respondJson(mapOf("error" to response.body<String>().toString()), response.status)
-            }
-
-            // https://tahaben.com.ly/2022/04/uploading-image-using-android-ktor-client-to-ktor-server/
-            post("/api/upload-image") {
-                val multipart = call.receiveMultipart()
-                var tempFilename: String? = null
-                var name: String? = null
-                var originalFileName: String?
-                val uploadedImageList = ArrayList<String>()
-                try {
-                    multipart.forEachPart { partData ->
-                        when (partData) {
-                            is PartData.FormItem -> {
-                                //to read additional parameters that we sent with the image
-                                if (partData.name == "name") {
-                                    name = partData.value
-                                }
-                            }
-
-                            is PartData.FileItem -> {
-                                tempFilename = partData.save(Constants.USER_IMAGES_PATH)
-                                originalFileName = partData.originalFileName
-
-                                // Create slug for originalFileName
-                                val filename = originalFileName?.takeWhile { it != '.' }
-                                val fileExtension = originalFileName?.takeLastWhile { it != '.' }
-                                val fileNameSlug = Slugify.builder()
-                                    .locale(Locale.US)
-                                    .build()
-                                    .slugify(filename)
-                                val newFilenameSlug = "$fileNameSlug.$fileExtension"
-
-                                // Move/Rename file
-                                val newFilePath = "${Constants.USER_IMAGES_PATH}${newFilenameSlug}"
-                                File("${Constants.USER_IMAGES_PATH}/$tempFilename").renameTo(File(newFilePath))
-
-                                uploadedImageList.add(newFilePath)
-                            }
-
-                            is PartData.BinaryItem -> Unit
-                            else -> {
-                                ktorLogger.error("/upload-image Unknown PartData.???")
-                            }
+                        } catch (e: Exception) {
+                            call.respondJson(mapOf("error" to e.localizedMessage), response.status)
+                            return@get
                         }
                     }
 
-                    val newTodo = Todo(
-                        id = "1",
-                        name = name.toString(),
-                        status = ToDoStatus.Pending,
-                        userInTodo = UserInTodo(
-                            name = name.toString(),
-                            files = uploadedImageList
-                        )
-                    )
-                    val fileUploadResponse = FileUploadResponse(
-                        todo = newTodo,
-                        uploadedFiles = uploadedImageList
-                    )
-
-                    call.respond(HttpStatusCode.OK, Json.encodeToString(fileUploadResponse))
-                } catch (ex: Exception) {
-                    File("${Constants.USER_IMAGES_PATH}/$tempFilename").delete()
-                    call.respond(HttpStatusCode.InternalServerError, "Error")
+                    call.respondJson(mapOf("error" to response.body<String>().toString()), response.status)
                 }
-            }
 
-            // 404 route for api
-            get("/api/{...}") {
-                val route = call.request.path()
-                call.respondJson(mapOf("error" to "Invalid route for Api: $route"), HttpStatusCode.NotFound)
+                // https://tahaben.com.ly/2022/04/uploading-image-using-android-ktor-client-to-ktor-server/
+                post("/upload-image") {
+                    val multipart = call.receiveMultipart()
+                    var tempFilename: String? = null
+                    var name: String? = null
+                    var originalFileName: String?
+                    val uploadedImageList = ArrayList<String>()
+                    try {
+                        multipart.forEachPart { partData ->
+                            when (partData) {
+                                is PartData.FormItem -> {
+                                    //to read additional parameters that we sent with the image
+                                    if (partData.name == "name") {
+                                        name = partData.value
+                                    }
+                                }
+
+                                is PartData.FileItem -> {
+                                    tempFilename = partData.save(Constants.USER_IMAGES_PATH)
+                                    originalFileName = partData.originalFileName
+
+                                    // Create slug for originalFileName
+                                    val filename = originalFileName?.takeWhile { it != '.' }
+                                    val fileExtension = originalFileName?.takeLastWhile { it != '.' }
+                                    val fileNameSlug = Slugify.builder()
+                                        .locale(Locale.US)
+                                        .build()
+                                        .slugify(filename)
+                                    val newFilenameSlug = "$fileNameSlug.$fileExtension"
+
+                                    // Move/Rename file
+                                    val newFilePath = "${Constants.USER_IMAGES_PATH}${newFilenameSlug}"
+                                    File("${Constants.USER_IMAGES_PATH}/$tempFilename").renameTo(File(newFilePath))
+
+                                    uploadedImageList.add(newFilePath)
+                                }
+
+                                is PartData.BinaryItem -> Unit
+                                else -> {
+                                    ktorLogger.error("/upload-image Unknown PartData.???")
+                                }
+                            }
+                        }
+
+                        val newTodo = Todo(
+                            id = "1",
+                            name = name.toString(),
+                            status = ToDoStatus.Pending,
+                            userInTodo = UserInTodo(
+                                name = name.toString(),
+                                files = uploadedImageList
+                            )
+                        )
+                        val fileUploadResponse = FileUploadResponse(
+                            todo = newTodo,
+                            uploadedFiles = uploadedImageList
+                        )
+
+                        call.respond(HttpStatusCode.OK, Json.encodeToString(fileUploadResponse))
+                    } catch (ex: Exception) {
+                        File("${Constants.USER_IMAGES_PATH}/$tempFilename").delete()
+                        call.respond(HttpStatusCode.InternalServerError, "Error")
+                    }
+                }
+
+                // 404 route for api
+                get("/{...}") {
+                    val route = call.request.path()
+                    call.respondJson(mapOf("error" to "Invalid route for Api: $route"), HttpStatusCode.NotFound)
+                }
             }
 
             /////////////////////
@@ -746,14 +749,14 @@ fun Application.module() {
                 // • USER     //
                 ////////////////
 
-                get("/fetchUserInfo/{id}") {
-                    val id = call.parameters["id"]?.toString()
-                    id ?: run {
+                get("/fetchUserInfo/{userId}") {
+                    val userId = call.parameters["userId"]?.toString()
+                    userId ?: run {
                         call.respondJson(mapOf("error" to "Invalid id"), HttpStatusCode.BadRequest)
                         return@get
                     }
 
-                    val user = User(id.fromUUID2StrToTypedUUID2<User>(), libraryAppContext)
+                    val user = User(userId.fromUUID2StrToTypedUUID2<User>(), libraryAppContext)
                     val userInfoResult = user.fetchInfoResult()
 
                     val statusJson = resultToStatusCodeJson<UserInfo>(userInfoResult)
@@ -783,21 +786,134 @@ fun Application.module() {
                     call.respond(statusJson.statusCode, statusJson.json)
                 }
 
+                post("/updateUser") {
+                    val userInfo = call.receive<UserInfo>()
+
+                    // • ACTION: Update User
+                    val upsertUserInfoResult = libraryAppContext.userInfoRepo.upsertUserInfo(userInfo)
+
+                    val statusJson = resultToStatusCodeJson<UserInfo>(upsertUserInfoResult)
+                    call.respond(statusJson.statusCode, statusJson.json)
+                }
+
+                post("/deleteUser") {
+                    val userInfo = call.receive<UserInfo>()
+
+                    // • ACTION: Delete User
+                    val deleteUserInfoResult = libraryAppContext.userInfoRepo.deleteUserInfo(userInfo)
+                    if(deleteUserInfoResult.isFailure) {
+                        val statusJson = resultToStatusCodeJson<Unit>(deleteUserInfoResult)
+                        call.respond(statusJson.statusCode, statusJson.json)
+                        return@post
+                    }
+
+                    // • ACTION: Unregister Account for User
+                    val user = User(userInfo.id, libraryAppContext)
+                    val account = Account(user.id.uuid.toUUID2WithUUID2TypeOf<Account>(), libraryAppContext)
+                    val unRegisterAccountResult = account.unRegisterUser(user)
+                    if(unRegisterAccountResult.isFailure) {
+                        val statusJson = resultToStatusCodeJson<AccountInfo>(unRegisterAccountResult)
+                        call.respond(statusJson.statusCode, statusJson.json)
+                        return@post
+                    }
+
+                    val statusCodeAndJson: StatusCodeAndJson = resultToStatusCodeJson<Unit>(deleteUserInfoResult)
+                    call.respond(statusCodeAndJson.statusCode, statusCodeAndJson.json)
+                }
+
+                post("/acceptBook/{bookId}") {
+                    val bookId = call.parameters["bookId"]?.toString()
+                    bookId ?: run {
+                        call.respondJson(mapOf("error" to "Missing bookId"), HttpStatusCode.BadRequest)
+                        return@post
+                    }
+                    val userId = call.getUserId() ?: run {
+                        call.respondJson(mapOf("error" to "Missing userId"), HttpStatusCode.BadRequest)
+                        return@post
+                    }
+
+                    // Create Role objects
+                    val user = User(userId, libraryAppContext)
+                    val book = Book(bookId.fromUUID2StrToTypedUUID2<Book>(), libraryAppContext)
+
+                    // • ACTION: Accept Book from User
+                    val acceptBookResult = user.acceptBook(book)
+
+                    val statusJson = resultToStatusCodeJson<ArrayList<Book>>(acceptBookResult)
+                    call.respond(statusJson.statusCode, statusJson.json)
+                }
+
+                post("/unAcceptBook/{bookId}") {
+                    val bookId = call.parameters["bookId"]?.toString()
+                    bookId ?: run {
+                        call.respondJson(mapOf("error" to "Missing bookId"), HttpStatusCode.BadRequest)
+                        return@post
+                    }
+                    val userId = call.getUserId() ?: run {
+                        call.respondJson(mapOf("error" to "Missing userId"), HttpStatusCode.BadRequest)
+                        return@post
+                    }
+
+                    // Create Role objects
+                    val user = User(userId, libraryAppContext)
+                    val book = Book(bookId.fromUUID2StrToTypedUUID2<Book>(), libraryAppContext)
+
+                    // • ACTION: Unaccept Book from User
+                    val unAcceptBookResult = user.unAcceptBook(book)
+
+                    val statusJson = resultToStatusCodeJson<ArrayList<UUID2<Book>>>(unAcceptBookResult)
+                    call.respond(statusJson.statusCode, statusJson.json)
+                }
+
                 ////////////////
                 // • ACCOUNT  //
                 ////////////////
 
-                get("/fetchAccountInfo/{id}") {
-                    val id = call.parameters["id"]?.toString()
-                    id ?: run {
+                get("/fetchAccountInfo/{accountId}") {
+                    val accountId = call.parameters["accountId"]?.toString()
+                    accountId ?: run {
                         call.respondJson(mapOf("error" to "Invalid id"), HttpStatusCode.BadRequest)
                         return@get
                     }
 
-                    val account = Account(id.fromUUID2StrToTypedUUID2<Account>(), libraryAppContext)
+                    val account = Account(accountId.fromUUID2StrToTypedUUID2<Account>(), libraryAppContext)
                     val accountInfoResult = account.fetchInfoResult()
 
                     val statusJson = resultToStatusCodeJson<AccountInfo>(accountInfoResult)
+                    call.respond(statusJson.statusCode, statusJson.json)
+                }
+
+                post("/registerAccount") {
+                    val userId = call.getUserId() ?: run {
+                        call.respondJson(mapOf("error" to "Missing userId"), HttpStatusCode.BadRequest)
+                        return@post
+                    }
+
+                    // Create Role objects
+                    val user = User(userId, libraryAppContext)
+                    val account = Account(user.id.uuid.toUUID2WithUUID2TypeOf<Account>(), libraryAppContext)
+
+                    // • ACTION: Register Account for User
+                    val registerAccountResult = account.registerUser(user)
+
+                    val statusJson = resultToStatusCodeJson<AccountInfo>(registerAccountResult)
+                    call.respond(statusJson.statusCode, statusJson.json)
+                }
+
+                post("/unRegisterAccount") {
+                    val userId = call.getUserId() ?: run {
+                        call.respondJson(mapOf("error" to "Missing userId"), HttpStatusCode.BadRequest)
+                        return@post
+                    }
+
+                    // Create Role objects
+                    val user = User(userId, libraryAppContext)
+                    val account = Account(user.id.uuid.toUUID2WithUUID2TypeOf<Account>(), libraryAppContext)
+
+                    // • ACTION: Unregister Account for User
+                    val unRegisterAccountResult = account.unRegisterUser(user)
+
+                    val statusJson = resultToStatusCodeJson<AccountInfo>(unRegisterAccountResult)
                     call.respond(statusJson.statusCode, statusJson.json)
                 }
 
@@ -805,14 +921,14 @@ fun Application.module() {
                 // • LIBRARY  //
                 ////////////////
 
-                get("/fetchLibraryInfo/{id}") {
-                    val id = call.parameters["id"]?.toString()
-                    id ?: run {
+                get("/fetchLibraryInfo/{libraryId}") {
+                    val libraryId = call.parameters["libraryId"]?.toString()
+                    libraryId ?: run {
                         call.respondJson(mapOf("error" to "Invalid id"), HttpStatusCode.BadRequest)
                         return@get
                     }
 
-                    val library = Library(id.fromUUID2StrToTypedUUID2<Library>(), libraryAppContext)
+                    val library = Library(libraryId.fromUUID2StrToTypedUUID2<Library>(), libraryAppContext)
                     val libraryInfoResult = library.fetchInfoResult()
 
                     val statusJson = resultToStatusCodeJson<LibraryInfo>(libraryInfoResult)
@@ -879,35 +995,17 @@ fun Application.module() {
                 // • BOOK     //
                 ////////////////
 
-                get("/fetchBookInfo/{id}") {
-                    val id = call.parameters["id"]?.toString()
-                    id ?: run {
+                get("/fetchBookInfo/{bookId}") {
+                    val bookId = call.parameters["bookId"]?.toString()
+                    bookId ?: run {
                         call.respondJson(mapOf("error" to "Invalid id"), HttpStatusCode.BadRequest)
                         return@get
                     }
 
-                    val book = Book(id.fromUUID2StrToTypedUUID2<Book>(), libraryAppContext)
+                    val book = Book(bookId.fromUUID2StrToTypedUUID2<Book>(), libraryAppContext)
                     val bookInfoResult = book.fetchInfoResult()
 
                     val statusJson = resultToStatusCodeJson<BookInfo>(bookInfoResult)
-                    call.respond(statusJson.statusCode, statusJson.json)
-                }
-
-                post("/registerAccount/{userId}") {
-                    val userId = call.parameters["userId"]?.toString()
-                    userId ?: run {
-                        call.respondJson(mapOf("error" to "Invalid userId"), HttpStatusCode.BadRequest)
-                        return@post
-                    }
-
-                    // Create Role objects
-                    val user = User(userId.fromUUID2StrToTypedUUID2<User>(), libraryAppContext)
-                    val account = Account(user.id.uuid.toUUID2WithUUID2TypeOf<Account>(), libraryAppContext)
-
-                    // • ACTION: Register Account for User
-                    val registerAccountResult = account.registerUser(user)
-
-                    val statusJson = resultToStatusCodeJson<AccountInfo>(registerAccountResult)
                     call.respond(statusJson.statusCode, statusJson.json)
                 }
 
@@ -958,22 +1056,22 @@ fun Application.module() {
     }
 }
 
-data class StatusJson(
+data class StatusCodeAndJson(
     val json: JsonString,
     val statusCode: HttpStatusCode,
 )
 
 inline fun <reified T> resultToStatusCodeJson(
     result: Result<T>,
-) : StatusJson {
+) : StatusCodeAndJson {
 
     if (result.isSuccess) {
-        return StatusJson(
+        return StatusCodeAndJson(
             com.realityexpander.jsonConfig.encodeToString(result.getOrThrow()),
             HttpStatusCode.OK
         )
     } else {
-        return StatusJson(
+        return StatusCodeAndJson(
             com.realityexpander.jsonConfig.encodeToString(
                 mapOf(
                     "error" to (result.exceptionOrNull()?.localizedMessage

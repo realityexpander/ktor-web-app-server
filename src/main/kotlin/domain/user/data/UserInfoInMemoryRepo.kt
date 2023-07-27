@@ -60,6 +60,8 @@ class UserInfoInMemoryRepo(log: ILog) : Repo(log), IUserInfoRepo {
 
     override suspend fun deleteUserInfo(userInfo: UserInfo): Result<Unit> {
         log.d(this, "userId:" + userInfo.id())
+        if(!database.containsKey(userInfo.id()))
+            return Result.failure(Exception("Repo.UserInfo, UserInfo not found, id:" + userInfo.id()))
 
         // Simulate network/database
         database.remove(userInfo.id())

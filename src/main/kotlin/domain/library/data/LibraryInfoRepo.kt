@@ -77,6 +77,9 @@ class LibraryInfoRepo(
 
     override suspend fun deleteLibraryInfo(libraryInfo: LibraryInfo): Result<Unit> {
         return try {
+            if(database.findEntityById(libraryInfo.id()) == null)
+                throw Exception("Library not found, id: ${libraryInfo.id()}")
+
             Result.success(database.deleteEntity(libraryInfo))
         } catch (e: Exception) {
             return Result.failure(e)

@@ -95,32 +95,91 @@ class Account : Role<AccountInfo>, IUUID2 {
     ///////////////////////////////////////////
 
     suspend fun registerUser(user: User): Result<AccountInfo> {
-        context.log.d(this, "Account(" + this.id.toString() + ") - registerUser"); // LEAVE for debugging
-
-        // Check if the user is already registered
-        if (this.context
+        context.log.d(this, "Account(" + this.id.toString() + ") - registerUser");
+        val accountInfoResult =
+            this.context
                 .accountInfoRepo
                 .fetchAccountInfo(
-                    user.id.toUUID2WithUUID2TypeOf(Account::class))
-                .isSuccess) {
-            return Result.failure(Exception("Account is already registered to a User, userId: " + user.id))
+                    user.id.toUUID2WithUUID2TypeOf(Account::class)
+                )
+
+        // • Check if the user is already registered & ACTIVE
+        if (accountInfoResult.isSuccess
+            && accountInfoResult.getOrNull()?.accountStatus == AccountInfo.AccountStatus.ACTIVE
+        ) {
+            return Result.failure(Exception("Account already registered to a User and ACTIVE, userId: " + user.id))
         }
 
-        val accountInfo = AccountInfo(
-            id = user.id.uuid.toUUID2WithUUID2TypeOf<Account>(),
-            name = user.info()?.name ?: "Name not found",
-            accountStatus = AccountInfo.AccountStatus.ACTIVE,
-            currentFinePennies = 0,
-            maxAcceptedBooks = 10,
-            maxFinePennies = 1000,
-        )
-        accountInfo.addAuditLogMessage("Account created")
-        context.accountInfoRepo.upsertAccountInfo(accountInfo)
+        // • Check if the user is already registered & INACTIVE
+        val currentAccountInfo =
+            if (accountInfoResult.isSuccess
+                && accountInfoResult.getOrNull()?.accountStatus == AccountInfo.AccountStatus.INACTIVE
+            ) {
+                // Use the existing AccountInfo
+                accountInfoResult.getOrThrow().copy(
+                    accountStatus = AccountInfo.AccountStatus.ACTIVE,
+                ).also {
+                    it.addAuditLogMessage("Account re-registered and activated")
+                }
+            } else {
+                // Activate the Account for the first time
+                AccountInfo(
+                    id = user.id.uuid.toUUID2WithUUID2TypeOf<Account>(),
+                    name = user.info()?.name ?: "Name not found",
+                    accountStatus = AccountInfo.AccountStatus.ACTIVE,
+                    currentFinePennies = 0,
+                    maxAcceptedBooks = 10,
+                    maxFinePennies = 1000,
+                ).also {
+                    it.addAuditLogMessage("Account registered and activated")
+                }
+            }
 
         // Update the Info
-        super.updateFetchInfoResult(Result.success(accountInfo))
+        context.accountInfoRepo.upsertAccountInfo(currentAccountInfo)
+        super.updateFetchInfoResult(Result.success(currentAccountInfo))
 
-        return Result.success(accountInfo)
+        return Result.success(currentAccountInfo)
+    }
+
+    suspend fun unRegisterUser(user: User): Result<AccountInfo> {
+        context.log.d(this, "Account(" + this.id.toString() + ") - unRegisterUser");
+        val accountInfoResult =
+            this.context
+                .accountInfoRepo
+                .fetchAccountInfo(
+                    user.id.toUUID2WithUUID2TypeOf(Account::class)
+                )
+
+        // • Check if the user is registered
+        if (accountInfoResult.isFailure) {
+            return Result.failure(Exception("Account is not registered to a User, userId: " + user.id))
+        }
+
+        // • Check if the user is already un-registered
+        if (accountInfoResult.getOrNull()?.accountStatus == AccountInfo.AccountStatus.INACTIVE) {
+            return Result.failure(Exception("Account already un-registered to a User, userId: " + user.id))
+        }
+
+        // • Update the AccountInfo to INACTIVE
+        val accountInfo = this.info()
+            ?: return Result.failure(Exception("AccountInfo not found"))
+        val upsertAccountInfoResult = context.accountInfoRepo.upsertAccountInfo(
+            accountInfo.copy(
+                accountStatus = AccountInfo.AccountStatus.INACTIVE
+            ).also {
+                it.addAuditLogMessage("Account un-registered")
+            }
+        )
+        if(upsertAccountInfoResult.isFailure)
+            return Result.failure(upsertAccountInfoResult.exceptionOrNull()
+                ?: Exception("Account.unRegisterUser, unknown failure"))
+        val upsertAccountInfo = upsertAccountInfoResult.getOrThrow()
+
+        // Update the Info
+        super.updateFetchInfoResult(Result.success(upsertAccountInfo))
+
+        return Result.success(upsertAccountInfo)
     }
 
     fun DumpDB(context: Context) {

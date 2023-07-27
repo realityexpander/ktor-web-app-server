@@ -10,7 +10,7 @@ interface IBookInfoDatabase {
     suspend fun addBookInfo(bookInfo: BookInfoEntity): Result<BookInfoEntity>
     suspend fun updateBookInfo(bookInfo: BookInfoEntity): Result<BookInfoEntity>
     suspend fun upsertBookInfo(bookInfo: BookInfoEntity): Result<BookInfoEntity>
-    suspend fun deleteBookInfo(bookInfo: BookInfoEntity): Result<BookInfoEntity>
+    suspend fun deleteBookInfo(bookInfo: BookInfoEntity): Result<Unit>
     suspend fun deleteDatabase(): Result<Unit>
 
     companion object {

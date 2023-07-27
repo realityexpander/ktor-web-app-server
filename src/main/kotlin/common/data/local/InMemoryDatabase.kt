@@ -62,12 +62,12 @@ class InMemoryDatabase<TUUID2 : IUUID2, TEntity : InfoEntity> (
         }
     }
 
-    override suspend fun deleteEntityInfo(entityInfo: TEntity): Result<TEntity> {
+    override suspend fun deleteEntityInfo(entityInfo: TEntity): Result<Unit> {
         @Suppress("UNCHECKED_CAST")
         return if (database.remove(entityInfo.id() as UUID2<TUUID2>) == null) {
             Result.failure(Exception("DB: Failed to delete entityInfo, entityInfo: $entityInfo"))
         } else
-            Result.success(entityInfo)
+            Result.success(Unit)
     }
 
     override suspend fun findAllUUID2ToEntityInfoMap(): Result<Map<UUID2<TUUID2>, TEntity>> {

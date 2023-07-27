@@ -76,6 +76,9 @@ class UserInfoRepo(
 
     override suspend fun deleteUserInfo(userInfo: UserInfo): Result<Unit> {
         return try {
+            if(database.findEntityById(userInfo.id()) == null)
+                throw Exception("User not found, id: ${userInfo.id()}")
+
             Result.success(database.deleteEntity(userInfo))
         } catch (e: Exception) {
             return Result.failure(e)

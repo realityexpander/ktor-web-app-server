@@ -71,17 +71,18 @@ class InMemoryAPI<TUUID2 : IUUID2, TDTOInfo : InfoDTO> (
         }
     }
 
-    override suspend fun deleteDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
+    override suspend fun deleteDtoInfo(dtoInfo: TDTOInfo): Result<Unit> {
         // Simulate Network
         @Suppress("UNCHECKED_CAST")
         return if (remoteDatabase.remove(dtoInfo.id() as UUID2<TUUID2>) == null) {
             Result.failure(Exception("API: Failed to delete DtoInfo"))
-        } else Result.success(dtoInfo)
+        } else
+            Result.success(Unit)
     }
 
     override suspend fun findAllUUID2ToDtoInfoMap(): Result<Map<UUID2<TUUID2>, TDTOInfo>> {
         val map: MutableMap<UUID2<TUUID2>, TDTOInfo> = mutableMapOf()
-
+        
         // Simulate Network
         for ((key, value) in remoteDatabase.entries) {
             map[UUID2(key)] = value

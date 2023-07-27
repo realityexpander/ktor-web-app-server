@@ -68,6 +68,9 @@ class FileApi<TDomain : IUUID2, TDTOInfo : InfoDTO>(
 
     override suspend fun deleteAllDtoInfo(): Result<Unit> {
         return try {
+            if(super.findAllEntities().isEmpty())
+                return Result.success(Unit)
+
             super.deleteDatabaseFile()
 
             Result.success(Unit)
@@ -76,11 +79,15 @@ class FileApi<TDomain : IUUID2, TDTOInfo : InfoDTO>(
         }
     }
 
-    override suspend fun deleteDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
+    override suspend fun deleteDtoInfo(dtoInfo: TDTOInfo): Result<Unit> {
         return try {
+            @Suppress("UNCHECKED_CAST")
+            if(super.findEntityById(dtoInfo.id() as UUID2<TDomain>) == null)
+                return Result.success(Unit)
+
             super.deleteEntity(dtoInfo)
 
-            Result.success(dtoInfo)
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }

@@ -46,7 +46,7 @@ class BookInfoFileApi(
         return api.upsertDtoInfo(bookInfo)
     }
 
-    override suspend fun deleteBookInfo(bookInfo: BookInfoDTO): Result<BookInfoDTO> {
+    override suspend fun deleteBookInfo(bookInfo: BookInfoDTO): Result<Unit> {
         return api.deleteDtoInfo(bookInfo)
     }
 
