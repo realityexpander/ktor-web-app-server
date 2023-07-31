@@ -51,7 +51,6 @@ import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonNull.content
 import org.slf4j.LoggerFactory
 import util.JsonString
 import util.JwtTokenStr
@@ -366,6 +365,7 @@ fun Application.module() {
         //////////////////////
 
         route("/libapp") {
+
             get("/listBooks/{libraryId}") {
                 val libraryId = call.parameters["libraryId"]?.toString()
                 libraryId ?: run {
@@ -464,7 +464,7 @@ fun Application.module() {
                             label {
                                 +"Description"
                                 textInput {
-                                    name = "author"
+                                    name = "description"
                                 }
                             }
                             br
@@ -491,7 +491,7 @@ fun Application.module() {
 
                         // go to list books page
                         a {
-                            href = "libapp/listBooks/$libraryId"
+                            href = "/libapp/listBooks/$libraryId"
                             +"List Books for Library: $libraryId"
                         }
 
@@ -529,52 +529,66 @@ fun Application.module() {
                 }
             }
 
-                post("/addBook") {
-                    val body = call.receiveText()
-                    val params = jsonConfig.decodeFromString<Map<String, String>>(body)
-                    val bookId = params["UUID2:Book"]
-                    val title = params["title"]
-                    val author = params["author"]
-                    val description = params["description"]
-                    val isbn = params["isbn"]
-                    val libraryId = params["libraryId"]
+            post("/addBook") {
+                val body = call.receiveText().decodeURLPart(charset = Charsets.UTF_8)
+                val params = body.parseUrlEncodedParameters()
+                val bookId = params["UUID2:Book"]
+                val title = params["title"]
+                val author = params["author"]
+                val description = params["description"]
+                val isbn = params["isbn"]
+                val libraryId = params["libraryId"]
 
-                    if (bookId != null  && title != null && author != null && isbn != null && description != null && libraryId != null) {
-                        val library = Library(libraryId.fromUUID2StrToTypedUUID2<Library>(), libraryAppContext)
-                        val book = Book(bookId.fromUUID2StrToTypedUUID2<Book>(), libraryAppContext)
-                        val bookInfo = BookInfo(
-                            id = book.id(),
-                            title = title,
-                            author = author,
-                            description = description,
-                        )
+                if (bookId != null  && title != null && author != null && isbn != null && description != null && libraryId != null) {
+                    val library = Library(libraryId.fromUUID2StrToTypedUUID2<Library>(), libraryAppContext)
+                    val book = Book(bookId.fromUUID2StrToTypedUUID2<Book>(), libraryAppContext)
+                    val bookInfo = BookInfo(
+                        id = book.id(),
+                        title = title,
+                        author = author,
+                        description = description,
+                    )
 
-                        val upsertBookInfoResult = library.addBookToLibrary(book, 1)
+                    // add book to bookInfo repo
+                    val upsertBookInfoResult = libraryAppContext.bookInfoRepo.upsertBookInfo(bookInfo)
+                    val upsertBookInfostatusJson = resultToStatusCodeJson<BookInfo>(upsertBookInfoResult)
 
-                        val statusCodeAndJson: StatusCodeAndJson = resultToStatusCodeJson<Book>(upsertBookInfoResult)
-                        call.respond(statusCodeAndJson.statusCode, statusCodeAndJson.json)
+                    val addBookToLibraryResult = library.addBookToLibrary(book, 1)
+                    val addBookToLibraryStatusJson: StatusCodeAndJson = resultToStatusCodeJson<Book>(addBookToLibraryResult)
 
-                        call.respondHtml {
-                            body {
+                    call.respondHtml {
+                        body {
+                            if(upsertBookInfostatusJson.statusCode != HttpStatusCode.OK) {
+                                h1 { +"Error adding book to library" }
+                                p { +upsertBookInfostatusJson.json }
+                            }
+                            else if(addBookToLibraryStatusJson.statusCode != HttpStatusCode.OK) {
+                                h1 { +"Error adding book to library" }
+                                p { +addBookToLibraryStatusJson.json }
+                            }
+                            else {
                                 h1 { +"Book added:" }
-                                p { +"Book Id: $bookId" }
-                                p { +"Title: $title" }
-                                p { +"Author: $author" }
-                                p { +"Description: $description" }
-                                p { +"ISBN: $isbn" }
-                                p { +"Library Id: $libraryId" }
+                            }
 
-                                // go to list books page
-                                a {
-                                    href = "libapp/listBooks/$libraryId"
-                                }
+                            p { +"Book Id: $bookId" }
+                            p { +"Title: $title" }
+                            p { +"Author: $author" }
+                            p { +"Description: $description" }
+                            p { +"ISBN: $isbn" }
+                            p { +"Library Id: $libraryId" }
+
+                            // go to list books page
+                            a {
+                                href = "libapp/listBooks/$libraryId"
+                                +"List Books for Library: $libraryId"
                             }
                         }
-                        return@post
                     }
-
-                    call.respondJson(mapOf("error" to "Invalid parameters"), HttpStatusCode.BadRequest)
+                    return@post
                 }
+
+                call.respondJson(mapOf("error" to "Invalid parameters"), HttpStatusCode.BadRequest)
+            }
         }
 
         rateLimit(RateLimitName("auth-routes")) {
