@@ -37,6 +37,7 @@ import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
+import io.ktor.server.html.*
 import io.ktor.server.http.content.*
 import io.ktor.server.plugins.compression.*
 import io.ktor.server.plugins.forwardedheaders.*
@@ -45,10 +46,12 @@ import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.html.*
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull.content
 import org.slf4j.LoggerFactory
 import util.JsonString
 import util.JwtTokenStr
@@ -323,7 +326,7 @@ fun Application.module() {
             clientIpAddress: String,
             user: UserAuthEntity
         ) {
-            // Generate a new session auth token
+            // Generate a new simple-auth session auth Bearer token
             val token = UUID.randomUUID().toString()
 
             // Generate a new session auth JWT token
@@ -356,6 +359,222 @@ fun Application.module() {
                 return null
             }
 
+        }
+
+        //////////////////////
+        // LibaryApp HTML   //
+        //////////////////////
+
+        route("/libapp") {
+            get("/listBooks/{libraryId}") {
+                val libraryId = call.parameters["libraryId"]?.toString()
+                libraryId ?: run {
+                    call.respondJson(mapOf("error" to "Invalid libraryId"), HttpStatusCode.BadRequest)
+                    return@get
+                }
+
+                val library = Library(libraryId.fromUUID2StrToTypedUUID2<Library>(), libraryAppContext)
+                val booksResult = library.info()?.findAllKnownBookIds()?.map { Book(it, libraryAppContext) }
+                val bookTitles = booksResult?.map { it.info()?.title.toString() }
+
+                call.respondHtml {
+                    body {
+                        h1 { +"List Books for Library: $libraryId" }
+                        bookTitles?.forEach {
+                            p { +it }
+                        }
+
+                        // go to add book page
+                        a {
+                            href = "/libapp/addBook/$libraryId"
+                            +"Add Book"
+                        }
+                    }
+                }
+            }
+
+            get("/addBook/{libraryId}") {
+                val libraryIdfromParams = call.parameters["libraryId"]?.toString()
+                val libraryId = libraryIdfromParams ?: "UUID2:Role.Library@00000000-0000-0000-0000-000000000001"
+
+                call.respondHtml {
+                    body {
+                        style {
+                            unsafe {
+                            raw(
+                            """
+                                form {
+                                    display: flex;
+                                    flex-direction: column;
+                                    width: 80%;
+                                }
+                                label {
+                                    font-weight: bold;
+                                    margin-right: 5px;
+                                }
+                                input {
+                                    margin-bottom: 10px;
+                                    width: 100%;
+                                }
+                                button {
+                                    margin-bottom: 10px;
+                                }
+                            """.trimIndent()
+                            ) }
+
+                        }
+
+                        h1 { +"Add Book" }
+
+                        button(type = ButtonType.button) {
+                            onClick = "generateBookId()"
+                            +"Generate Book Id"
+                        }
+                        br
+
+                        form {
+                            method = FormMethod.post
+                            action = "/libapp/addBook"
+
+                            label {
+                                +"Book Id"
+                                textInput {
+                                    name = "UUID2:Book"
+                                    value = "UUID2:Book@00000000-0000-0000-0000-000000000001"
+                                }
+                            }
+                            button(type = ButtonType.button) {
+                                onClick = "generateBookId()"
+                                +"Generate Book Id"
+                            }
+                            label {
+                                +"Title"
+                                textInput {
+                                    name = "title"
+                                }
+                            }
+                            br
+                            label {
+                                +"Author"
+                                textInput {
+                                    name = "author"
+                                }
+                            }
+                            br
+                            label {
+                                +"Description"
+                                textInput {
+                                    name = "author"
+                                }
+                            }
+                            br
+                            label {
+                                +"ISBN"
+                                textInput {
+                                    name = "isbn"
+                                }
+                            }
+                            br
+                            label {
+                                +"Library Id"
+                                textInput {
+                                    name = "libraryId"
+                                    value = "UUID2:Role.Library@00000000-0000-0000-0000-000000000001"
+                                }
+                            }
+                            br
+
+                            submitInput {
+                                value = "Add Book"
+                            }
+                        }
+
+                        // go to list books page
+                        a {
+                            href = "libapp/listBooks/$libraryId"
+                            +"List Books for Library: $libraryId"
+                        }
+
+                        script {
+                            type = ScriptType.textJavaScript
+
+                            // add script
+                            unsafe {
+                                raw(
+                                    """ 
+                                        function generateUUID() { // Public Domain/MIT
+                                            var d = new Date().getTime();//Timestamp
+                                            var d2 = (performance && performance.now && (performance.now()*1000)) || 0;//Time in microseconds since page-load or 0 if unsupported
+                                            return 'xxxxxxxx-xxxx-xxxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                                                var r = Math.random() * 16;//random number between 0 and 16
+                                                if(d > 0){//Use timestamp until depleted
+                                                    r = (d + r)%16 | 0;
+                                                    d = Math.floor(d/16);
+                                                } else {//Use microseconds since page-load if supported
+                                                    r = (d2 + r)%16 | 0;
+                                                    d2 = Math.floor(d2/16);
+                                                }
+                                                return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+                                            });
+                                        }
+                                        
+                                        function generateBookId(e) {
+                                            document.getElementsByName("UUID2:Book")[0].value = "UUID2:Role.Book@" + generateUUID();
+                                        }
+                                    """.trimIndent()
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+                post("/addBook") {
+                    val body = call.receiveText()
+                    val params = jsonConfig.decodeFromString<Map<String, String>>(body)
+                    val bookId = params["UUID2:Book"]
+                    val title = params["title"]
+                    val author = params["author"]
+                    val description = params["description"]
+                    val isbn = params["isbn"]
+                    val libraryId = params["libraryId"]
+
+                    if (bookId != null  && title != null && author != null && isbn != null && description != null && libraryId != null) {
+                        val library = Library(libraryId.fromUUID2StrToTypedUUID2<Library>(), libraryAppContext)
+                        val book = Book(bookId.fromUUID2StrToTypedUUID2<Book>(), libraryAppContext)
+                        val bookInfo = BookInfo(
+                            id = book.id(),
+                            title = title,
+                            author = author,
+                            description = description,
+                        )
+
+                        val upsertBookInfoResult = library.addBookToLibrary(book, 1)
+
+                        val statusCodeAndJson: StatusCodeAndJson = resultToStatusCodeJson<Book>(upsertBookInfoResult)
+                        call.respond(statusCodeAndJson.statusCode, statusCodeAndJson.json)
+
+                        call.respondHtml {
+                            body {
+                                h1 { +"Book added:" }
+                                p { +"Book Id: $bookId" }
+                                p { +"Title: $title" }
+                                p { +"Author: $author" }
+                                p { +"Description: $description" }
+                                p { +"ISBN: $isbn" }
+                                p { +"Library Id: $libraryId" }
+
+                                // go to list books page
+                                a {
+                                    href = "libapp/listBooks/$libraryId"
+                                }
+                            }
+                        }
+                        return@post
+                    }
+
+                    call.respondJson(mapOf("error" to "Invalid parameters"), HttpStatusCode.BadRequest)
+                }
         }
 
         rateLimit(RateLimitName("auth-routes")) {
@@ -619,7 +838,7 @@ fun Application.module() {
 
         }
 
-        // api routes are protected by authentication
+        // api routes are protected by Bearer simple authentication
         authenticate("auth-bearer") {
 
             route("/api") {
@@ -739,9 +958,9 @@ fun Application.module() {
                 }
             }
 
-            /////////////////////
-            // Library App API //
-            /////////////////////
+            //////////////////
+            // Library App  //
+            //////////////////
 
             route("/library") {
 

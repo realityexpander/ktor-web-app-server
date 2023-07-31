@@ -271,7 +271,7 @@ open class Library : Role<LibraryInfo>, IUUID2 {
     /////////////////////////////////
 
     // Note: This Library Role Object enforces the rule:
-    //   - if a User is not known, they are added as a new user.   // todo change to SerializedResult<> return type
+    //   - if a User is not known, they are automatically registered in the system.
     suspend fun isUnableToFindOrRegisterUser(user: User): Boolean {
         context.log.d(this, "Library(${id()}) - userId ${user.id()}")
         if (fetchInfoFailureReason() != null) return true
