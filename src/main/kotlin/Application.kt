@@ -52,10 +52,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
-import util.JsonString
-import util.JwtTokenStr
-import util.getClientIpAddressFromRequest
-import util.respondJson
+import util.*
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -258,9 +255,12 @@ fun Application.module() {
             }
         }
 
-        // Note: token and clientIPAddress can be passed in the header or in a cookie (not JWT)
+        // Note: token and clientIPAddress can be passed in:
+        // - in header (tokenCredential, X-Forwarded-For)
+        // - in a cookie (authenticationToken, clientIpAddress)
+        // - NOT JWT
         bearer("auth-bearer") {
-            realm = "Access to the '/api' path"
+            realm = "Access to the 'auth-bearer' routes"
             authenticate { tokenCredential ->
 
                 // Check the client IP address is in the whitelist for this user
@@ -278,6 +278,7 @@ fun Application.module() {
                     else
                         this.request.cookies["authenticationToken"]
 
+                // Look up the user by the authentication token
                 val user = authRepo.findUserByAuthToken(authenticationToken)
                 user?.let {
                     if (user.clientIpAddressWhiteList.contains(clientIpAddress)) {
@@ -344,6 +345,7 @@ fun Application.module() {
             ))
         }
 
+        // Get userId from JWT token
         suspend fun ApplicationCall.getUserId(): UUID2<User>? {
             return  principal<UserIdPrincipal>()?.let {
                 val userId = authRepo.findUserByEmail(it.name)?.id
@@ -360,236 +362,9 @@ fun Application.module() {
 
         }
 
-        //////////////////////
-        // LibaryApp HTML   //
-        //////////////////////
-
-        route("/libapp") {
-
-            get("/listBooks/{libraryId}") {
-                val libraryId = call.parameters["libraryId"]?.toString()
-                libraryId ?: run {
-                    call.respondJson(mapOf("error" to "Invalid libraryId"), HttpStatusCode.BadRequest)
-                    return@get
-                }
-
-                val library = Library(libraryId.fromUUID2StrToTypedUUID2<Library>(), libraryAppContext)
-                val booksResult = library.info()?.findAllKnownBookIds()?.map { Book(it, libraryAppContext) }
-                val bookTitles = booksResult?.map { it.info()?.title.toString() }
-
-                call.respondHtml {
-                    body {
-                        h1 { +"List Books for Library: $libraryId" }
-                        bookTitles?.forEach {
-                            p { +it }
-                        }
-
-                        // go to add book page
-                        a {
-                            href = "/libapp/addBook/$libraryId"
-                            +"Add Book"
-                        }
-                    }
-                }
-            }
-
-            get("/addBook/{libraryId}") {
-                val libraryIdfromParams = call.parameters["libraryId"]?.toString()
-                val libraryId = libraryIdfromParams ?: "UUID2:Role.Library@00000000-0000-0000-0000-000000000001"
-
-                call.respondHtml {
-                    body {
-                        style {
-                            unsafe {
-                            raw(
-                            """
-                                form {
-                                    display: flex;
-                                    flex-direction: column;
-                                    width: 80%;
-                                }
-                                label {
-                                    font-weight: bold;
-                                    margin-right: 5px;
-                                }
-                                input {
-                                    margin-bottom: 10px;
-                                    width: 100%;
-                                }
-                                button {
-                                    margin-bottom: 10px;
-                                }
-                            """.trimIndent()
-                            ) }
-
-                        }
-
-                        h1 { +"Add Book" }
-
-                        button(type = ButtonType.button) {
-                            onClick = "generateBookId()"
-                            +"Generate Book Id"
-                        }
-                        br
-
-                        form {
-                            method = FormMethod.post
-                            action = "/libapp/addBook"
-
-                            label {
-                                +"Book Id"
-                                textInput {
-                                    name = "UUID2:Book"
-                                    value = "UUID2:Book@00000000-0000-0000-0000-000000000001"
-                                }
-                            }
-                            button(type = ButtonType.button) {
-                                onClick = "generateBookId()"
-                                +"Generate Book Id"
-                            }
-                            label {
-                                +"Title"
-                                textInput {
-                                    name = "title"
-                                }
-                            }
-                            br
-                            label {
-                                +"Author"
-                                textInput {
-                                    name = "author"
-                                }
-                            }
-                            br
-                            label {
-                                +"Description"
-                                textInput {
-                                    name = "description"
-                                }
-                            }
-                            br
-                            label {
-                                +"ISBN"
-                                textInput {
-                                    name = "isbn"
-                                }
-                            }
-                            br
-                            label {
-                                +"Library Id"
-                                textInput {
-                                    name = "libraryId"
-                                    value = "UUID2:Role.Library@00000000-0000-0000-0000-000000000001"
-                                }
-                            }
-                            br
-
-                            submitInput {
-                                value = "Add Book"
-                            }
-                        }
-
-                        // go to list books page
-                        a {
-                            href = "/libapp/listBooks/$libraryId"
-                            +"List Books for Library: $libraryId"
-                        }
-
-                        script {
-                            type = ScriptType.textJavaScript
-
-                            // add script
-                            unsafe {
-                                raw(
-                                    """ 
-                                        function generateUUID() { // Public Domain/MIT
-                                            var d = new Date().getTime();//Timestamp
-                                            var d2 = (performance && performance.now && (performance.now()*1000)) || 0;//Time in microseconds since page-load or 0 if unsupported
-                                            return 'xxxxxxxx-xxxx-xxxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                                                var r = Math.random() * 16;//random number between 0 and 16
-                                                if(d > 0){//Use timestamp until depleted
-                                                    r = (d + r)%16 | 0;
-                                                    d = Math.floor(d/16);
-                                                } else {//Use microseconds since page-load if supported
-                                                    r = (d2 + r)%16 | 0;
-                                                    d2 = Math.floor(d2/16);
-                                                }
-                                                return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-                                            });
-                                        }
-                                        
-                                        function generateBookId(e) {
-                                            document.getElementsByName("UUID2:Book")[0].value = "UUID2:Role.Book@" + generateUUID();
-                                        }
-                                    """.trimIndent()
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            post("/addBook") {
-                val body = call.receiveText().decodeURLPart(charset = Charsets.UTF_8)
-                val params = body.parseUrlEncodedParameters()
-                val bookId = params["UUID2:Book"]
-                val title = params["title"]
-                val author = params["author"]
-                val description = params["description"]
-                val isbn = params["isbn"]
-                val libraryId = params["libraryId"]
-
-                if (bookId != null  && title != null && author != null && isbn != null && description != null && libraryId != null) {
-                    val library = Library(libraryId.fromUUID2StrToTypedUUID2<Library>(), libraryAppContext)
-                    val book = Book(bookId.fromUUID2StrToTypedUUID2<Book>(), libraryAppContext)
-                    val bookInfo = BookInfo(
-                        id = book.id(),
-                        title = title,
-                        author = author,
-                        description = description,
-                    )
-
-                    // add book to bookInfo repo
-                    val upsertBookInfoResult = libraryAppContext.bookInfoRepo.upsertBookInfo(bookInfo)
-                    val upsertBookInfostatusJson = resultToStatusCodeJson<BookInfo>(upsertBookInfoResult)
-
-                    val addBookToLibraryResult = library.addBookToLibrary(book, 1)
-                    val addBookToLibraryStatusJson: StatusCodeAndJson = resultToStatusCodeJson<Book>(addBookToLibraryResult)
-
-                    call.respondHtml {
-                        body {
-                            if(upsertBookInfostatusJson.statusCode != HttpStatusCode.OK) {
-                                h1 { +"Error adding book to library" }
-                                p { +upsertBookInfostatusJson.json }
-                            }
-                            else if(addBookToLibraryStatusJson.statusCode != HttpStatusCode.OK) {
-                                h1 { +"Error adding book to library" }
-                                p { +addBookToLibraryStatusJson.json }
-                            }
-                            else {
-                                h1 { +"Book added:" }
-                            }
-
-                            p { +"Book Id: $bookId" }
-                            p { +"Title: $title" }
-                            p { +"Author: $author" }
-                            p { +"Description: $description" }
-                            p { +"ISBN: $isbn" }
-                            p { +"Library Id: $libraryId" }
-
-                            // go to list books page
-                            a {
-                                href = "libapp/listBooks/$libraryId"
-                                +"List Books for Library: $libraryId"
-                            }
-                        }
-                    }
-                    return@post
-                }
-
-                call.respondJson(mapOf("error" to "Invalid parameters"), HttpStatusCode.BadRequest)
-            }
-        }
+        //////////////////////////
+        // LibaryApp Web HTML   //
+        //////////////////////////
 
         rateLimit(RateLimitName("auth-routes")) {
 
@@ -852,6 +627,337 @@ fun Application.module() {
 
         }
 
+        route("/libraryWeb") {
+
+            get("/") {
+                call.respondHtml {
+                    body {
+                        h1 { +"Library App" }
+                        p { +"Welcome to the Library App" }
+                        br
+
+                        a {
+                            href = "listBooks/UUID2:Role.Library@00000000-0000-0000-0000-000000000001"
+                            +"List Books for Library: 1"
+                        }
+                        br
+
+                        a {
+                            href = "upsertBook/UUID2:Role.Library@00000000-0000-0000-0000-000000000001"
+                            +"Upsert Book to Library: 1"
+                        }
+                    }
+                }
+            }
+
+            get("/listBooks/{libraryId}") {
+                val libraryId = call.parameters["libraryId"]?.toString()
+                libraryId ?: run {
+                    call.respondJson(mapOf("error" to "Missing libraryId"), HttpStatusCode.BadRequest)
+                    return@get
+                }
+                val userIdResult = call.getUserIdFromCookies()
+
+                val library = Library(libraryId.fromUUID2StrToTypedUUID2<Library>(), libraryAppContext)
+                val bookInfoResult = library.fetchInfoResult()
+                if(bookInfoResult.isFailure) {
+                    call.respondJson(mapOf("error" to (bookInfoResult.exceptionOrNull()?.localizedMessage ?: "Unknown error")), HttpStatusCode.BadRequest)
+                    return@get
+                }
+                val bookInfo = bookInfoResult.getOrThrow()
+                val books = bookInfo.findAllKnownBookIds().map { Book(it, libraryAppContext) }
+                val bookInfos = books.mapNotNull { book ->
+                    book.info()
+                }
+
+                call.respondHtml {
+                    body {
+                        libraryStyle()
+
+                        h1 { +"List Books for Library: $libraryId" }
+
+                        bookInfos.forEach { bookInfo ->
+                            p { +"Title: ${bookInfo.title}" }
+                            p { +"Author: ${bookInfo.author}" }
+//                            a {
+//                                href = "../book/${bookInfo.id}"
+//                                +"View"
+//                            }
+                            button(type=ButtonType.button) {
+                                onClick = "viewBook(`${bookInfo.id}`)"
+                                +"View"
+                            }
+                            button(type=ButtonType.button) {
+                                onClick = "confirmDeleteBookInfo(`${bookInfo.id}`, `${bookInfo.title}`)"
+                                +"Delete"
+                            }
+                            br
+                        }
+                        br
+
+                        // go to upsert book page
+                        a {
+                            href = "../upsertBook/$libraryId"
+                            +"Upsert Book to Library"
+                        }
+
+                        script {
+                            type = ScriptType.textJavaScript
+                            unsafe { raw(
+                            """ 
+                                function viewBook(bookId) {
+                                    window.location.href = `../book/${'$'}{bookId}`
+                                }
+                                
+                                function confirmDeleteBookInfo(bookId, title) {
+                                    if (confirm(`Are you sure you want to delete this book? ${'$'}{title}`)) {
+                                        fetch(`/libraryApi/deleteBookInfo/${'$'}{bookId}`, {
+                                            method: "DELETE",
+                                            headers: {
+                                                "Content-Type": "application/json",
+                                                "Accept": "application/json",
+                                                "Authorization": "Bearer " + document.cookie
+                                                    .split(";")
+                                                    .find((item) => item.includes("authenticationToken"))
+                                                    .split("=")[1],
+                                                "X-Forwarded-For": document.cookie
+                                                    .split(";")
+                                                    .find((item) => item.includes("clientIpAddress"))
+                                                    .split("=")[1]
+                                            }
+                                            //,
+                                            //body: JSON.stringify({
+                                            //    bookId: bookId
+                                            //})
+                                        })
+                                        .then(res => res.json())
+                                        .then(res => {
+                                            if (res.error) {
+                                                alert(res.error)
+                                            } else {
+                                                alert("Book deleted")
+                                                window.location.reload()
+                                            }
+                                        })
+                                    }
+                                }
+                            """.trimIndent())
+                            }
+                        }
+                    }
+                }
+            }
+
+            get("/book/{bookId}") {
+                val bookId = call.parameters["bookId"]?.toString()
+                bookId ?: run {
+                    call.respondJson(mapOf("error" to "Missing bookId"), HttpStatusCode.BadRequest)
+                    return@get
+                }
+                val userIdResult = call.getUserIdFromCookies()
+
+                val book = Book(bookId.fromUUID2StrToTypedUUID2<Book>(), libraryAppContext)
+                val bookInfoResult = book.fetchInfoResult()
+                if(bookInfoResult.isFailure) {
+                    call.respondJson(mapOf("error" to (bookInfoResult.exceptionOrNull()?.localizedMessage ?: "Unknown error")), HttpStatusCode.BadRequest)
+                    return@get
+                }
+                val bookInfo = bookInfoResult.getOrThrow()
+
+                call.respondHtml {
+                    body {
+                        h1 { +"Book: $bookId" }
+                        p { +"Title: ${bookInfo.title}" }
+                        p { +"Author: ${bookInfo.author}" }
+                        p { +"Description: ${bookInfo.description}" }
+
+                        // go to home
+                        a {
+                            href = "../"
+                            +"Home"
+                        }
+                    }
+                }
+            }
+
+            get("/upsertBook/{libraryId}") {
+                val libraryIdfromParams = call.parameters["libraryId"]?.toString()
+                val libraryId = libraryIdfromParams ?: "UUID2:Role.Library@00000000-0000-0000-0000-000000000001"
+
+                call.respondHtml {
+                    body {
+                        libraryStyle()
+
+                        h1 { +"Upsert Book" }
+
+                        button(type = ButtonType.button) {
+                            onClick = "generateBookId()"
+                            +"Generate Book Id"
+                        }
+                        br
+
+                        form {
+                            method = FormMethod.post
+                            action = "../upsertBook"
+
+                            label {
+                                +"Book Id"
+                                textInput {
+                                    name = "UUID2:Book"
+                                    value = "UUID2:Role.Book@00000000-0000-0000-0000-000000000001"
+                                }
+                            }
+                            button(type = ButtonType.button) {
+                                onClick = "generateBookId()"
+                                +"Generate Book Id"
+                            }
+                            label {
+                                +"Title"
+                                textInput {
+                                    name = "title"
+                                }
+                            }
+                            br
+                            label {
+                                +"Author"
+                                textInput {
+                                    name = "author"
+                                }
+                            }
+                            br
+                            label {
+                                +"Description"
+                                textInput {
+                                    name = "description"
+                                }
+                            }
+                            br
+                            label {
+                                +"ISBN"
+                                textInput {
+                                    name = "isbn"
+                                }
+                            }
+                            br
+                            label {
+                                +"Library Id"
+                                textInput {
+                                    name = "libraryId"
+                                    value = "UUID2:Role.Library@00000000-0000-0000-0000-000000000001"
+                                }
+                            }
+                            br
+
+                            submitInput {
+                                value = "Upsert Book"
+                            }
+                        }
+
+                        // go to list books page
+                        a {
+                            href = "../listBooks/$libraryId"
+                            +"List Books for Library: $libraryId"
+                        }
+
+                        script {
+                            type = ScriptType.textJavaScript
+                            unsafe {
+                                raw(
+                                    """ 
+                                function generateUUID() { // Public Domain/MIT
+                                    var d = new Date().getTime();//Timestamp
+                                    var d2 = (performance && performance.now && (performance.now()*1000)) || 0;//Time in microseconds since page-load or 0 if unsupported
+                                    return 'xxxxxxxx-xxxx-xxxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                                        var r = Math.random() * 16;//random number between 0 and 16
+                                        if(d > 0){//Use timestamp until depleted
+                                            r = (d + r)%16 | 0;
+                                            d = Math.floor(d/16);
+                                        } else {//Use microseconds since page-load if supported
+                                            r = (d2 + r)%16 | 0;
+                                            d2 = Math.floor(d2/16);
+                                        }
+                                        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+                                    });
+                                }
+                                
+                                function generateBookId(e) {
+                                    document.getElementsByName("UUID2:Book")[0].value = "UUID2:Role.Book@" + generateUUID();
+                                }
+                            """.trimIndent()
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            post("/upsertBook") {
+                val body = call.receiveText().decodeURLPart(charset = Charsets.UTF_8)
+                val params = body.parseUrlEncodedParameters()
+                val bookId = params["UUID2:Book"]
+                val title = params["title"]
+                val author = params["author"]
+                val description = params["description"]
+                val isbn = params["isbn"]
+                val libraryId = params["libraryId"]
+
+                if (bookId != null &&
+                    title != null &&
+                    author != null &&
+                    isbn != null &&
+                    description != null &&
+                    libraryId != null
+                ) {
+                    val library = Library(libraryId.fromUUID2StrToTypedUUID2<Library>(), libraryAppContext)
+                    val book = Book(bookId.fromUUID2StrToTypedUUID2<Book>(), libraryAppContext)
+                    val bookInfo = BookInfo(
+                        id = book.id(),
+                        title = title,
+                        author = author,
+                        description = description,
+                    )
+
+                    // add book to bookInfo repo
+                    val upsertBookInfoResult = libraryAppContext.bookInfoRepo.upsertBookInfo(bookInfo)
+                    val upsertBookInfostatusJson = resultToStatusCodeJson<BookInfo>(upsertBookInfoResult)
+
+                    val addBookToLibraryResult = library.addBookToLibrary(book, 1)
+                    val addBookToLibraryStatusJson: StatusCodeAndJson =
+                        resultToStatusCodeJson<Book>(addBookToLibraryResult)
+
+                    call.respondHtml {
+                        body {
+                            if (upsertBookInfostatusJson.statusCode != HttpStatusCode.OK) {
+                                h1 { +"Error adding book to library" }
+                                p { +upsertBookInfostatusJson.json }
+                            } else if (addBookToLibraryStatusJson.statusCode != HttpStatusCode.OK) {
+                                h1 { +"Error adding book to library" }
+                                p { +addBookToLibraryStatusJson.json }
+                            } else {
+                                h1 { +"Book added:" }
+                            }
+
+                            p { +"Book Id: $bookId" }
+                            p { +"Title: $title" }
+                            p { +"Author: $author" }
+                            p { +"Description: $description" }
+                            p { +"ISBN: $isbn" }
+                            p { +"Library Id: $libraryId" }
+
+                            // go to list books page
+                            a {
+                                href = "../listBooks/$libraryId"
+                                +"List Books for Library: $libraryId"
+                            }
+                        }
+                    }
+                    return@post
+                }
+
+                call.respondJson(mapOf("error" to "Invalid parameters"), HttpStatusCode.BadRequest)
+            }
+        }
+
         // api routes are protected by Bearer simple authentication
         authenticate("auth-bearer") {
 
@@ -972,11 +1078,12 @@ fun Application.module() {
                 }
             }
 
+
             //////////////////
-            // Library App  //
+            // Library Api  //
             //////////////////
 
-            route("/library") {
+            route("/libraryApi") {
 
                 ////////////////
                 // • USER     //
@@ -1242,6 +1349,26 @@ fun Application.module() {
                     call.respond(statusJson.statusCode, statusJson.json)
                 }
 
+                delete("/deleteBookInfo/{bookId}") {
+                    val bookId = call.parameters["bookId"]?.toString()
+                    bookId ?: run {
+                        call.respondJson(mapOf("error" to "Missing bookId"), HttpStatusCode.BadRequest)
+                        return@delete
+                    }
+
+                    val book = Book(bookId.fromUUID2StrToTypedUUID2<Book>(), libraryAppContext)
+                    val bookInfoResult = book.fetchInfoResult()
+                    if(bookInfoResult.isFailure) {
+                        call.respondJson(mapOf("error" to (bookInfoResult.exceptionOrNull()?.localizedMessage ?: "Unknown error")), HttpStatusCode.BadRequest)
+                        return@delete
+                    }
+                    val bookInfo = bookInfoResult.getOrThrow()
+                    val deleteBookInfoResult = libraryAppContext.bookInfoRepo.deleteBookInfo(bookInfo)
+
+                    val statusJson = resultToStatusCodeJson<Unit>(deleteBookInfoResult)
+                    call.respond(statusJson.statusCode, statusJson.json)
+                }
+
                 // 404 catch-all route for library app
                 get("/{...}") {
                     val route = call.request.path()
@@ -1286,6 +1413,35 @@ fun Application.module() {
             defaultPage = "index.html"
             filesPath = "/Volumes/TRS-83/dev/WebAppPlayground"
         }
+    }
+}
+
+private fun BODY.libraryStyle() {
+    style {
+        unsafe {
+            raw(
+                """
+                        form {
+                            display: flex;
+                            flex-direction: column;
+                            width: 80%;
+                        }
+                        label {
+                            font-weight: bold;
+                            margin-right: 5px;
+                        }
+                        input {
+                            margin-bottom: 10px;
+                            width: 100%;
+                        }
+                        button {
+                            margin-bottom: 10px;
+                            margin-right: 5px;
+                        }
+                    """.trimIndent()
+            )
+        }
+
     }
 }
 

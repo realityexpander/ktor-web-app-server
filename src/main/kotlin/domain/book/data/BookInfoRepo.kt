@@ -100,6 +100,24 @@ open class BookInfoRepo(
         return saveResult
     }
 
+    override suspend fun deleteBookInfo(bookInfo: BookInfo): Result<Unit> {
+        log.d(this, "bookId: " + bookInfo.id())
+
+        // Make the API request to delete
+        val apiChangeResult: Result<Unit> = bookInfoApi.deleteBookInfo(bookInfo.toInfoDTO())
+        if (apiChangeResult.isFailure) {
+            return Result.failure(apiChangeResult.exceptionOrNull() ?: Exception("deleteBookInfo Api Error, bookId: " + bookInfo.id()))
+        }
+
+        // Delete from Local DB
+        val dbChangeResult: Result<Unit> = bookInfoDatabase.deleteBookInfo(bookInfo.toInfoEntity())
+        if (dbChangeResult.isFailure) {
+            return Result.failure(dbChangeResult.exceptionOrNull() ?: Exception("deleteBookInfo DB Error, bookId: " + bookInfo.id()))
+        }
+
+        return Result.success(Unit)
+    }
+
     override suspend fun deleteDatabase(): Result<Unit> {
         log.d(this, "deleteDatabase")
 

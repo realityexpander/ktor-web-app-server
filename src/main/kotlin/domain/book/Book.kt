@@ -135,7 +135,8 @@ class Book : Role<BookInfo>, IUUID2 {
     }
 
     override fun toString(): String {
-        return this.info.get()?.toPrettyJson(this.context) ?: "Book (id: " + this.id.toString() + ") : info is null"
+        return this.info.get()?.toPrettyJson(this.context)
+            ?: ("Book (id: " + this.id.toString() + ") : info is null")
     }
 
     /////////////////////////////////////
