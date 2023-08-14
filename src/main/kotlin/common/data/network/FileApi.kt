@@ -42,7 +42,7 @@ class FileApi<TDomain : IUUID2, TDTOInfo : InfoDTO>(
     override suspend fun fetchDtoInfo(id: UUID2<TDomain>): Result<TDTOInfo> {
         return try {
             val dtoInfo = super.findEntityById(id)
-                ?: return Result.failure(Exception("Entity not found"))
+                ?: return Result.failure(Exception("Entity not found, id: $id"))
 
             Result.success(dtoInfo)
         } catch (e: Exception) {

@@ -45,7 +45,7 @@ class FileDatabase<TDomain : IUUID2, TEntityInfo : InfoEntity>(
     override suspend fun fetchEntityInfo(id: UUID2<TDomain>): Result<TEntityInfo> {
         return try {
             val entityInfo = super.findEntityById(id)
-                ?: return Result.failure(Exception("Entity not found"))
+                ?: return Result.failure(Exception("Entity not found, id: $id"))
 
             Result.success(entityInfo)
         } catch (e: Exception) {
@@ -85,7 +85,7 @@ class FileDatabase<TDomain : IUUID2, TEntityInfo : InfoEntity>(
         return try {
             @Suppress("UNCHECKED_CAST")
             if(super.findEntityById(entityInfo.id() as UUID2<TDomain>) == null)
-                return Result.failure(Exception("Entity not found"))
+                return Result.failure(Exception("Entity not found, id: ${entityInfo.id()}"))
 
             super.deleteEntity(entityInfo)
             Result.success(Unit)

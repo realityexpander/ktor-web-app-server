@@ -53,3 +53,10 @@ https://github.com/traxterz/ktor-plugin-event-store-db
 - https://github.com/stuhlmeier/kotlin-events
 
 
+### Ktor Support site
+  - https://github.com/ktorio
+  - Sessions: https://ktor.io/docs/session-auth.html#save-session
+
+  - H2 Database sample app: https://github.com/jamowei/fritz2-ktor-todomvc
+
+

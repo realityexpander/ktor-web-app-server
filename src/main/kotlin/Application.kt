@@ -629,6 +629,8 @@ fun Application.module() {
 
         route("/libraryWeb") {
 
+            // more examples: https://photos.google.com/photo/AF1QipNkHSZiBPmtvSZWguN_BEaBmN7a5xansX3DSRHc
+
             get("/") {
                 call.respondHtml {
                     body {
@@ -958,24 +960,40 @@ fun Application.module() {
             }
         }
 
+
+        // for `jsonPlaceholder-item` in webApp
+        post("/todo_echo") {
+            val body = call.receiveText()
+            try {
+                val todos = jsonConfig.decodeFromString<TodoResponse>(body)
+
+                call.respond(jsonConfig.encodeToString(todos))
+                return@post
+
+            } catch (e: Exception) {
+                call.respondJson(mapOf("error" to e.localizedMessage), HttpStatusCode.BadRequest)
+                return@post
+            }
+        }
+
         // api routes are protected by Bearer simple authentication
         authenticate("auth-bearer") {
 
             route("/api") {
 
-                get("/todo_echo") {
-                    val body = call.receiveText()
-                    try {
-                        val todos = jsonConfig.decodeFromString<TodoResponse>(body)
-
-                        call.respond(jsonConfig.encodeToString(todos))
-                        return@get
-
-                    } catch (e: Exception) {
-                        call.respondJson(mapOf("error" to e.localizedMessage), HttpStatusCode.BadRequest)
-                        return@get
-                    }
-                }
+//                get("/todo_echo") {
+//                    val body = call.receiveText()
+//                    try {
+//                        val todos = jsonConfig.decodeFromString<TodoResponse>(body)
+//
+//                        call.respond(jsonConfig.encodeToString(todos))
+//                        return@get
+//
+//                    } catch (e: Exception) {
+//                        call.respondJson(mapOf("error" to e.localizedMessage), HttpStatusCode.BadRequest)
+//                        return@get
+//                    }
+//                }
 
                 get("/todos") {
                     // make call to local database server
