@@ -59,4 +59,6 @@ https://github.com/traxterz/ktor-plugin-event-store-db
 
   - H2 Database sample app: https://github.com/jamowei/fritz2-ktor-todomvc
 
-
+- JUnit coroutine testing
+  - https://bkug.by/wp-content/uploads/2019/06/Ruslan-Ibragimov-JUnit-Coroutines.pdf
+  - 
