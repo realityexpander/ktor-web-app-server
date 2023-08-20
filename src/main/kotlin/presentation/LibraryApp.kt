@@ -2,7 +2,6 @@
 
 package presentation
 
-import TestingUtils
 import common.log.Log
 import common.uuid2.UUID2
 import domain.Context
@@ -17,6 +16,7 @@ import domain.library.data.LibraryInfo
 import domain.user.User
 import domain.user.data.UserInfo
 import kotlinx.coroutines.runBlocking
+import util.testingUtils.TestingUtils
 import java.time.Instant
 
 fun main() {

@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 val ktor_version: String by project
 val kotlin_version: String by project
 val logback_version: String by project
+val kotlinx_coroutines_version: String by project
 
 // note: to run "watch" build (in a separate terminal):
 // ./gradlew -t build
@@ -56,6 +57,8 @@ repositories {
 }
 
 dependencies {
+    implementation(project(mapOf("path" to ":sub-module-2")))
+
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version")
     implementation("io.ktor:ktor-server-core:$ktor_version")
     implementation("io.ktor:ktor-server-netty:$ktor_version")
@@ -119,9 +122,18 @@ dependencies {
     implementation("org.reflections:reflections:0.10.2")
     implementation(kotlin("reflect"))
 
+    // Lettuce for Redis
+    implementation("io.lettuce:lettuce-core:6.2.6.RELEASE")
+    implementation("com.redis:lettucemod:3.6.3") // Extension library
+
+    // For coroutines & lettuce reactivity
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinx_coroutines_version")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactive:$kotlinx_coroutines_version")
+
+
     // Testing
-//    testImplementation("io.ktor:ktor-server-test-host:$ktor_version") // needed? for junit4
-//    testImplementation("org.jetbrains.kotlin:kotlin-test")
+    //    testImplementation("io.ktor:ktor-server-test-host:$ktor_version") // needed? for junit4
+    //    testImplementation("org.jetbrains.kotlin:kotlin-test")
 
     // For JUnit5 Parameterized tests
     testImplementation(platform("org.junit:junit-bom:5.9.3"))

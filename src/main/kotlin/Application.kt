@@ -6,13 +6,18 @@ import com.realityexpander.common.data.network.AnySerializer
 import com.realityexpander.common.data.network.PairSerializer
 import com.realityexpander.common.data.network.ResultSerializer
 import com.realityexpander.domain.auth.*
-import com.realityexpander.domain.todo.ToDoStatus
-import com.realityexpander.domain.todo.Todo
-import com.realityexpander.domain.todo.UserInTodo
 import com.realityexpander.domain.remote.emailer.sendPasswordResetEmail
-import com.realityexpander.domain.todo.TodoResponse
 import com.realityexpander.domain.remote.fileUpload.FileUploadResponse
 import com.realityexpander.domain.remote.fileUpload.save
+import com.realityexpander.domain.todo.ToDoStatus
+import com.realityexpander.domain.todo.Todo
+import com.realityexpander.domain.todo.TodoResponse
+import com.realityexpander.domain.todo.UserInTodo
+import com.redis.lettucemod.RedisModulesClient
+import com.redis.lettucemod.api.StatefulRedisModulesConnection
+import com.redis.lettucemod.api.sync.RedisModulesCommands
+import com.redis.lettucemod.search.CreateOptions
+import com.redis.lettucemod.search.Field
 import common.uuid2.UUID2
 import common.uuid2.UUID2.Companion.fromUUID2StrToTypedUUID2
 import common.uuid2.UUID2.Companion.toUUID2WithUUID2TypeOf
@@ -46,14 +51,26 @@ import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.lettuce.core.ExperimentalLettuceCoroutinesApi
+import io.lettuce.core.api.coroutines
+import io.lettuce.core.dynamic.Commands
+import io.lettuce.core.dynamic.RedisCommandFactory
+import io.lettuce.core.dynamic.annotation.Command
+import io.lettuce.core.dynamic.annotation.CommandNaming
 import kotlinx.html.*
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import net.iharder.Base64
+import org.example.SubModule2
 import org.slf4j.LoggerFactory
 import util.*
+import java.io.BufferedReader
 import java.io.File
+import java.io.InputStreamReader
+import java.io.PrintWriter
+import java.net.Socket
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -62,6 +79,7 @@ import kotlin.time.Duration.Companion.seconds
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation as ContentNegotiationClient
 import io.ktor.server.application.install as installServer
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation as ContentNegotiationServer
+
 
 val ktorLogger: ch.qos.logback.classic.Logger =
     LoggerFactory.getLogger("KTOR-WEB-APP") as ch.qos.logback.classic.Logger
@@ -138,8 +156,31 @@ val authRepo = AuthenticationRepository()
 // Setup the LibraryApp
 val libraryAppContext = Context.setupContextInstance()
 
-@OptIn(InternalSerializationApi::class)
+interface RedisSearchCommands : Commands {
+    @Command("FT.CREATE")
+    @CommandNaming(strategy = CommandNaming.Strategy.DOT)
+    // ON HASH PREFIX 1 book:details FILTER SCHEMA title TEXT categories TAG SEPARATOR ";"
+    fun ftCreate(index: String, vararg args: String): String
+
+    @Command("FT.ADD")
+    @CommandNaming(strategy = CommandNaming.Strategy.DOT)
+    fun ftAdd(index: String, docId: String, score: Double, vararg fields: Any): String
+
+    @Command("FT.CONFIG SET")
+    @CommandNaming(strategy = CommandNaming.Strategy.DOT)
+    fun ftConfigSet(key: String, value: String): String
+
+    @Command("FT.CONFIG GET")
+    @CommandNaming(strategy = CommandNaming.Strategy.DOT)
+    fun ftConfigGet(key: String): String
+}
+
+@OptIn(InternalSerializationApi::class, ExperimentalLettuceCoroutinesApi::class)
 fun Application.module() {
+
+    // test sub-module-2
+    SubModule2.output("hello from application module")
+    val x = Base64.encodeObject("hello")
 
     /////////////////////
     // SERVER SETUP    //
@@ -213,6 +254,112 @@ fun Application.module() {
         issuer = issuer,
         audience = audience,
     )
+
+//    // Setup Redis client (lettuce)
+//    val redisClient1 = RedisClient.create("redis://localhost:6379")
+//    val redisConnection1 = redisClient1.connect()
+//    val redisApi1 = redisConnection1.coroutines()
+//    val redisCommands1 = redisConnection1.sync()
+////    try {
+////        redisCommands.info("index")
+////    } catch (e: RedisCommandExecutionException) {
+//        val result = redisCommands.commandInfo("FT.CREATE")
+//        ktorLogger.info("FT.CREATE result: $result")
+//
+//        val redisSearchCommand =
+//            RedisCommandFactory(redisConnection).getCommands(RedisSearchCommands::class.java)
+//        redisSearchCommand.ftCreate("index",
+//                "ON", "HASH",
+//                "PREFIX", "1", "user:",
+//                "SCHEMA", "email", "TEXT", "SORTABLE",
+//                          "name", "TEXT", "SORTABLE"
+//        )
+////    }
+
+
+    // Setup LettuceMod client
+    val redisClient: RedisModulesClient = RedisModulesClient.create("redis://localhost:6379")
+    val redisConnection: StatefulRedisModulesConnection<String, String> = redisClient.connect()
+    val redisCommands: RedisModulesCommands<String, String> = redisConnection.sync()
+    val redisApi = redisConnection.coroutines()
+    val redisCommandsReactive = redisConnection.reactive()
+
+    val redisSearchCommands =
+        RedisCommandFactory(redisConnection).getCommands(RedisSearchCommands::class.java)
+    redisSearchCommands.ftConfigSet("MINPREFIX", "1") // allow one character prefix for FT.SEARCH
+
+    try {
+        // check if index exists
+        val result = redisCommands.ftInfo("users_index")
+    } catch (e: Exception) {
+        // setup index
+        val result = redisCommands.ftCreate(
+            "users_index",
+            CreateOptions.builder<String, String>()
+                .prefix("user:")
+                .on(CreateOptions.DataType.JSON)
+                .build(),
+            Field.text("$.email")
+                .`as`("email")
+                .sortable()
+                .withSuffixTrie()
+                .build(),
+            Field.text("$.name")
+                .`as`("name")
+                .sortable()
+                .withSuffixTrie()
+                .build()
+        )
+
+        if(result != "OK") {
+            ktorLogger.error("Error creating index: $result")
+        }
+    }
+
+    val redisInfo = redisCommands.info("users_index")
+    println("redisInfo: $redisInfo")
+
+    val resultRedisAdd1 = redisCommands.jsonSet(
+        "user:1",
+        "$", // path
+        """
+            {
+                "email": "a@b.c",
+                "name": "Chris"
+            }
+        """.trimIndent()
+    )
+    println("resultRedisAdd1: $resultRedisAdd1")
+
+    val resultRedisAdd2 = redisCommands.jsonSet(
+        "user:2",
+        "$",
+        """
+            {
+                "email": "d@e.f",
+                "name": "Billy"
+            }
+        """.trimIndent()
+    )
+    println("resultRedisAdd2: $resultRedisAdd2")
+
+    val resultSearch = redisCommands.ftSearch(
+        "users_index",
+        "@email:'*o*'"
+    )
+    println("resultSearch: $resultSearch")
+
+    @Serializable
+    data class UserSearchResult(
+        val email: String,
+        val name: String,
+    )
+
+    val resultArray = resultSearch.map { resultMap ->
+        val resultValue = resultMap.get("$") as String
+        jsonConfig.decodeFromString<UserSearchResult>(resultValue)
+    }
+    println("resultArray: $resultArray")
 
     // Setup JWT & bearer authentication
     installServer(Authentication) {
@@ -960,6 +1107,84 @@ fun Application.module() {
             }
         }
 
+        route("/redis") {
+
+            get("/get") {
+                val key = call.request.queryParameters["key"]
+                key ?: run {
+                    call.respondJson(mapOf("error" to "Missing key"), HttpStatusCode.BadRequest)
+                    return@get
+                }
+
+                val value = redisApi.get(key) ?: run {
+                    call.respondJson(mapOf("error" to "Key not found"), HttpStatusCode.NotFound)
+                    return@get
+                }
+                call.respondJson(mapOf("key" to key, "value" to value))
+            }
+
+            get("/set") {
+                val key = call.request.queryParameters["key"]
+                val value = call.request.queryParameters["value"]
+                key ?: run {
+                    call.respondJson(mapOf("error" to "Missing key"), HttpStatusCode.BadRequest)
+                    return@get
+                }
+                value ?: run {
+                    call.respondJson(mapOf("error" to "Missing value"), HttpStatusCode.BadRequest)
+                    return@get
+                }
+
+                val result = redisApi.set(key, value) ?: run {
+                    call.respondJson(mapOf("error" to "Failed to set key"), HttpStatusCode.InternalServerError)
+                    return@get
+                }
+                call.respondJson(mapOf("success" to result))
+            }
+
+            get("/keys") {
+                val keys = redisApi.keys("*")
+                val output: ArrayList<String> = arrayListOf()
+                keys.collect { key ->
+                    output += key
+                }
+                call.respondJson(mapOf("keys" to output.toString()))
+            }
+
+            get("/jsonGet") {
+                val key = call.request.queryParameters["key"]
+                key ?: run {
+                    call.respondJson(mapOf("error" to "Missing key"), HttpStatusCode.BadRequest)
+                    return@get
+                }
+
+                val value = redisCommandsReactive.jsonGet("json1", key) ?: run {
+                    call.respondJson(mapOf("error" to "Key not found"), HttpStatusCode.NotFound)
+                    return@get
+                }
+                call.respondJson(mapOf("key" to key, "value" to (value.block()?.toString() ?: "null")))
+            }
+
+            get("/jsonSet") {
+                val key = call.request.queryParameters["key"]
+                val value = call.request.queryParameters["value"]
+                key ?: run {
+                    call.respondJson(mapOf("error" to "Missing key"), HttpStatusCode.BadRequest)
+                    return@get
+                }
+                value ?: run {
+                    call.respondJson(mapOf("error" to "Missing value"), HttpStatusCode.BadRequest)
+                    return@get
+                }
+
+                val result = redisCommandsReactive.jsonSet("json1", key, value) ?: run {
+                    call.respondJson(mapOf("error" to "Failed to set key"), HttpStatusCode.InternalServerError)
+                    return@get
+                }
+                call.respondJson(mapOf("success" to Json.encodeToString(result.block())))
+            }
+
+        }
 
         // for `jsonPlaceholder-item` in webApp
         post("/todo_echo") {
@@ -1429,7 +1654,8 @@ fun Application.module() {
 
         singlePageApplication {
             defaultPage = "index.html"
-            filesPath = "/Volumes/TRS-83/dev/WebAppPlayground"
+//            filesPath = "/Volumes/TRS-83/dev/WebAppPlayground/"
+            filesPath = "/Volumes/TRS-83/dev/Web Projects/Current Project/WebAppPlayground"
         }
     }
 }
@@ -1487,5 +1713,34 @@ inline fun <reified T> resultToStatusCodeJson(
                 )),
             HttpStatusCode.BadRequest
         )
+    }
+}
+
+
+// Simple client to test server
+// https://www.youtube.com/watch?v=2bD2lq_ezVQ
+fun main() {
+    var message = "GET / HTTP/1.1\n\n"
+
+    try {
+        val socket = Socket("localhost", 8081)
+        val out = socket.getOutputStream()
+        val writer = PrintWriter(out, true)
+
+        // send message to server
+        writer.println(message)
+        writer.flush()
+
+        // read response from server
+        val input = socket.getInputStream()
+        val reader = BufferedReader(InputStreamReader(input))
+        var line: String?
+        while (reader.readLine().also { line = it } != null) {
+            println(line)
+        }
+        reader.close()
+        socket.close()
+    } catch (e: Exception) {
+        e.printStackTrace()
     }
 }

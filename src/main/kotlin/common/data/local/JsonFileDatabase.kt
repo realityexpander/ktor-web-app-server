@@ -34,6 +34,8 @@ import java.util.*
  * * Be sure to implement the **`updateLookupTables()`** method to update any lookup tables you may have defined in
  *   the subclass.
  *
+ * *IMPORTANT*: Be sure to call **`loadFileDatabase()`** method in your subclass's init block.
+ *
  * * **`TKey`** The type of the key used to identify the entities in the database.
  * * **`abstract class  Entity<TKey : Any>`** is a Marker interface for entities that will be stored in the database.
  *
@@ -53,8 +55,8 @@ abstract class JsonFileDatabase<TDomain : IUUID2, TEntity : Model> (  // <User, 
     private val entityKSerializer: KSerializer<TEntity>,
     private val database: MutableMap<UUID2<TDomain>, TEntity> = mutableMapOf(),
 ) {
-    private val databaseFile: String = databaseFolder + databaseFilename
-    private val hiddenDatabaseFile: String = databaseFolder + "__$databaseFilename"
+    private val databaseFile: String = DATABASE_FOLDER + databaseFilename
+    private val hiddenDatabaseFile: String = DATABASE_FOLDER + "__$databaseFilename"
 
     init {
 
@@ -84,7 +86,7 @@ abstract class JsonFileDatabase<TDomain : IUUID2, TEntity : Model> (  // <User, 
 
     companion object {
         const val MAX_POLLING_ATTEMPTS = 50
-        const val databaseFolder = "fileDatabases/"  // <-- Note the trailing slash
+        const val DATABASE_FOLDER = "fileDatabases/"  // <-- Note the trailing slash
 
         fun generateDefaultDatabaseFilename(): String {
             return "jsonFileDB.json" + UUID.randomUUID().toString()
