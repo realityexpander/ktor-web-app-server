@@ -71,4 +71,14 @@ interface IBookInfoRepo : IRepo {
             log.d(this, "$key = $value")
         }
     }
+
+    suspend fun findBookInfosByTitle(title: String): Result<List<BookInfo>> {
+        val result = bookInfoDatabase.findBookInfosByTitle(title)
+        if (result.isFailure) {
+            return Result.failure(result.exceptionOrNull() ?: Exception("findBookInfosByTitle Error"))
+        }
+
+        val bookInfoList = result.getOrThrow()
+        return Result.success(bookInfoList.map { it.toDomainInfoDeepCopy() })
+    }
 }

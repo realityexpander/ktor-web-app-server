@@ -66,6 +66,9 @@ https://github.com/traxterz/ktor-plugin-event-store-db
   - 
 
 ### Redis
+
+  - Start Redis server: `redis-stack-server`
+  
   - https://redis.io/docs/management/config/
   - https://redis.io/docs/interact/search-and-query/basic-constructs/configuration-parameters/
   - https://redis.io/docs/interact/search-and-query/query/

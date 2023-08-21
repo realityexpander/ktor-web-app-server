@@ -54,4 +54,8 @@ class BookInfoInMemoryDatabase constructor(
     override suspend fun deleteDatabase(): Result<Unit> {
         return database.deleteAllEntityInfo()
     }
+
+    override suspend fun findBookInfosByTitle(title: String): Result<List<BookInfoEntity>> {
+        TODO("Not yet implemented")
+    }
 }

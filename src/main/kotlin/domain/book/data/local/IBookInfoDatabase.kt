@@ -12,6 +12,7 @@ interface IBookInfoDatabase {
     suspend fun upsertBookInfo(bookInfo: BookInfoEntity): Result<BookInfoEntity>
     suspend fun deleteBookInfo(bookInfo: BookInfoEntity): Result<Unit>
     suspend fun deleteDatabase(): Result<Unit>
+    suspend fun findBookInfosByTitle(title: String): Result<List<BookInfoEntity>>
 
     companion object {
         const val DEFAULT_BOOKINFO_FILE_DATABASE_FILENAME: String = "bookInfoFileDatabaseDB.json"

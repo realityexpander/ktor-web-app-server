@@ -28,6 +28,7 @@ class TestingUtils(val context: Context) {
 
     companion object {
         fun createTempFileName(prefix: String) = "test-$prefix-${UUID.randomUUID()}.json"
+        fun createTempName(prefix: String) = "test-$prefix-${UUID.randomUUID()}"
     }
 
     ///////////////////////////

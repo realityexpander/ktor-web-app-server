@@ -1,4 +1,6 @@
 import com.realityexpander.domain.account.data.AccountInfoRepo
+import com.realityexpander.domain.book.data.local.BookInfoFileDatabase
+import com.realityexpander.domain.book.data.local.BookInfoRedisDatabase
 import common.uuid2.UUID2
 import domain.Context
 import domain.account.Account
@@ -23,6 +25,7 @@ import org.junit.jupiter.api.Test
 import testUtils.TestLog
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.fail
+import util.testingUtils.TestingUtils
 import java.time.Instant
 import kotlin.collections.ArrayList
 
@@ -46,10 +49,18 @@ class LibraryAppTest {
     private fun setupDefaultTestContext(): Context {
         val testLog = TestLog(!shouldDisplayAllDebugLogs) // false = print all logs to console, including info/debug
         val prodContext = Context.setupContextInstance(testLog)
+        val tempDBName = TestingUtils.createTempName("bookInfoRepoDB")
+        val tempDBFileName = TestingUtils.createTempFileName("bookInfoRepoDB")
 
         // Modify the Production context into a Test context.
         return Context(
-            BookInfoRepo(testLog, TestingUtils.createTempFileName("bookInfoRepoDB")), // prodContext.bookInfoRepo,
+            BookInfoRepo( // prodContext.bookInfoRepo,
+                testLog,
+                // bookInfoDatabaseName = tempDBFileName
+                // bookInfoDatabase = BookInfoFileDatabase(tempDBFileName),
+                bookInfoDatabaseName = tempDBName,
+                bookInfoDatabase = BookInfoRedisDatabase(tempDBName),
+            ),
             UserInfoRepo(testLog, TestingUtils.createTempFileName("userInfoRepoDB")), // prodContext.userInfoRepo,
             LibraryInfoRepo(testLog, TestingUtils.createTempFileName("libraryInfoRepoDB")), // prodContext.libraryInfoRepo,
             AccountInfoRepo(testLog, TestingUtils.createTempFileName("accountInfoRepoDB")), // prodContext.accountInfoRepo,

@@ -72,8 +72,8 @@ open class UUID2<TUUID2 : IUUID2> {
     @Serializable(with = UUIDSerializer::class)
     val uuid: UUID
 
-    // Class Inheritance Path of the object the UUID refers to. '.' separated.
-    var uuid2Type: String
+    // Class Inheritance Path of the object the UUID refers to '.' separated.
+    var uuid2Type: String = "UUID"
         private set(value) {
             field = getNormalizedUuid2TypeString(value)
         }

@@ -82,4 +82,8 @@ class InMemoryDatabase<TUUID2 : IUUID2, TEntity : InfoEntity> (
         database.clear()
         return Result.success(Unit)
     }
+
+    override suspend fun findEntitiesByField(field: String, searchValue: String): Result<List<TEntity>> {
+        TODO("Not yet implemented")
+    }
 }

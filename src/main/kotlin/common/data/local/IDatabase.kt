@@ -21,4 +21,5 @@ interface IDatabase<TUUID2 : IUUID2, TEntity : InfoEntity> {
     suspend fun upsertEntityInfo(entityInfo: TEntity): Result<TEntity>
     suspend fun deleteEntityInfo(entityInfo: TEntity): Result<Unit>
     suspend fun deleteAllEntityInfo(): Result<Unit>
+    suspend fun findEntitiesByField(field: String, searchValue: String): Result<List<TEntity>>
 }

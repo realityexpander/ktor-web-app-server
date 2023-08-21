@@ -3,6 +3,7 @@ package domain
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.realityexpander.domain.account.data.AccountInfoRepo
+import com.realityexpander.domain.book.data.local.BookInfoFileDatabase
 import common.log.ILog
 import common.log.Log
 import common.uuid2.UUID2
@@ -77,8 +78,12 @@ class Context(
         fun createDefaultTestFileContext(log: ILog): Context {
             return Context(
                 BookInfoRepo(log,
-                    bookInfoApiFilename = "test-bookInfoDB.json",
-                    bookInfoDatabaseFilename ="test-bookInfoAPI.json"),
+                    bookInfoApiName = "test-bookInfoApi.json",
+                    bookInfoDatabaseName ="test-bookInfoDB.json",
+                    // todo - should use in-memory database/api for testing?
+//                    bookInfoDatabase = BookInfoRedisDatabase("test-bookInfoDB"),
+                    bookInfoDatabase = BookInfoFileDatabase("test-bookInfoDB.json"),
+                ),
                 UserInfoRepo(log,
                     userRepoDatabaseFilename ="test-userInfoRepoDatabase.json"),
                 LibraryInfoRepo(log,

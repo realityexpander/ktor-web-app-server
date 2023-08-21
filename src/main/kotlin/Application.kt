@@ -2,6 +2,7 @@ package com.realityexpander
 
 import com.github.slugify.Slugify
 import com.realityexpander.Constants.APPLICATION_PROPERTIES_FILE
+import com.realityexpander.common.data.local.JsonRedisDatabase
 import com.realityexpander.common.data.network.AnySerializer
 import com.realityexpander.common.data.network.PairSerializer
 import com.realityexpander.common.data.network.ResultSerializer
@@ -15,6 +16,7 @@ import com.realityexpander.domain.todo.TodoResponse
 import com.realityexpander.domain.todo.UserInTodo
 import com.redis.lettucemod.RedisModulesClient
 import com.redis.lettucemod.api.StatefulRedisModulesConnection
+import com.redis.lettucemod.api.reactive.RedisModulesReactiveCommands
 import com.redis.lettucemod.api.sync.RedisModulesCommands
 import com.redis.lettucemod.search.CreateOptions
 import com.redis.lettucemod.search.Field
@@ -53,10 +55,8 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.lettuce.core.ExperimentalLettuceCoroutinesApi
 import io.lettuce.core.api.coroutines
-import io.lettuce.core.dynamic.Commands
+import io.lettuce.core.api.coroutines.RedisCoroutinesCommands
 import io.lettuce.core.dynamic.RedisCommandFactory
-import io.lettuce.core.dynamic.annotation.Command
-import io.lettuce.core.dynamic.annotation.CommandNaming
 import kotlinx.html.*
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.Serializable
@@ -66,6 +66,7 @@ import net.iharder.Base64
 import org.example.SubModule2
 import org.slf4j.LoggerFactory
 import util.*
+import util.testingUtils.TestingUtils
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -156,25 +157,6 @@ val authRepo = AuthenticationRepository()
 // Setup the LibraryApp
 val libraryAppContext = Context.setupContextInstance()
 
-interface RedisSearchCommands : Commands {
-    @Command("FT.CREATE")
-    @CommandNaming(strategy = CommandNaming.Strategy.DOT)
-    // ON HASH PREFIX 1 book:details FILTER SCHEMA title TEXT categories TAG SEPARATOR ";"
-    fun ftCreate(index: String, vararg args: String): String
-
-    @Command("FT.ADD")
-    @CommandNaming(strategy = CommandNaming.Strategy.DOT)
-    fun ftAdd(index: String, docId: String, score: Double, vararg fields: Any): String
-
-    @Command("FT.CONFIG SET")
-    @CommandNaming(strategy = CommandNaming.Strategy.DOT)
-    fun ftConfigSet(key: String, value: String): String
-
-    @Command("FT.CONFIG GET")
-    @CommandNaming(strategy = CommandNaming.Strategy.DOT)
-    fun ftConfigGet(key: String): String
-}
-
 @OptIn(InternalSerializationApi::class, ExperimentalLettuceCoroutinesApi::class)
 fun Application.module() {
 
@@ -255,111 +237,12 @@ fun Application.module() {
         audience = audience,
     )
 
-//    // Setup Redis client (lettuce)
-//    val redisClient1 = RedisClient.create("redis://localhost:6379")
-//    val redisConnection1 = redisClient1.connect()
-//    val redisApi1 = redisConnection1.coroutines()
-//    val redisCommands1 = redisConnection1.sync()
-////    try {
-////        redisCommands.info("index")
-////    } catch (e: RedisCommandExecutionException) {
-//        val result = redisCommands.commandInfo("FT.CREATE")
-//        ktorLogger.info("FT.CREATE result: $result")
-//
-//        val redisSearchCommand =
-//            RedisCommandFactory(redisConnection).getCommands(RedisSearchCommands::class.java)
-//        redisSearchCommand.ftCreate("index",
-//                "ON", "HASH",
-//                "PREFIX", "1", "user:",
-//                "SCHEMA", "email", "TEXT", "SORTABLE",
-//                          "name", "TEXT", "SORTABLE"
-//        )
-////    }
 
+    /////////////////////////////
+    // Setup Redis LettuceMod client
 
-    // Setup LettuceMod client
-    val redisClient: RedisModulesClient = RedisModulesClient.create("redis://localhost:6379")
-    val redisConnection: StatefulRedisModulesConnection<String, String> = redisClient.connect()
-    val redisCommands: RedisModulesCommands<String, String> = redisConnection.sync()
-    val redisApi = redisConnection.coroutines()
-    val redisCommandsReactive = redisConnection.reactive()
+    val (redisCoroutineCommand, redisReactiveCommand) = setupRedisClient()
 
-    val redisSearchCommands =
-        RedisCommandFactory(redisConnection).getCommands(RedisSearchCommands::class.java)
-    redisSearchCommands.ftConfigSet("MINPREFIX", "1") // allow one character prefix for FT.SEARCH
-
-    try {
-        // check if index exists
-        val result = redisCommands.ftInfo("users_index")
-    } catch (e: Exception) {
-        // setup index
-        val result = redisCommands.ftCreate(
-            "users_index",
-            CreateOptions.builder<String, String>()
-                .prefix("user:")
-                .on(CreateOptions.DataType.JSON)
-                .build(),
-            Field.text("$.email")
-                .`as`("email")
-                .sortable()
-                .withSuffixTrie()
-                .build(),
-            Field.text("$.name")
-                .`as`("name")
-                .sortable()
-                .withSuffixTrie()
-                .build()
-        )
-
-        if(result != "OK") {
-            ktorLogger.error("Error creating index: $result")
-        }
-    }
-
-    val redisInfo = redisCommands.info("users_index")
-    println("redisInfo: $redisInfo")
-
-    val resultRedisAdd1 = redisCommands.jsonSet(
-        "user:1",
-        "$", // path
-        """
-            {
-                "email": "a@b.c",
-                "name": "Chris"
-            }
-        """.trimIndent()
-    )
-    println("resultRedisAdd1: $resultRedisAdd1")
-
-    val resultRedisAdd2 = redisCommands.jsonSet(
-        "user:2",
-        "$",
-        """
-            {
-                "email": "d@e.f",
-                "name": "Billy"
-            }
-        """.trimIndent()
-    )
-    println("resultRedisAdd2: $resultRedisAdd2")
-
-    val resultSearch = redisCommands.ftSearch(
-        "users_index",
-        "@email:'*o*'"
-    )
-    println("resultSearch: $resultSearch")
-
-    @Serializable
-    data class UserSearchResult(
-        val email: String,
-        val name: String,
-    )
-
-    val resultArray = resultSearch.map { resultMap ->
-        val resultValue = resultMap.get("$") as String
-        jsonConfig.decodeFromString<UserSearchResult>(resultValue)
-    }
-    println("resultArray: $resultArray")
 
     // Setup JWT & bearer authentication
     installServer(Authentication) {
@@ -805,7 +688,7 @@ fun Application.module() {
                     call.respondJson(mapOf("error" to "Missing libraryId"), HttpStatusCode.BadRequest)
                     return@get
                 }
-                val userIdResult = call.getUserIdFromCookies()
+                // val userIdResult = call.getUserIdFromCookies()
 
                 val library = Library(libraryId.fromUUID2StrToTypedUUID2<Library>(), libraryAppContext)
                 val bookInfoResult = library.fetchInfoResult()
@@ -903,7 +786,7 @@ fun Application.module() {
                     call.respondJson(mapOf("error" to "Missing bookId"), HttpStatusCode.BadRequest)
                     return@get
                 }
-                val userIdResult = call.getUserIdFromCookies()
+                // val userIdResult = call.getUserIdFromCookies()
 
                 val book = Book(bookId.fromUUID2StrToTypedUUID2<Book>(), libraryAppContext)
                 val bookInfoResult = book.fetchInfoResult()
@@ -1105,6 +988,57 @@ fun Application.module() {
 
                 call.respondJson(mapOf("error" to "Invalid parameters"), HttpStatusCode.BadRequest)
             }
+
+            get("/populateBookInfo") {
+                val testingUtils = TestingUtils(libraryAppContext)
+                testingUtils.populateDBWithFakeBookInfo()
+
+                val bookResult =
+                    libraryAppContext
+                        .bookInfoRepo
+                        .bookInfoDatabase
+                        .allBookInfos()
+                val bookInfos = bookResult.getOrThrow()
+
+                call.respondHtml {
+                    body {
+                        h1 { +"Populated Book Info" }
+                        bookInfos.forEach { bookInfo ->
+                            p { +"Title: ${bookInfo.value.title}" }
+                            p { +"Author: ${bookInfo.value.author}" }
+                            p { +"Description: ${bookInfo.value.description}" }
+                            p { +"Id: ${bookInfo.value.id}" }
+                            br
+                        }
+                    }
+                }
+            }
+
+
+            // TODO TEST THIS
+            get("/findBook/title/{title}") {
+                val title = call.parameters["title"]?.toString()
+                title ?: run {
+                    call.respondJson(mapOf("error" to "Missing title"), HttpStatusCode.BadRequest)
+                    return@get
+                }
+
+                val bookInfosResult = libraryAppContext.bookInfoRepo.findBookInfosByTitle(title)
+                val bookInfos = bookInfosResult.getOrThrow()
+
+                call.respondHtml {
+                    body {
+                        h1 { +"Book Info for Title: $title" }
+                        bookInfos.forEach { bookInfo ->
+                            p { +"Title: ${bookInfo.title}" }
+                            p { +"Author: ${bookInfo.author}" }
+                            p { +"Description: ${bookInfo.description}" }
+                            p { +"Id: ${bookInfo.id}" }
+                            br
+                        }
+                    }
+                }
+            }
         }
 
         route("/redis") {
@@ -1116,7 +1050,7 @@ fun Application.module() {
                     return@get
                 }
 
-                val value = redisApi.get(key) ?: run {
+                val value = redisCoroutineCommand.get(key) ?: run {
                     call.respondJson(mapOf("error" to "Key not found"), HttpStatusCode.NotFound)
                     return@get
                 }
@@ -1135,7 +1069,7 @@ fun Application.module() {
                     return@get
                 }
 
-                val result = redisApi.set(key, value) ?: run {
+                val result = redisCoroutineCommand.set(key, value) ?: run {
                     call.respondJson(mapOf("error" to "Failed to set key"), HttpStatusCode.InternalServerError)
                     return@get
                 }
@@ -1143,7 +1077,7 @@ fun Application.module() {
             }
 
             get("/keys") {
-                val keys = redisApi.keys("*")
+                val keys = redisCoroutineCommand.keys("*")
                 val output: ArrayList<String> = arrayListOf()
                 keys.collect { key ->
                     output += key
@@ -1158,7 +1092,7 @@ fun Application.module() {
                     return@get
                 }
 
-                val value = redisCommandsReactive.jsonGet("json1", key) ?: run {
+                val value = redisReactiveCommand.jsonGet("json1", key) ?: run {
                     call.respondJson(mapOf("error" to "Key not found"), HttpStatusCode.NotFound)
                     return@get
                 }
@@ -1177,7 +1111,7 @@ fun Application.module() {
                     return@get
                 }
 
-                val result = redisCommandsReactive.jsonSet("json1", key, value) ?: run {
+                val result = redisReactiveCommand.jsonSet("json1", key, value) ?: run {
                     call.respondJson(mapOf("error" to "Failed to set key"), HttpStatusCode.InternalServerError)
                     return@get
                 }
@@ -1658,6 +1592,99 @@ fun Application.module() {
             filesPath = "/Volumes/TRS-83/dev/Web Projects/Current Project/WebAppPlayground"
         }
     }
+}
+
+@OptIn(ExperimentalLettuceCoroutinesApi::class)
+private fun setupRedisClient():
+    Pair<
+        RedisCoroutinesCommands<String, String>,
+        RedisModulesReactiveCommands<String, String>
+    >
+{
+    val redisClient: RedisModulesClient = RedisModulesClient.create("redis://localhost:6379")
+    val redisConnection: StatefulRedisModulesConnection<String, String> = redisClient.connect()
+    val redisSyncCommand: RedisModulesCommands<String, String> = redisConnection.sync()
+    val redisCoroutineCommand = redisConnection.coroutines()
+    val redisReactiveCommand = redisConnection.reactive()
+
+    val redisSearchCommands =
+        RedisCommandFactory(redisConnection).getCommands(JsonRedisDatabase.RedisSearchCommands::class.java)
+    redisSearchCommands.ftConfigSet("MINPREFIX", "1") // allow one character prefix for FT.SEARCH
+
+    try {
+        // check if index exists
+        val result = redisSyncCommand.ftInfo("users_index")
+    } catch (e: Exception) {
+        // setup index
+        val result = redisSyncCommand.ftCreate(
+            "users_index",
+            CreateOptions.builder<String, String>()
+                .prefix("user:")
+                .on(CreateOptions.DataType.JSON)
+                .build(),
+            Field.text("$.email")
+                .`as`("email")
+                .sortable()
+                .withSuffixTrie()  // for improved search (allows partial word search)
+                .build(),
+            Field.text("$.name")
+                .`as`("name")
+                .sortable()
+                .withSuffixTrie()  // for improved search (allows partial word search)
+                .build()
+        )
+
+        if (result != "OK") {
+            ktorLogger.error("Error creating index: $result")
+        }
+    }
+
+    val redisInfo = redisSyncCommand.info("users_index")
+    println("redisInfo: $redisInfo")
+
+    val resultRedisAdd1 = redisSyncCommand.jsonSet(
+        "user:1",
+        "$", // path
+        """
+            {
+                "email": "a@b.c",
+                "name": "Chris"
+            }
+        """.trimIndent()
+    )
+    println("resultRedisAdd1: $resultRedisAdd1")
+
+    val resultRedisAdd2 = redisSyncCommand.jsonSet(
+        "user:2",
+        "$",
+        """
+            {
+                "email": "d@e.f",
+                "name": "Billy"
+            }
+        """.trimIndent()
+    )
+    println("resultRedisAdd2: $resultRedisAdd2")
+
+    val resultSearch = redisSyncCommand.ftSearch(
+        "users_index",
+        "@email:'*o*'"
+    )
+    println("resultSearch: $resultSearch")
+
+    @Serializable
+    data class UserSearchResult(
+        val email: String,
+        val name: String,
+    )
+
+    val resultArray = resultSearch.map { resultMap ->
+        val resultValue = resultMap.get("$") as String
+        jsonConfig.decodeFromString<UserSearchResult>(resultValue)
+    }
+    println("resultArray: $resultArray")
+
+    return Pair(redisCoroutineCommand, redisReactiveCommand)
 }
 
 private fun BODY.libraryStyle() {

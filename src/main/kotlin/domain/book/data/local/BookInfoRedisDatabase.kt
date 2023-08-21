@@ -1,33 +1,43 @@
 package com.realityexpander.domain.book.data.local
 
-import com.realityexpander.common.data.network.FileDatabase
-import com.realityexpander.domain.book.data.local.IBookInfoDatabase.Companion.DEFAULT_BOOKINFO_FILE_DATABASE_FILENAME
+import com.realityexpander.common.data.network.RedisDatabase
+import com.redis.lettucemod.RedisModulesClient
 import common.data.local.IDatabase
 import common.uuid2.UUID2
 import domain.book.Book
 import domain.book.data.local.BookInfoEntity
 
 /**
- * BookInfoFileDatabase
+ * BookInfoRedisDatabase
  *
- * Simulates a persistent database using a local file database for the BookInfoEntity.
- *
- * Note: Use Domain-specific language to define the API methods.
+ * * Implements a persistent database using a Redis database for the BookInfoEntity.
+ * * Uses Domain-specific language to define the API methods.
+ * * Defines the search indexes for the database.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.12
  */
 
-class BookInfoFileDatabase(
-    bookInfoFileDatabaseFilename: String = DEFAULT_BOOKINFO_FILE_DATABASE_FILENAME,
+class BookInfoRedisDatabase(
+    bookInfoDatabaseName: String = DEFAULT_BOOKINFO_DATABASE_NAME,
+    private val redisUrl: String = "redis://localhost:6379",
+    private val redisClient: RedisModulesClient = RedisModulesClient.create(redisUrl),
 
-    // Use a file database to persist the book info
+    // Use a redis database to persist the book info
     private val database: IDatabase<Book, BookInfoEntity> =
-        FileDatabase(
-            bookInfoFileDatabaseFilename,
-            BookInfoEntity.serializer()
+        RedisDatabase(
+            bookInfoDatabaseName,
+            BookInfoEntity.serializer(),
+            redisUrl,
+            redisClient
         )
 ) : IBookInfoDatabase {
+
+    init {
+        (database as RedisDatabase<Book, BookInfoEntity>).initDatabase(
+            fieldsToSearchIndex = arrayOf("title", "author", "description")
+        )
+    }
 
     override suspend fun fetchBookInfo(id: UUID2<Book>): Result<BookInfoEntity> {
         return database.fetchEntityInfo(id)
@@ -58,10 +68,10 @@ class BookInfoFileDatabase(
     }
 
     override suspend fun findBookInfosByTitle(title: String): Result<List<BookInfoEntity>> {
-        TODO("Not yet implemented")
+        return database.findEntitiesByField("title", title)
     }
 
     companion object {
-        const val DEFAULT_BOOKINFO_FILE_DATABASE_FILENAME: String = "bookInfoFileDatabaseDB.json"
+        const val DEFAULT_BOOKINFO_DATABASE_NAME: String = "bookInfoDB"
     }
 }
