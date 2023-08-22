@@ -1,5 +1,6 @@
 package domain.book.data
 
+import com.realityexpander.domain.book.data.local.BookInfoFileDatabase
 import com.realityexpander.domain.book.data.local.BookInfoRedisDatabase
 import com.realityexpander.domain.book.data.local.IBookInfoDatabase
 import common.log.ILog
@@ -28,10 +29,10 @@ open class BookInfoRepo(
     override val bookInfoApi: IBookInfoApi = BookInfoFileApi(bookInfoApiName),
 
 //    override val bookInfoDatabase: IBookInfoDatabase = BookInfoInMemoryDatabase()
-//    private val bookInfoDatabaseName: String = BookInfoFileDatabase.DEFAULT_BOOKINFO_FILE_DATABASE_FILENAME,
-//    override val bookInfoDatabase: IBookInfoDatabase = BookInfoFileDatabase(bookInfoDatabaseName)
-    private val bookInfoDatabaseName: String = BookInfoRedisDatabase.DEFAULT_BOOKINFO_DATABASE_NAME,
-    override val bookInfoDatabase: IBookInfoDatabase = BookInfoRedisDatabase(bookInfoDatabaseName)
+    private val bookInfoDatabaseName: String = BookInfoFileDatabase.DEFAULT_BOOKINFO_FILE_DATABASE_FILENAME,
+    override val bookInfoDatabase: IBookInfoDatabase = BookInfoFileDatabase(bookInfoDatabaseName)
+//    private val bookInfoDatabaseName: String = BookInfoRedisDatabase.DEFAULT_BOOKINFO_DATABASE_NAME,
+//    override val bookInfoDatabase: IBookInfoDatabase = BookInfoRedisDatabase(bookInfoDatabaseName)
 ) : Repo(log), IBookInfoRepo {
 
     override suspend fun fetchBookInfo(id: UUID2<Book>): Result<BookInfo> {

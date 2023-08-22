@@ -812,7 +812,7 @@ fun Application.module() {
                 }
             }
 
-            get("/upsertBook/{libraryId}") {
+            get("/upsertBookToLibrary/{libraryId}") {
                 val libraryIdfromParams = call.parameters["libraryId"]?.toString()
                 val libraryId = libraryIdfromParams ?: "UUID2:Role.Library@00000000-0000-0000-0000-000000000001"
 
@@ -830,7 +830,8 @@ fun Application.module() {
 
                         form {
                             method = FormMethod.post
-                            action = "../upsertBook"
+                            action = "../upsertBookToLibrary"
+                            encType = FormEncType.textPlain // uses key/value pairs, one per line
 
                             label {
                                 +"Book Id"
@@ -922,10 +923,10 @@ fun Application.module() {
                     }
                 }
             }
-
-            post("/upsertBook") {
+            post("/upsertBookToLibrary") {
                 val body = call.receiveText().decodeURLPart(charset = Charsets.UTF_8)
-                val params = body.parseUrlEncodedParameters()
+                // val params = body.parseUrlEncodedParameters()
+                val params = body.parseTextPlainEncodedFormParameters()
                 val bookId = params["UUID2:Book"]
                 val title = params["title"]
                 val author = params["author"]
@@ -1015,20 +1016,25 @@ fun Application.module() {
             }
 
 
-            // TODO TEST THIS
-            get("/findBook/title/{title}") {
-                val title = call.parameters["title"]?.toString()
-                title ?: run {
+            get("/findBook/{field}/{searchTerm}") {
+                val field = call.parameters["field"]?.toString() ?: run {
+                    call.respondJson(mapOf("error" to "Missing field"), HttpStatusCode.BadRequest)
+                    return@get
+                }
+                val searchTerm = call.parameters["searchTerm"]?.toString() ?: run {
                     call.respondJson(mapOf("error" to "Missing title"), HttpStatusCode.BadRequest)
                     return@get
                 }
 
-                val bookInfosResult = libraryAppContext.bookInfoRepo.findBookInfosByTitle(title)
+                val bookInfosResult = libraryAppContext.bookInfoRepo.findBookInfosByField(field, searchTerm)
                 val bookInfos = bookInfosResult.getOrThrow()
 
                 call.respondHtml {
                     body {
-                        h1 { +"Book Info for Title: $title" }
+                        h1 { +"Book Info for $field search: $searchTerm" }
+                        if(bookInfos.isEmpty()) {
+                            p { +"No results found" }
+                        }
                         bookInfos.forEach { bookInfo ->
                             p { +"Title: ${bookInfo.title}" }
                             p { +"Author: ${bookInfo.author}" }
@@ -1038,6 +1044,103 @@ fun Application.module() {
                         }
                     }
                 }
+            }
+
+            get("/addBookInfo") {
+                call.respondHtml {
+                    body {
+                        h1 { +"Add Book Info" }
+
+                        form {
+                            method = FormMethod.post
+                            action = "./addBookInfo"
+                            encType = FormEncType.textPlain // uses key/value pairs, one per line
+
+                            label {
+                                +"UUID2 id"
+                                textInput {
+                                    name = "id"
+                                }
+                            }
+                            label {
+                                +"Title"
+                                textInput {
+                                    name = "title"
+                                }
+                            }
+                            br
+                            label {
+                                +"Author"
+                                textInput {
+                                    name = "author"
+                                }
+                            }
+                            br
+                            label {
+                                +"Description"
+                                textInput {
+                                    name = "description"
+                                }
+                            }
+                            br
+
+                            submitInput {
+                                value = "Add Book Info"
+                            }
+                        }
+                    }
+                }
+            }
+            post("/addBookInfo") {
+                val body = call.receiveText().decodeURLPart(charset = Charsets.UTF_8)
+                // val params = body.parseUrlEncodedParameters() // default encoding (applicationXWwwFormUrlEncoded)
+                val params = body.parseTextPlainEncodedFormParameters()
+                val id = params["id"]
+                val title = params["title"]
+                val author = params["author"]
+                val description = params["description"]
+
+                if (id != null &&
+                    title != null &&
+                    author != null &&
+                    description != null
+                ) {
+                    val bookInfo = BookInfo(
+                        id = id.fromUUID2StrToTypedUUID2<Book>(),
+                        title = title,
+                        author = author,
+                        description = description,
+                    )
+
+                    // add book to bookInfo repo
+                    val upsertBookInfoResult = libraryAppContext.bookInfoRepo.upsertBookInfo(bookInfo)
+                    val upsertBookInfostatusJson = resultToStatusCodeJson<BookInfo>(upsertBookInfoResult)
+
+                    call.respondHtml {
+                        body {
+                            if (upsertBookInfostatusJson.statusCode != HttpStatusCode.OK) {
+                                h1 { +"Error adding book info" }
+                                p { +upsertBookInfostatusJson.json }
+                            } else {
+                                h1 { +"Book info added:" }
+                            }
+
+                            p { +"Book Id: $id" }
+                            p { +"Title: $title" }
+                            p { +"Author: $author" }
+                            p { +"Description: $description" }
+
+                            // go to list books page
+                            a {
+                                href = "/"
+                                +"Home"
+                            }
+                        }
+                    }
+                    return@post
+                }
+
+                call.respondJson(mapOf("error" to "Invalid parameters"), HttpStatusCode.BadRequest)
             }
         }
 
@@ -1100,13 +1203,11 @@ fun Application.module() {
             }
 
             get("/jsonSet") {
-                val key = call.request.queryParameters["key"]
-                val value = call.request.queryParameters["value"]
-                key ?: run {
+                val key = call.request.queryParameters["key"] ?: run {
                     call.respondJson(mapOf("error" to "Missing key"), HttpStatusCode.BadRequest)
                     return@get
                 }
-                value ?: run {
+                val value = call.request.queryParameters["value"] ?: run {
                     call.respondJson(mapOf("error" to "Missing value"), HttpStatusCode.BadRequest)
                     return@get
                 }
@@ -1592,6 +1693,17 @@ fun Application.module() {
             filesPath = "/Volumes/TRS-83/dev/Web Projects/Current Project/WebAppPlayground"
         }
     }
+}
+
+fun String.parseTextPlainEncodedFormParameters(): Map<String, String> {
+    val params = mutableMapOf<String, String>()
+    this.lines().forEach { line ->
+        val split = line.split("=")
+        if (split.size == 2) {
+            params[split[0]] = split[1]
+        }
+    }
+    return params
 }
 
 @OptIn(ExperimentalLettuceCoroutinesApi::class)

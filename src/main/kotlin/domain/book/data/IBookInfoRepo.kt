@@ -81,4 +81,14 @@ interface IBookInfoRepo : IRepo {
         val bookInfoList = result.getOrThrow()
         return Result.success(bookInfoList.map { it.toDomainInfoDeepCopy() })
     }
+
+    suspend fun findBookInfosByField(field: String, searchTerm: String): Result<List<BookInfo>> {
+        val result = bookInfoDatabase.findBookInfosByField(field, searchTerm)
+        if (result.isFailure) {
+            return Result.failure(result.exceptionOrNull() ?: Exception("findBookInfosByField Error"))
+        }
+
+        val bookInfoList = result.getOrThrow()
+        return Result.success(bookInfoList.map { it.toDomainInfoDeepCopy() })
+    }
 }

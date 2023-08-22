@@ -71,7 +71,7 @@ class RedisDatabase<TDomain : IUUID2, TEntityInfo : InfoEntity>(
         }
     }
 
-    override suspend fun deleteAllEntityInfo(): Result<Unit> {
+    override suspend fun deleteAllEntityInfos(): Result<Unit> {
         return try {
             super.deleteDatabase()
 
@@ -122,7 +122,7 @@ class RedisDatabase<TDomain : IUUID2, TEntityInfo : InfoEntity>(
         return Result.success(entityInfo)
     }
 
-    override suspend fun findEntitiesByField(field: String, searchValue: String): Result<List<TEntityInfo>> {
+    override suspend fun findEntityInfosByField(field: String, searchValue: String): Result<List<TEntityInfo>> {
         return try {
             val entityInfoList = super.findAllEntitiesByField(field, searchValue)
 

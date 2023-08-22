@@ -78,12 +78,26 @@ class InMemoryDatabase<TUUID2 : IUUID2, TEntity : InfoEntity> (
         return Result.success(map)
     }
 
-    override suspend fun deleteAllEntityInfo(): Result<Unit> {
+    override suspend fun deleteAllEntityInfos(): Result<Unit> {
         database.clear()
         return Result.success(Unit)
     }
 
-    override suspend fun findEntitiesByField(field: String, searchValue: String): Result<List<TEntity>> {
-        TODO("Not yet implemented")
+    override suspend fun findEntityInfosByField(field: String, searchValue: String): Result<List<TEntity>> {
+        val entityInfoList: MutableList<TEntity> = mutableListOf()
+
+        for ((_, value) in database.entries) {
+            val member = value::class.members.find { entityField ->
+                entityField.name == field
+            }
+            if (member != null) {
+                val result = member.call(value).toString()
+                if (result.contains(searchValue, ignoreCase = true)) {
+                    entityInfoList.add(value)
+                }
+            }
+        }
+
+        return Result.success(entityInfoList)
     }
 }

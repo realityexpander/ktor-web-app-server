@@ -169,7 +169,7 @@ abstract class JsonRedisDatabase<TDomain : IUUID2, TEntity : Model> (  // <User,
         )
 
         return result.map { document ->
-            val id = document.id
+            val id = document.id.substringAfter(":")
             val entity = findEntityById(id.fromUUID2StrToTypedUUID2())
             entity
         }.filterNotNull()

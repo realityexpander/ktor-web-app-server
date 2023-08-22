@@ -106,6 +106,18 @@ abstract class JsonFileDatabase<TDomain : IUUID2, TEntity : Model> (  // <User, 
         return database[id]
     }
 
+    @Suppress("StructuralWrap")
+    suspend fun findEntitiesByField(field: String, searchValue: String): List<TEntity> {
+        return database.values.filter { entity ->
+            entity::class.members.find { entityField ->
+                entityField.name == field
+            }
+            ?.call(entity)  // extract the field value, `call` is a Kotlin reflection method that gets the value of the field.
+            .toString()
+            .contains(searchValue, ignoreCase = true)
+        }
+    }
+
     suspend fun addEntity(entity: TEntity): TEntity {
         @Suppress("UNCHECKED_CAST")
         entity as HasId<UUID2<TDomain>>

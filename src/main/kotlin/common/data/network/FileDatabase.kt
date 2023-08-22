@@ -71,7 +71,7 @@ class FileDatabase<TDomain : IUUID2, TEntityInfo : InfoEntity>(
         }
     }
 
-    override suspend fun deleteAllEntityInfo(): Result<Unit> {
+    override suspend fun deleteAllEntityInfos(): Result<Unit> {
         return try {
             super.deleteDatabaseFile()
 
@@ -81,8 +81,14 @@ class FileDatabase<TDomain : IUUID2, TEntityInfo : InfoEntity>(
         }
     }
 
-    override suspend fun findEntitiesByField(field: String, searchValue: String): Result<List<TEntityInfo>> {
-        TODO("Not yet implemented")
+    override suspend fun findEntityInfosByField(field: String, searchValue: String): Result<List<TEntityInfo>> {
+        return try {
+            val entityInfoList = super.findEntitiesByField(field, searchValue)
+
+            Result.success(entityInfoList)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     override suspend fun deleteEntityInfo(entityInfo: TEntityInfo): Result<Unit> {

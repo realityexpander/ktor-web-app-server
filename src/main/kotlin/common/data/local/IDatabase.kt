@@ -5,9 +5,9 @@ import common.uuid2.UUID2
 import domain.common.data.info.local.InfoEntity
 
 /**
- * IDatabase is an interface for the Database class.
+ * IDatabase is an interface for implementing Database classes.
  *
- * This class should be wrapped and use domain-specific language for the InfoEntity class.
+ * This class should be wrapped and use domain-specific language for the `InfoEntity` class.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.12 Kotlin conversion
@@ -20,6 +20,6 @@ interface IDatabase<TUUID2 : IUUID2, TEntity : InfoEntity> {
     suspend fun addEntityInfo(entityInfo: TEntity): Result<TEntity>
     suspend fun upsertEntityInfo(entityInfo: TEntity): Result<TEntity>
     suspend fun deleteEntityInfo(entityInfo: TEntity): Result<Unit>
-    suspend fun deleteAllEntityInfo(): Result<Unit>
-    suspend fun findEntitiesByField(field: String, searchValue: String): Result<List<TEntity>>
+    suspend fun deleteAllEntityInfos(): Result<Unit>
+    suspend fun findEntityInfosByField(field: String, searchValue: String): Result<List<TEntity>>
 }
