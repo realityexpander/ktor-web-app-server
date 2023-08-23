@@ -25,7 +25,7 @@ import java.util.*
  * is written to disk after every change.
  *
  * It's not meant to be a full-featured database, but it's a good starting point for small projects and
- * for prototyping & testing.
+ * for prototyping & testing as the files are human-readable and easy to edit manually.
  *
  * * It's thread-safe, as the file can only be written one request at a time.
  * * The database file is temporarily renamed while updates are being made, so that the file is never in an invalid
@@ -106,7 +106,6 @@ abstract class JsonFileDatabase<TDomain : IUUID2, TEntity : Model> (  // <User, 
         return database[id]
     }
 
-    @Suppress("StructuralWrap")
     suspend fun findEntitiesByField(field: String, searchValue: String): List<TEntity> {
         return database.values.filter { entity ->
             entity::class.members.find { entityField ->

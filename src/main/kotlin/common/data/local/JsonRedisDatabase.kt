@@ -11,7 +11,6 @@ import com.redis.lettucemod.search.SearchOptions
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import common.uuid2.UUID2.Companion.fromUUID2StrToTypedUUID2
-import common.uuid2.UUID2.Companion.fromUUID2StrToUUID2
 import common.uuid2.UUID2.Companion.toUUID2WithUUID2TypeOf
 import domain.common.data.HasId
 import domain.common.data.Model
@@ -25,13 +24,15 @@ import io.lettuce.core.dynamic.annotation.Command
 import io.lettuce.core.dynamic.annotation.CommandNaming
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
 
 /**
  * **JsonRedisDatabase**
  *
- * - Performs key-value database operations on a JSON redis client.
+ * - Performs database operations on a JSON redis client.
+ * - Allows for searching text on fields.
  *
  * This implements a persistent database that uses a Redis client to store data in a JSON format.
  *
@@ -40,9 +41,7 @@ import kotlinx.serialization.builtins.ListSerializer
  *     stored in the database.
  *     It must implement the **`HasId<TKey>`** interface.
  *     It must be marked with the **`@Serializable`** annotation.
- *
- * Note: It is possible to have multiple databases, but they must have different filenames.
- *
+
  * @param databaseRootName The name of the JSON root to use for the database.
  * @param entityKSerializer The Kotlin class serializer to use for the Entities in the database.
  *
@@ -62,11 +61,11 @@ abstract class JsonRedisDatabase<TDomain : IUUID2, TEntity : Model> (  // <User,
     private val redisCoroutineCommand = redisConnection.coroutines()
     private val redisReactiveCommand = redisConnection.reactive()
 
-    private val redisSearchCommands: RedisSearchCommands =
+    private val redisSearchCommand: RedisSearchCommands =
         RedisCommandFactory(redisConnection).getCommands(RedisSearchCommands::class.java)
 
     init {
-        redisSearchCommands.ftConfigSet("MINPREFIX", "1") // set the minimum searchable text length to 1 character (default is 2)
+        redisSearchCommand.ftConfigSet("MINPREFIX", "1") // set the minimum searchable text length to one character (default is 2)
     }
 
     // Create the search index if it doesn't exist
@@ -88,16 +87,33 @@ abstract class JsonRedisDatabase<TDomain : IUUID2, TEntity : Model> (  // <User,
 
             if (!isSearchIndexCreated) {
                 try {
-                    // Setup the search indexes
+                    // Set up the search indexes
                     @Suppress("ConvertToStringTemplate")
                     val fields = fieldsToSearchIndex.map { field ->
-                        Field
-                            .text("$." + field)
-                            .`as`(field)
-                            .sortable()
-                            .withSuffixTrie()  // for improved search (allows partial word search)
-                            .build()
+                        if(field=="id")
+                            Field
+                                .tag("$." + field) // Redis TAG type is not tokenized like TEXT fields
+                                .`as`(field)
+                                .withSuffixTrie()  // for improved search (allows partial word search)
+                                .build()
+                        else
+                            Field
+                                .text("$." + field)
+                                .`as`(field)
+                                .sortable()
+                                .withSuffixTrie()  // for improved search (allows partial word search)
+                                .build()
                     }.toTypedArray()
+
+                    //        // make all fields text searchable
+                    //        redisSearchCommand.ftAdd(
+                    //            databaseRootName.searchIndexName(),
+                    //            "$databaseRootName:${entity.id()}",
+                    //            1.0,
+                    //            *entityKSerializer.descriptor.elementNames.map { field ->
+                    //                "$." + field to entityKSerializer.descriptor.getElementIndex(field).toString()
+                    //            }.toTypedArray()
+                    //        )
 
                     val result = redisSyncCommand.ftCreate(
                         databaseRootName.searchIndexName(),
@@ -156,16 +172,38 @@ abstract class JsonRedisDatabase<TDomain : IUUID2, TEntity : Model> (  // <User,
         return jsonConfig.decodeFromString(ListSerializer(entityKSerializer), result)[0]
     }
 
-    suspend fun findAllEntitiesByField(field: String, searchValue: String): List<TEntity> {
+    private fun String.escapeRedisSearchSpecialCharacters(): String {
+        val escapeChars =
+            """
+            ,.<>{}[]"':;!@#$%^&*()-+=~"
+            """.trimIndent()
+        var result = this
+
+        escapeChars.forEach {
+            result = result.replace(it.toString(), "\\$it")
+        }
+
+        return result
+    }
+
+    suspend fun findAllEntitiesByField(field: String, rawSearchValue: String): List<TEntity> {
+        val searchQuery =
+            if(field=="id") { // search based on TAG, not TEXT.  TAGs are not tokenized like TEXT fields.
+                """
+                @$field:{*${rawSearchValue.escapeRedisSearchSpecialCharacters()}*}
+                """.trimIndent()
+            } else
+                """
+                @$field:*$rawSearchValue*
+                """.trimIndent()
+
         val result = redisSyncCommand.ftSearch(
             databaseRootName.searchIndexName(),
-                """
-                    ${'$'}.$field=*$searchValue*
-                """.trimIndent(),
+                searchQuery,
                 SearchOptions.builder<String, String>()
-                .limit(0, 100)
-                .withSortKeys(true)
-                .build()
+                    .limit(0, 100)
+                    .withSortKeys(true)
+                    .build()
         )
 
         return result.map { document ->
@@ -239,7 +277,7 @@ abstract class JsonRedisDatabase<TDomain : IUUID2, TEntity : Model> (  // <User,
         } while (deleteKeys?.isFinished == false)
 
         // Delete the index
-        redisSearchCommands.ftDropindex(databaseRootName.searchIndexName())
+        redisSearchCommand.ftDropindex(databaseRootName.searchIndexName())
     }
 
     companion object {

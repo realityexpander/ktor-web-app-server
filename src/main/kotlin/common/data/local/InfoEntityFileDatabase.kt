@@ -1,6 +1,5 @@
-package com.realityexpander.common.data.network
+package com.realityexpander.common.data.local
 
-import com.realityexpander.common.data.local.JsonFileDatabase
 import common.data.local.IDatabase
 import common.data.network.FakeHttpClient
 import common.data.network.FakeURL
@@ -13,7 +12,7 @@ import kotlinx.serialization.KSerializer
 import okhttp3.internal.toImmutableList
 
 /**
- * **FileDatabase**
+ * **InfoEntityFileDatabase**
  *
  * An implementation of a JsonFileDatabase that uses the IDatabase interface to persistently store InfoEntity.
  *
@@ -22,18 +21,18 @@ import okhttp3.internal.toImmutableList
  *
  * @param TDomain The type of UUID2<> to use for the database. ie: User -> UUID2<User>
  * @param TEntityInfo The type of InfoEntity to use for the entities in the database.
- * @param apiDatabaseFilename The filename of the database.
+ * @param databaseFilename The filename of the database.
  * @param entityKSerializer The kotlinx json serializer to use for the database entities.
  * @param fakeUrl The fake URL to use for the API
  * @param fakeClient The fake HTTP client to use for the API
  */
 
-class FileDatabase<TDomain : IUUID2, TEntityInfo : InfoEntity>(
-    apiDatabaseFilename: String = DEFAULT_FILE_DATABASE_FILENAME,
+class InfoEntityFileDatabase<TDomain : IUUID2, TEntityInfo : InfoEntity>(
+    databaseFilename: String = DEFAULT_FILE_DATABASE_FILENAME,
     entityKSerializer: KSerializer<TEntityInfo>,
     private val fakeUrl: FakeURL = FakeURL("fakeHttp://fakeDatabaseHost:44444"),
     private val fakeClient: FakeHttpClient = FakeHttpClient()
-) : JsonFileDatabase<TDomain, TEntityInfo>(apiDatabaseFilename, entityKSerializer),  // -> <UUID2<User>, UserAuthEntity>
+) : JsonFileDatabase<TDomain, TEntityInfo>(databaseFilename, entityKSerializer),  // -> <UUID2<User>, UserAuthEntity>
     IDatabase<TDomain, TEntityInfo>
 {
     init {

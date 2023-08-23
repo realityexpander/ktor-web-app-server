@@ -2,6 +2,7 @@ package common.data.local
 
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
+import domain.common.data.Model
 import domain.common.data.info.local.InfoEntity
 
 /**
@@ -13,7 +14,8 @@ import domain.common.data.info.local.InfoEntity
  * @since 0.12 Kotlin conversion
  */
 
-interface IDatabase<TUUID2 : IUUID2, TEntity : InfoEntity> {
+//interface IDatabase<TUUID2 : IUUID2, TEntity : InfoEntity> {
+interface IDatabase<TUUID2 : IUUID2, TEntity : Model> {
     suspend fun fetchEntityInfo(id: UUID2<TUUID2>): Result<TEntity>
     suspend fun findAllUUID2ToEntityInfoMap(): Result<Map<UUID2<TUUID2>, TEntity>>
     suspend fun updateEntityInfo(entityInfo: TEntity): Result<TEntity>

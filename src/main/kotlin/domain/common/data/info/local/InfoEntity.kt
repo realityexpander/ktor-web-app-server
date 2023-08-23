@@ -11,6 +11,8 @@ import kotlinx.serialization.Transient
  *
  * "Dumb" Data Transfer Object for Database BookInfoEntity
  *
+ * Adds `id` field & methods to Model
+ *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.12 Kotlin conversion
  */

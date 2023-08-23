@@ -41,7 +41,7 @@ class TestingUtils(val context: Context) {
     }
 
     suspend fun populateDBWithFakeBookInfo() {
-        for (i in 0..9) {
+        for (i in 0..10) {
             val id = 1000 + i * 100
             val result: Result<BookInfo> = context.bookInfoRepo
                 .upsertTestEntityBookInfoToDB(
@@ -63,7 +63,7 @@ class TestingUtils(val context: Context) {
     }
 
     suspend fun populateApiWithFakeBookInfo() {
-        for (i in 0..9) {
+        for (i in 0..10) {
             val id = 1000 + i * 100
             val result: Result<BookInfo> = context.bookInfoRepo.upsertTestDTOBookInfoToApi(
                 BookInfoDTO(

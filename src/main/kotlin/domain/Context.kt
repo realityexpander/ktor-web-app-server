@@ -12,6 +12,7 @@ import domain.account.data.IAccountInfoRepo
 import domain.book.data.BookInfoInMemoryRepo
 import domain.book.data.BookInfoRepo
 import domain.book.data.IBookInfoRepo
+import domain.book.data.network.BookInfoFileApi
 import domain.library.data.ILibraryInfoRepo
 import domain.library.data.LibraryInfoInMemoryRepo
 import domain.library.data.LibraryInfoRepo
@@ -76,13 +77,18 @@ class Context(
         // Generate singletons for the TESTING Application
         // - uses file-based repositories
         fun createDefaultTestFileContext(log: ILog): Context {
+            val bookInfoApiFileName = "test-bookInfoApi.json"
+            val bookInfoDBFileName = "test-bookInfoDB.json"
+
             return Context(
                 BookInfoRepo(log,
-                    bookInfoApiName = "test-bookInfoApi.json",
-                    bookInfoDatabaseName ="test-bookInfoDB.json",
-                    // todo - should use in-memory database/api for testing?
-//                    bookInfoDatabase = BookInfoRedisDatabase("test-bookInfoDB"),
-                    bookInfoDatabase = BookInfoFileDatabase("test-bookInfoDB.json"),
+                    bookInfoApiName = bookInfoApiFileName,
+                    bookInfoApi = BookInfoFileApi(bookInfoApiFileName),
+
+                    // bookInfoDatabase = BookInfoInMemoryDatabase(),
+                    bookInfoDatabaseName = bookInfoDBFileName,
+                    bookInfoDatabase = BookInfoFileDatabase(bookInfoDBFileName),
+                    // bookInfoDatabase = BookInfoRedisDatabase("test-bookInfoDB"),
                 ),
                 UserInfoRepo(log,
                     userRepoDatabaseFilename ="test-userInfoRepoDatabase.json"),

@@ -12,7 +12,7 @@ import org.junit.jupiter.api.BeforeEach
 import testFakes.common.data.local.FakeFileDatabase
 import java.util.*
 
-class FileDatabaseTest {
+class InfoEntityFileDatabaseTest {
 
     private val tempName = UUID.randomUUID().toString()
     private val fakeFileDatabase: FakeFileDatabase<Book, BookInfoDTO> =

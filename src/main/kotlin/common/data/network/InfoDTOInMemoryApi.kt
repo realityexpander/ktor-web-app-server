@@ -6,7 +6,7 @@ import domain.common.data.info.network.InfoDTO
 import okhttp3.internal.toImmutableMap
 
 /**
- * InMemoryAPI is an implementation of the IAPI interface for the InfoDTO.
+ * InfoDTOInMemoryApi is an implementation of the IAPI interface for the InfoDTO.
  *
  * Simulates a REST API that is backed by a in-memory database.
  * No data is persisted, so the database is reset on each run.
@@ -20,7 +20,7 @@ import okhttp3.internal.toImmutableMap
  * @since 0.12 Kotlin conversion
 */
 
-class InMemoryAPI<TUUID2 : IUUID2, TDTOInfo : InfoDTO> (
+class InfoDTOInMemoryApi<TUUID2 : IUUID2, TDTOInfo : InfoDTO> (
     private val fakeUrl: FakeURL = FakeURL("fakeHttp://fakeHost:22222"),
     private val client: FakeHttpClient = FakeHttpClient()
 ) : IAPI<TUUID2, TDTOInfo> {
@@ -28,17 +28,16 @@ class InMemoryAPI<TUUID2 : IUUID2, TDTOInfo : InfoDTO> (
     // Simulate a database accessed via a network API
     private val remoteDatabase: MutableMap<UUID2<TUUID2>, TDTOInfo> = mutableMapOf()
 
-    override suspend fun fetchDtoInfo(id: UUID2<TUUID2>): Result<TDTOInfo> {
+    override suspend fun fetchDTOInfo(id: UUID2<TUUID2>): Result<TDTOInfo> {
         // Simulate the network request
         return if (!remoteDatabase.containsKey(id)) {
             Result.failure(Exception("API: InfoDTO not found, id=$id"))
         } else Result.success(remoteDatabase[id]
-            ?:
-            return Result.failure(Exception("API: InfoDTO null, id=$id"))
+            ?: return Result.failure(Exception("API: InfoDTO null, id=$id"))
         )
     }
 
-    override suspend fun updateDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
+    override suspend fun updateDTOInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
         try {
             // Simulate Network
             @Suppress("UNCHECKED_CAST")
@@ -49,7 +48,7 @@ class InMemoryAPI<TUUID2 : IUUID2, TDTOInfo : InfoDTO> (
         return Result.success(dtoInfo)
     }
 
-    override suspend fun addDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
+    override suspend fun addDTOInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
         // Simulate Network
         @Suppress("UNCHECKED_CAST")
         if (remoteDatabase.containsKey(dtoInfo.id() as UUID2<TUUID2>)) {
@@ -61,17 +60,17 @@ class InMemoryAPI<TUUID2 : IUUID2, TDTOInfo : InfoDTO> (
         return Result.success(dtoInfo)
     }
 
-    override suspend fun upsertDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
+    override suspend fun upsertDTOInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
         // Simulate Network
         @Suppress("UNCHECKED_CAST")
         return if (remoteDatabase.containsKey(dtoInfo.id() as UUID2<TUUID2>)) {
-            updateDtoInfo(dtoInfo)
+            updateDTOInfo(dtoInfo)
         } else {
-            addDtoInfo(dtoInfo)
+            addDTOInfo(dtoInfo)
         }
     }
 
-    override suspend fun deleteDtoInfo(dtoInfo: TDTOInfo): Result<Unit> {
+    override suspend fun deleteDTOInfo(dtoInfo: TDTOInfo): Result<Unit> {
         // Simulate Network
         @Suppress("UNCHECKED_CAST")
         return if (remoteDatabase.remove(dtoInfo.id() as UUID2<TUUID2>) == null) {
@@ -80,7 +79,7 @@ class InMemoryAPI<TUUID2 : IUUID2, TDTOInfo : InfoDTO> (
             Result.success(Unit)
     }
 
-    override suspend fun findAllUUID2ToDtoInfoMap(): Result<Map<UUID2<TUUID2>, TDTOInfo>> {
+    override suspend fun findAllUUID2ToDTOInfoMap(): Result<Map<UUID2<TUUID2>, TDTOInfo>> {
         val map: MutableMap<UUID2<TUUID2>, TDTOInfo> = mutableMapOf()
         
         // Simulate Network
@@ -91,9 +90,27 @@ class InMemoryAPI<TUUID2 : IUUID2, TDTOInfo : InfoDTO> (
         return Result.success(map.toImmutableMap())
     }
 
-    override suspend fun deleteAllDtoInfo(): Result<Unit> {
+    override suspend fun deleteAllDTOInfo(): Result<Unit> {
         // Simulate Network
         remoteDatabase.clear()
         return Result.success(Unit)
+    }
+
+    override suspend fun findDTOInfosByField(field: String, searchValue: String): Result<List<TDTOInfo>> {
+        val entityInfoList: MutableList<TDTOInfo> = mutableListOf()
+
+        for ((_, value) in remoteDatabase.entries) {
+            val member = value::class.members.find { entityField ->
+                entityField.name == field
+            }
+            if (member != null) {
+                val result = member.call(value).toString() // call extracts the field value
+                if (result.contains(searchValue, ignoreCase = true)) {
+                    entityInfoList.add(value)
+                }
+            }
+        }
+
+        return Result.success(entityInfoList)
     }
 }

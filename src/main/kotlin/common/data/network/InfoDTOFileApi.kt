@@ -10,7 +10,7 @@ import kotlinx.serialization.KSerializer
 import okhttp3.internal.toImmutableList
 
 /**
- * FileApi
+ * InfoDTOFileApi
  *
  * A JsonFileDatabase that implements the IAPI interface for InfoDTO.
  *
@@ -19,18 +19,18 @@ import okhttp3.internal.toImmutableList
  *
  * @param TDomain The type of UUID2 to use for the database. ie: User -> UUID2<User>
  * @param TDTOInfo The type of InfoDTO for the entities in the database.
- * @param apiDatabaseFilename The filename of the database.
+ * @param databaseFilename The filename of the database.
  * @param serializer The kotlinx json serializer to use for the database entities.
  * @param fakeUrl The fake URL to use for the API
  * @param client The fake HTTP client to use for the API
  */
 
-class FileApi<TDomain : IUUID2, TDTOInfo : InfoDTO>(
-    apiDatabaseFilename: String = DEFAULT_FILE_API_DATABASE_FILENAME,
+class InfoDTOFileApi<TDomain : IUUID2, TDTOInfo : InfoDTO>(
+    databaseFilename: String = DEFAULT_FILE_API_DATABASE_FILENAME,
     serializer: KSerializer<TDTOInfo>,
     private val fakeUrl: FakeURL = FakeURL("fakeHttp://fakeApiHost:22222"),
     private val client: FakeHttpClient = FakeHttpClient()
-) : JsonFileDatabase<TDomain, TDTOInfo>(apiDatabaseFilename, serializer),  // -> <UUID2<User>, UserAuthEntity>
+) : JsonFileDatabase<TDomain, TDTOInfo>(databaseFilename, serializer),  // -> <UUID2<User>, UserAuthEntity>
     IAPI<TDomain, TDTOInfo>
 {
     init {
@@ -39,7 +39,7 @@ class FileApi<TDomain : IUUID2, TDTOInfo : InfoDTO>(
         }
     }
 
-    override suspend fun fetchDtoInfo(id: UUID2<TDomain>): Result<TDTOInfo> {
+    override suspend fun fetchDTOInfo(id: UUID2<TDomain>): Result<TDTOInfo> {
         return try {
             val dtoInfo = super.findEntityById(id)
                 ?: return Result.failure(Exception("Entity not found, id: $id"))
@@ -50,7 +50,7 @@ class FileApi<TDomain : IUUID2, TDTOInfo : InfoDTO>(
         }
     }
 
-    override suspend fun findAllUUID2ToDtoInfoMap(): Result<Map<UUID2<TDomain>, TDTOInfo>> {
+    override suspend fun findAllUUID2ToDTOInfoMap(): Result<Map<UUID2<TDomain>, TDTOInfo>> {
         return try {
             val dtoInfoMap =
                 super.findAllEntities()
@@ -66,7 +66,17 @@ class FileApi<TDomain : IUUID2, TDTOInfo : InfoDTO>(
         }
     }
 
-    override suspend fun deleteAllDtoInfo(): Result<Unit> {
+    override suspend fun findDTOInfosByField(field: String, searchValue: String): Result<List<TDTOInfo>> {
+        return try {
+            val entityInfoList = super.findEntitiesByField(field, searchValue)
+
+            Result.success(entityInfoList)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteAllDTOInfo(): Result<Unit> {
         return try {
             if(super.findAllEntities().isEmpty())
                 return Result.success(Unit)
@@ -79,7 +89,7 @@ class FileApi<TDomain : IUUID2, TDTOInfo : InfoDTO>(
         }
     }
 
-    override suspend fun deleteDtoInfo(dtoInfo: TDTOInfo): Result<Unit> {
+    override suspend fun deleteDTOInfo(dtoInfo: TDTOInfo): Result<Unit> {
         return try {
             @Suppress("UNCHECKED_CAST")
             if(super.findEntityById(dtoInfo.id() as UUID2<TDomain>) == null)
@@ -93,7 +103,7 @@ class FileApi<TDomain : IUUID2, TDTOInfo : InfoDTO>(
         }
     }
 
-    override suspend fun upsertDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
+    override suspend fun upsertDTOInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
         @Suppress("UNCHECKED_CAST")
         dtoInfo as HasId<UUID2<TDomain>>
 
@@ -105,7 +115,7 @@ class FileApi<TDomain : IUUID2, TDTOInfo : InfoDTO>(
         return Result.success(dtoInfo)
     }
 
-    override suspend fun updateDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
+    override suspend fun updateDTOInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
         return try {
             super.updateEntity(dtoInfo)
 
@@ -115,7 +125,7 @@ class FileApi<TDomain : IUUID2, TDTOInfo : InfoDTO>(
         }
     }
 
-    override suspend fun addDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
+    override suspend fun addDTOInfo(dtoInfo: TDTOInfo): Result<TDTOInfo> {
         super.addEntity(dtoInfo)
 
         return Result.success(dtoInfo)

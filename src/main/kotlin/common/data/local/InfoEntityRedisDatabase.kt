@@ -1,6 +1,5 @@
-package com.realityexpander.common.data.network
+package com.realityexpander.common.data.local
 
-import com.realityexpander.common.data.local.JsonRedisDatabase
 import com.redis.lettucemod.RedisModulesClient
 import common.data.local.IDatabase
 import common.uuid2.IUUID2
@@ -11,7 +10,7 @@ import kotlinx.serialization.KSerializer
 import okhttp3.internal.toImmutableList
 
 /**
- * **RedisDatabase**
+ * **InfoEntityRedisDatabase**
  *
  * An implementation of a Redis database client that uses the IDatabase interface to persistently store InfoEntity.
  *
@@ -20,28 +19,27 @@ import okhttp3.internal.toImmutableList
  * Implements a Database API that is backed by a Redis client.
  * Data is persisted, so the database is not reset on each run.
  *
- * @param TDomain The type of UUID2<> to use for the database. ie: User -> UUID2<User>
+ * @param TDomain The type of UUID2<> to use for the database. ie: User -> UUID2&lt;User&gt;
  * @param TEntityInfo The type of InfoEntity to use for the entities in the database.
- * @param apiDatabaseFilename The filename of the database.
+ * @param databaseName The root json field name for the database.
  * @param entityKSerializer The kotlinx json serializer to use for the database entities.
  * @param redisUrl The URL to use for the Redis client.
  * @param redisClient The Redis client to use for the database.
  */
 
-class RedisDatabase<TDomain : IUUID2, TEntityInfo : InfoEntity>(
-    apiDatabaseFilename: String = DEFAULT_DATABASE_NAME,
+class InfoEntityRedisDatabase<TDomain : IUUID2, TEntityInfo : InfoEntity>(
+    databaseName: String = DEFAULT_DATABASE_NAME,
     entityKSerializer: KSerializer<TEntityInfo>,
     private val redisUrl: String = "redis://localhost:6379",
     private val redisClient: RedisModulesClient = RedisModulesClient.create(redisUrl),
 ) : JsonRedisDatabase<TDomain, TEntityInfo>(  // -> <UUID2<User>, UserAuthEntity>
-        apiDatabaseFilename,
+        databaseName,
         entityKSerializer,
         redisUrl,
         redisClient
     ),
     IDatabase<TDomain, TEntityInfo>
 {
-
     override suspend fun fetchEntityInfo(id: UUID2<TDomain>): Result<TEntityInfo> {
         return try {
             val entityInfo = super.findEntityById(id)

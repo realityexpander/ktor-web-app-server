@@ -11,11 +11,11 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 import java.util.*
 
-class FileApiTest {
+class InfoDTOFileApiTest {
 
     private val tempName = UUID.randomUUID().toString()
-    private val testApi = FileApi<Book, BookInfoDTO>(
-        apiDatabaseFilename = "test-$tempName-apiDB.json",
+    private val testApi = InfoDTOFileApi<Book, BookInfoDTO>(
+        databaseFilename = "test-$tempName-apiDB.json",
         serializer = BookInfoDTO.serializer()
     )
 
@@ -45,10 +45,10 @@ class FileApiTest {
         runBlocking {
 
             // • ARRANGE
-            testApi.addDtoInfo(bookInfoDTO)
+            testApi.addDTOInfo(bookInfoDTO)
 
             // • ACT
-            val result = testApi.findAllUUID2ToDtoInfoMap()
+            val result = testApi.findAllUUID2ToDTOInfoMap()
 
             // • ASSERT
             assertTrue(result.isSuccess, "Find all entities test failed, result is not success.")
@@ -63,10 +63,10 @@ class FileApiTest {
         runBlocking {
 
             // • ARRANGE
-            testApi.addDtoInfo(bookInfoDTO)
+            testApi.addDTOInfo(bookInfoDTO)
 
             // • ACT
-            val result = testApi.fetchDtoInfo(bookInfoDTO.id)
+            val result = testApi.fetchDTOInfo(bookInfoDTO.id)
 
 
             // • ASSERT
@@ -81,7 +81,7 @@ class FileApiTest {
         runBlocking {
 
             // • ARRANGE
-            testApi.addDtoInfo(bookInfoDTO)
+            testApi.addDTOInfo(bookInfoDTO)
 
             // • ACT
             val result = testApi.toDatabaseCopy().size
@@ -103,10 +103,10 @@ class FileApiTest {
         )
 
         runBlocking {
-            testApi.addDtoInfo(bookInfoDTO)
+            testApi.addDTOInfo(bookInfoDTO)
 
             // • ACT
-            val result = testApi.updateDtoInfo(updatedBookInfoDTO)
+            val result = testApi.updateDTOInfo(updatedBookInfoDTO)
 
             // • ASSERT
             assertTrue(result.isSuccess, "Update entity test failed, result is not success.")
@@ -122,10 +122,10 @@ class FileApiTest {
         runBlocking {
 
             // • ARRANGE
-            testApi.addDtoInfo(bookInfoDTO)
+            testApi.addDTOInfo(bookInfoDTO)
 
             // • ACT
-            testApi.deleteDtoInfo(bookInfoDTO)
+            testApi.deleteDTOInfo(bookInfoDTO)
 
             // • ASSERT
             val result = testApi.toDatabaseCopy().size

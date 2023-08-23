@@ -6,7 +6,7 @@ import common.data.network.FakeURL
 import domain.common.data.info.local.InfoEntity
 
 /**
- * InMemoryDatabase is an implementation of the IDatabase interface for the InfoEntity class.
+ * InfoEntityInMemoryDatabase is an implementation of the IDatabase interface for the InfoEntity class.
  *
  * This class is a stub for a real database implementation.
  *
@@ -17,21 +17,21 @@ import domain.common.data.info.local.InfoEntity
  */
 
 @Suppress("UNUSED_PARAMETER")
-class InMemoryDatabase<TUUID2 : IUUID2, TEntity : InfoEntity> (
+class InfoEntityInMemoryDatabase<TUUID2 : IUUID2, TEntityInfo : InfoEntity> (
     fakeUrl: FakeURL = FakeURL("memory://hash.map"),
     user: String = "admin",
     password: String = "password",
-    private val database: MutableMap<UUID2<TUUID2>, TEntity> = mutableMapOf()
-) : IDatabase<TUUID2, TEntity> {
+    private val database: MutableMap<UUID2<TUUID2>, TEntityInfo> = mutableMapOf()
+) : IDatabase<TUUID2, TEntityInfo> {
 
-    override suspend fun fetchEntityInfo(id: UUID2<TUUID2>): Result<TEntity> {
+    override suspend fun fetchEntityInfo(id: UUID2<TUUID2>): Result<TEntityInfo> {
         // Simulate the request
-        val infoResult: TEntity = database[id]
+        val infoResult: TEntityInfo = database[id]
             ?: return Result.failure(Exception("DB: Failed to get entityInfo, id: $id"))
         return Result.success(infoResult)
     }
 
-    override suspend fun updateEntityInfo(entityInfo: TEntity): Result<TEntity> {
+    override suspend fun updateEntityInfo(entityInfo: TEntityInfo): Result<TEntityInfo> {
         // Simulate the request
         try {
             @Suppress("UNCHECKED_CAST")
@@ -42,7 +42,7 @@ class InMemoryDatabase<TUUID2 : IUUID2, TEntity : InfoEntity> (
         return Result.success(entityInfo)
     }
 
-    override suspend fun addEntityInfo(entityInfo: TEntity): Result<TEntity> {
+    override suspend fun addEntityInfo(entityInfo: TEntityInfo): Result<TEntityInfo> {
         // Simulate the request
         @Suppress("UNCHECKED_CAST")
         if (database.containsKey(entityInfo.id() as UUID2<TUUID2>)) {
@@ -53,7 +53,7 @@ class InMemoryDatabase<TUUID2 : IUUID2, TEntity : InfoEntity> (
         return Result.success(entityInfo)
     }
 
-    override suspend fun upsertEntityInfo(entityInfo: TEntity): Result<TEntity> {
+    override suspend fun upsertEntityInfo(entityInfo: TEntityInfo): Result<TEntityInfo> {
         @Suppress("UNCHECKED_CAST")
         return if (database.containsKey(entityInfo.id() as UUID2<TUUID2>)) {
             updateEntityInfo(entityInfo)
@@ -62,7 +62,7 @@ class InMemoryDatabase<TUUID2 : IUUID2, TEntity : InfoEntity> (
         }
     }
 
-    override suspend fun deleteEntityInfo(entityInfo: TEntity): Result<Unit> {
+    override suspend fun deleteEntityInfo(entityInfo: TEntityInfo): Result<Unit> {
         @Suppress("UNCHECKED_CAST")
         return if (database.remove(entityInfo.id() as UUID2<TUUID2>) == null) {
             Result.failure(Exception("DB: Failed to delete entityInfo, entityInfo: $entityInfo"))
@@ -70,8 +70,8 @@ class InMemoryDatabase<TUUID2 : IUUID2, TEntity : InfoEntity> (
             Result.success(Unit)
     }
 
-    override suspend fun findAllUUID2ToEntityInfoMap(): Result<Map<UUID2<TUUID2>, TEntity>> {
-        val map: MutableMap<UUID2<TUUID2>, TEntity> = mutableMapOf()
+    override suspend fun findAllUUID2ToEntityInfoMap(): Result<Map<UUID2<TUUID2>, TEntityInfo>> {
+        val map: MutableMap<UUID2<TUUID2>, TEntityInfo> = mutableMapOf()
         for ((key, value) in database.entries) {
             map[UUID2(key)] = value
         }
@@ -83,15 +83,15 @@ class InMemoryDatabase<TUUID2 : IUUID2, TEntity : InfoEntity> (
         return Result.success(Unit)
     }
 
-    override suspend fun findEntityInfosByField(field: String, searchValue: String): Result<List<TEntity>> {
-        val entityInfoList: MutableList<TEntity> = mutableListOf()
+    override suspend fun findEntityInfosByField(field: String, searchValue: String): Result<List<TEntityInfo>> {
+        val entityInfoList: MutableList<TEntityInfo> = mutableListOf()
 
         for ((_, value) in database.entries) {
             val member = value::class.members.find { entityField ->
                 entityField.name == field
             }
             if (member != null) {
-                val result = member.call(value).toString()
+                val result = member.call(value).toString() // call extracts the field value
                 if (result.contains(searchValue, ignoreCase = true)) {
                     entityInfoList.add(value)
                 }

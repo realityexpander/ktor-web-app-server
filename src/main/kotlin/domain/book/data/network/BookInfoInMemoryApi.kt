@@ -2,7 +2,7 @@ package domain.book.data.network
 
 import common.data.network.FakeHttpClient
 import common.data.network.FakeURL
-import common.data.network.InMemoryAPI
+import common.data.network.InfoDTOInMemoryApi
 import common.uuid2.UUID2
 import domain.book.Book
 
@@ -18,37 +18,37 @@ import domain.book.Book
  */
 
 class BookInfoInMemoryApi(
-    private val api: InMemoryAPI<Book, BookInfoDTO> = InMemoryAPI(
+    private val api: InfoDTOInMemoryApi<Book, BookInfoDTO> = InfoDTOInMemoryApi(
         FakeURL("memory://api.book.com"),
         FakeHttpClient()
     )
 ) : IBookInfoApi {
 
     override suspend fun fetchBookInfo(id: UUID2<Book>): Result<BookInfoDTO> {
-        return api.fetchDtoInfo(id)
+        return api.fetchDTOInfo(id)
     }
 
     override suspend fun allBookInfos(): Result<Map<UUID2<Book>, BookInfoDTO>> {
-        return api.findAllUUID2ToDtoInfoMap()
+        return api.findAllUUID2ToDTOInfoMap()
     }
 
     override suspend fun addBookInfo(bookInfo: BookInfoDTO): Result<BookInfoDTO> {
-        return api.addDtoInfo(bookInfo)
+        return api.addDTOInfo(bookInfo)
     }
 
     override suspend fun updateBookInfo(bookInfo: BookInfoDTO): Result<BookInfoDTO> {
-        return api.updateDtoInfo(bookInfo)
+        return api.updateDTOInfo(bookInfo)
     }
 
     override suspend fun upsertBookInfo(bookInfo: BookInfoDTO): Result<BookInfoDTO> {
-        return api.upsertDtoInfo(bookInfo)
+        return api.upsertDTOInfo(bookInfo)
     }
 
     override suspend fun deleteBookInfo(bookInfo: BookInfoDTO): Result<Unit> {
-        return api.deleteDtoInfo(bookInfo)
+        return api.deleteDTOInfo(bookInfo)
     }
 
     override suspend fun deleteDatabase(): Result<Unit> {
-        return api.deleteAllDtoInfo()
+        return api.deleteAllDTOInfo()
     }
 }

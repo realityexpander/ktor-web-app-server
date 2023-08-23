@@ -13,12 +13,13 @@ import common.uuid2.UUID2
  */
 
 interface IAPI<TUUID2 : IUUID2, TDTOInfo> {
-    suspend fun fetchDtoInfo(id: UUID2<TUUID2>): Result<TDTOInfo>
-    suspend fun findAllUUID2ToDtoInfoMap(): Result<Map<UUID2<TUUID2>, TDTOInfo>>
-    suspend fun addDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo>
-    suspend fun updateDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo>
-    suspend fun upsertDtoInfo(dtoInfo: TDTOInfo): Result<TDTOInfo>
-    suspend fun deleteDtoInfo(dtoInfo: TDTOInfo): Result<Unit>
-    suspend fun deleteAllDtoInfo(): Result<Unit>
+    suspend fun fetchDTOInfo(id: UUID2<TUUID2>): Result<TDTOInfo>
+    suspend fun findAllUUID2ToDTOInfoMap(): Result<Map<UUID2<TUUID2>, TDTOInfo>>
+    suspend fun addDTOInfo(dtoInfo: TDTOInfo): Result<TDTOInfo>
+    suspend fun updateDTOInfo(dtoInfo: TDTOInfo): Result<TDTOInfo>
+    suspend fun upsertDTOInfo(dtoInfo: TDTOInfo): Result<TDTOInfo>
+    suspend fun deleteDTOInfo(dtoInfo: TDTOInfo): Result<Unit>
+    suspend fun deleteAllDTOInfo(): Result<Unit>
+    suspend fun findDTOInfosByField(field: String, searchValue: String): Result<List<TDTOInfo>>
 }
 

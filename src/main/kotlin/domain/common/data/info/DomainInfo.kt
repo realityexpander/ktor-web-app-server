@@ -8,9 +8,10 @@ import kotlinx.serialization.Transient
 import java.util.*
 
 /**
- * DomainInfo is a base class for all DomainInfo classes.
+ * DomainInfo is a base class for all `{domain}Info` classes.
  *
- * Domain object encapsulate this DomainInfo class to provide mutable information about the domain object.
+ * DomainInfo class provides mutable information about the domain object.
+ * ie: User -> UserInfo
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.12 Kotlin conversion`

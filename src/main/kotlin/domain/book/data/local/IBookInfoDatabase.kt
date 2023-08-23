@@ -16,10 +16,6 @@ interface IBookInfoDatabase {
 
     suspend fun findBookInfosByField(field: String, searchTerm: String): Result<List<BookInfoEntity>>
     suspend fun findBookInfosByTitle(searchTerm: String): Result<List<BookInfoEntity>>
-
-    companion object {
-        const val DEFAULT_BOOKINFO_FILE_DATABASE_FILENAME: String = "bookInfoFileDatabaseDB.json"
-    }
 }
 
 abstract class BookInfoDatabase(

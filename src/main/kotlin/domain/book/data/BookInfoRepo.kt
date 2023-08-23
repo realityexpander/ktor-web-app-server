@@ -3,11 +3,13 @@ package domain.book.data
 import com.realityexpander.domain.book.data.local.BookInfoFileDatabase
 import com.realityexpander.domain.book.data.local.BookInfoRedisDatabase
 import com.realityexpander.domain.book.data.local.IBookInfoDatabase
+import com.realityexpander.domain.book.data.network.BookInfoRedisApi
 import common.log.ILog
 import common.log.Log
 import common.uuid2.UUID2
 import domain.book.Book
 import domain.book.data.local.BookInfoEntity
+import domain.book.data.local.BookInfoInMemoryDatabase
 import domain.book.data.network.BookInfoDTO
 import domain.book.data.network.BookInfoFileApi
 import domain.book.data.network.IBookInfoApi
@@ -25,14 +27,10 @@ import domain.common.data.repo.Repo
 open class BookInfoRepo(
     override val log: ILog = Log(),
 
-    private val bookInfoApiName: String = BookInfoFileApi.DEFAULT_BOOKINFO_FILE_API_DATABASE_FILENAME,
-    override val bookInfoApi: IBookInfoApi = BookInfoFileApi(bookInfoApiName),
-
-//    override val bookInfoDatabase: IBookInfoDatabase = BookInfoInMemoryDatabase()
-    private val bookInfoDatabaseName: String = BookInfoFileDatabase.DEFAULT_BOOKINFO_FILE_DATABASE_FILENAME,
-    override val bookInfoDatabase: IBookInfoDatabase = BookInfoFileDatabase(bookInfoDatabaseName)
-//    private val bookInfoDatabaseName: String = BookInfoRedisDatabase.DEFAULT_BOOKINFO_DATABASE_NAME,
-//    override val bookInfoDatabase: IBookInfoDatabase = BookInfoRedisDatabase(bookInfoDatabaseName)
+    private val bookInfoApiName: String = BookInfoRedisApi.DEFAULT_BOOKINFO_API_DATABASE_NAME,
+    override val bookInfoApi: IBookInfoApi = BookInfoRedisApi(bookInfoApiName),
+    private val bookInfoDatabaseName: String = BookInfoRedisDatabase.DEFAULT_BOOKINFO_DATABASE_NAME,
+    override val bookInfoDatabase: IBookInfoDatabase = BookInfoRedisDatabase(bookInfoDatabaseName)
 ) : Repo(log), IBookInfoRepo {
 
     override suspend fun fetchBookInfo(id: UUID2<Book>): Result<BookInfo> {
@@ -146,7 +144,7 @@ open class BookInfoRepo(
         bookInfo: BookInfo,
         updateKind: UpdateKind
     ): Result<BookInfo> {
-        log.d(this, "updateType: " + updateKind + ", id: " + bookInfo.id())
+        log.d(this, "updateKind: " + updateKind + ", id: " + bookInfo.id())
 
         // Make the API request
         val apiChangeResult: Result<BookInfoDTO> = when (updateKind) {

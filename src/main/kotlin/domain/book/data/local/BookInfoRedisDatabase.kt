@@ -1,6 +1,6 @@
 package com.realityexpander.domain.book.data.local
 
-import com.realityexpander.common.data.network.RedisDatabase
+import com.realityexpander.common.data.local.InfoEntityRedisDatabase
 import com.redis.lettucemod.RedisModulesClient
 import domain.book.Book
 import domain.book.data.local.BookInfoEntity
@@ -21,7 +21,7 @@ class BookInfoRedisDatabase(
     redisClient: RedisModulesClient = RedisModulesClient.create(redisUrl),
 ): BookInfoDatabase(
     // Use a redis database to persist the book info
-    database = RedisDatabase<Book, BookInfoEntity>(
+    database = InfoEntityRedisDatabase<Book, BookInfoEntity>(
         bookInfoDatabaseName,
         BookInfoEntity.serializer(),
         redisUrl,
@@ -29,75 +29,12 @@ class BookInfoRedisDatabase(
     )
 ) {
     init {
-        (database as RedisDatabase<Book, BookInfoEntity>).initDatabase(
-            fieldsToSearchIndex = arrayOf("title", "author", "description")
+        (database as InfoEntityRedisDatabase<Book, BookInfoEntity>).initDatabase(
+            fieldsToSearchIndex = arrayOf("id", "title", "author", "description")
         )
     }
 
     companion object {
-        const val DEFAULT_BOOKINFO_DATABASE_NAME: String = "bookInfoDB" // json root of the database
+        const val DEFAULT_BOOKINFO_DATABASE_NAME: String = "bookInfoDatabaseDB" // json root of the database
     }
 }
-
-//
-//class BookInfoRedisDatabase1(
-//    bookInfoDatabaseName: String = DEFAULT_BOOKINFO_DATABASE_NAME,
-//    private val redisUrl: String = "redis://localhost:6379",
-//    private val redisClient: RedisModulesClient = RedisModulesClient.create(redisUrl),
-//
-//    // Use a redis database to persist the book info
-//    private val database: IDatabase<Book, BookInfoEntity> =
-//        RedisDatabase(
-//            bookInfoDatabaseName,
-//            BookInfoEntity.serializer(),
-//            redisUrl,
-//            redisClient
-//        )
-//) : IBookInfoDatabase {
-//
-//    init {
-//        (database as RedisDatabase<Book, BookInfoEntity>).initDatabase(
-//            fieldsToSearchIndex = arrayOf("title", "author", "description")
-//        )
-//    }
-//
-//    override suspend fun fetchBookInfo(id: UUID2<Book>): Result<BookInfoEntity> {
-//        return database.fetchEntityInfo(id)
-//    }
-//
-//    override suspend fun allBookInfos(): Result<Map<UUID2<Book>, BookInfoEntity>> {
-//        return database.findAllUUID2ToEntityInfoMap()
-//    }
-//
-//    override suspend fun addBookInfo(bookInfo: BookInfoEntity): Result<BookInfoEntity> {
-//        return database.addEntityInfo(bookInfo)
-//    }
-//
-//    override suspend fun updateBookInfo(bookInfo: BookInfoEntity): Result<BookInfoEntity> {
-//        return database.updateEntityInfo(bookInfo)
-//    }
-//
-//    override suspend fun upsertBookInfo(bookInfo: BookInfoEntity): Result<BookInfoEntity> {
-//        return database.upsertEntityInfo(bookInfo)
-//    }
-//
-//    override suspend fun deleteBookInfo(bookInfo: BookInfoEntity): Result<Unit> {
-//        return database.deleteEntityInfo(bookInfo)
-//    }
-//
-//    override suspend fun deleteDatabase(): Result<Unit> {
-//        return database.deleteAllEntityInfos()
-//    }
-//
-//    override suspend fun findBookInfosByTitle(searchTerm: String): Result<List<BookInfoEntity>> {
-//        return database.findEntityInfosByField("title", searchTerm)
-//    }
-//
-//    override suspend fun findBookInfosByField(field: String, searchTerm: String): Result<List<BookInfoEntity>> {
-//        return database.findEntityInfosByField(field, searchTerm)
-//    }
-//
-//    companion object {
-//        const val DEFAULT_BOOKINFO_DATABASE_NAME: String = "bookInfoDB" // json root of the database
-//    }
-//}
