@@ -38,7 +38,7 @@ class InfoEntityFileDatabaseTest {
     fun tearDown() {
         runBlocking {
             // Delete the test database file
-            fakeFileDatabase.deleteDatabaseFile()
+            fakeFileDatabase.deleteDatabase()
         }
     }
 
@@ -175,7 +175,7 @@ class InfoEntityFileDatabaseTest {
 
             // • ARRANGE + ACT
             fakeFileDatabase.calledUpdateLookupTables = false  // reset test
-            fakeFileDatabase.deleteDatabaseFile()
+            fakeFileDatabase.deleteDatabase()
             // • ASSERT
             assertTrue(fakeFileDatabase.calledUpdateLookupTables,
                 "Update lookup tables test failed, never happened for deleteDatabaseFile")
@@ -190,7 +190,7 @@ class InfoEntityFileDatabaseTest {
             fakeFileDatabase.addEntity(bookInfoDTO)
 
             // • ACT
-            fakeFileDatabase.deleteDatabaseFile()
+            fakeFileDatabase.deleteDatabase()
 
             // • ASSERT
             val result = fakeFileDatabase.findAllEntities()

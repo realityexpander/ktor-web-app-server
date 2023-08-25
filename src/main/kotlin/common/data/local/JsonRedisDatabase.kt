@@ -4,10 +4,12 @@ import com.realityexpander.jsonConfig
 import com.realityexpander.ktorLogger
 import com.redis.lettucemod.RedisModulesClient
 import com.redis.lettucemod.api.StatefulRedisModulesConnection
+import com.redis.lettucemod.api.reactive.RedisModulesReactiveCommands
 import com.redis.lettucemod.api.sync.RedisModulesCommands
 import com.redis.lettucemod.search.CreateOptions
 import com.redis.lettucemod.search.Field
 import com.redis.lettucemod.search.SearchOptions
+import common.data.local.IJsonDatabase
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import common.uuid2.UUID2.Companion.fromUUID2StrToTypedUUID2
@@ -18,13 +20,13 @@ import io.lettuce.core.ExperimentalLettuceCoroutinesApi
 import io.lettuce.core.ScanArgs
 import io.lettuce.core.ScanCursor
 import io.lettuce.core.api.coroutines
+import io.lettuce.core.api.coroutines.RedisCoroutinesCommands
 import io.lettuce.core.dynamic.Commands
 import io.lettuce.core.dynamic.RedisCommandFactory
 import io.lettuce.core.dynamic.annotation.Command
 import io.lettuce.core.dynamic.annotation.CommandNaming
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
 
@@ -54,18 +56,19 @@ abstract class JsonRedisDatabase<TDomain : IUUID2, TEntity : Model> (  // <User,
     private val entityKSerializer: KSerializer<TEntity>,
     private val redisUrl: String = "redis://localhost:6379",
     private val redisClient: RedisModulesClient = RedisModulesClient.create(redisUrl),
-) {
+): IJsonDatabase<TDomain, TEntity> {
     private val redisConnection: StatefulRedisModulesConnection<String, String> = redisClient.connect()
-    private val redisSyncCommand: RedisModulesCommands<String, String> = redisConnection.sync()
-    @OptIn(ExperimentalLettuceCoroutinesApi::class)
-    private val redisCoroutineCommand = redisConnection.coroutines()
-    private val redisReactiveCommand = redisConnection.reactive()
+    private val redis = RedisCommands(redisConnection)
 
-    private val redisSearchCommand: RedisSearchCommands =
-        RedisCommandFactory(redisConnection).getCommands(RedisSearchCommands::class.java)
+//    private val redisSyncCommand: RedisModulesCommands<String, String> = redisConnection.sync()
+//    @OptIn(ExperimentalLettuceCoroutinesApi::class)
+//    private val redisCoroutineCommand = redisConnection.coroutines()
+//    private val redisReactiveCommand = redisConnection.reactive()
+//    private val redisSearchCommand: RedisSearchCommands =
+//        RedisCommandFactory(redisConnection).getCommands(RedisSearchCommands::class.java)
 
     init {
-        redisSearchCommand.ftConfigSet("MINPREFIX", "1") // set the minimum searchable text length to one character (default is 2)
+        redis.search.ftConfigSet("MINPREFIX", "1") // set the minimum searchable text length to one character (default is 2)
     }
 
     // Create the search index if it doesn't exist
@@ -78,7 +81,7 @@ abstract class JsonRedisDatabase<TDomain : IUUID2, TEntity : Model> (  // <User,
 
             val isSearchIndexCreated = try {
                 // check if index exists (throws exception if it doesn't exist)
-                redisSyncCommand.ftInfo(databaseRootName.searchIndexName())
+                redis.sync.ftInfo(databaseRootName.searchIndexName())
                 true
             } catch (e: Exception) {
                 ktorLogger.warn("Index does not exist, creating index..., message=${e.message}, index=${databaseRootName.searchIndexName()}")
@@ -115,7 +118,7 @@ abstract class JsonRedisDatabase<TDomain : IUUID2, TEntity : Model> (  // <User,
                     //            }.toTypedArray()
                     //        )
 
-                    val result = redisSyncCommand.ftCreate(
+                    val result = redis.sync.ftCreate(
                         databaseRootName.searchIndexName(),
                         CreateOptions.builder<String, String>()
                             .prefix("$databaseRootName:")
@@ -142,12 +145,12 @@ abstract class JsonRedisDatabase<TDomain : IUUID2, TEntity : Model> (  // <User,
             }
     }
 
-    suspend fun findAllEntities(): List<TEntity> {
+    override suspend fun findAllEntities(): List<TEntity> {
         var result = arrayOf<String>()
         do {
             var cursor = "0"
             val scanCursor = ScanCursor.of(cursor)
-            val foundKeys = redisSyncCommand.scan(
+            val foundKeys = redis.sync.scan(
                 scanCursor,
                 ScanArgs()
                     .match("$databaseRootName:*")
@@ -160,33 +163,21 @@ abstract class JsonRedisDatabase<TDomain : IUUID2, TEntity : Model> (  // <User,
             cursor = foundKeys?.cursor ?: break
         } while (foundKeys?.isFinished == false)
 
-        return result.map { redisSyncCommand.jsonGet(it, "$") }
+        return result.map { redis.sync.jsonGet(it, "$") }
             .map { jsonConfig.decodeFromString(ListSerializer(entityKSerializer), it)[0] }
             .toList()
     }
 
-    suspend fun findEntityById(id: UUID2<TDomain>): TEntity? {
-        val result = redisSyncCommand.jsonGet("$databaseRootName:$id", "$")
+    override suspend fun findEntityById(id: UUID2<TDomain>): TEntity? {
+        val result = redis.sync.jsonGet("$databaseRootName:$id", "$")
             ?: return null
 
         return jsonConfig.decodeFromString(ListSerializer(entityKSerializer), result)[0]
     }
 
-    private fun String.escapeRedisSearchSpecialCharacters(): String {
-        val escapeChars =
-            """
-            ,.<>{}[]"':;!@#$%^&*()-+=~"
-            """.trimIndent()
-        var result = this
 
-        escapeChars.forEach {
-            result = result.replace(it.toString(), "\\$it")
-        }
 
-        return result
-    }
-
-    suspend fun findAllEntitiesByField(field: String, rawSearchValue: String): List<TEntity> {
+    override suspend fun findEntitiesByField(field: String, rawSearchValue: String): List<TEntity> {
         val searchQuery =
             if(field=="id") { // search based on TAG, not TEXT.  TAGs are not tokenized like TEXT fields.
                 """
@@ -197,7 +188,7 @@ abstract class JsonRedisDatabase<TDomain : IUUID2, TEntity : Model> (  // <User,
                 @$field:*$rawSearchValue*
                 """.trimIndent()
 
-        val result = redisSyncCommand.ftSearch(
+        val result = redis.sync.ftSearch(
             databaseRootName.searchIndexName(),
                 searchQuery,
                 SearchOptions.builder<String, String>()
@@ -213,11 +204,11 @@ abstract class JsonRedisDatabase<TDomain : IUUID2, TEntity : Model> (  // <User,
         }.filterNotNull()
     }
 
-    suspend fun addEntity(entity: TEntity): TEntity {
+    override suspend fun addEntity(entity: TEntity): TEntity {
         @Suppress("UNCHECKED_CAST")
         entity as HasId<UUID2<TDomain>>
 
-        redisSyncCommand.jsonSet(
+        redis.sync.jsonSet(
             "$databaseRootName:${entity.id()}", "$",
             jsonConfig.encodeToString(entityKSerializer, entity)
         )
@@ -225,19 +216,19 @@ abstract class JsonRedisDatabase<TDomain : IUUID2, TEntity : Model> (  // <User,
         return entity;
     }
 
-    suspend fun updateEntity(entity: TEntity): TEntity? {
+    override suspend fun updateEntity(entity: TEntity): TEntity? {
         @Suppress("UNCHECKED_CAST")
         entity as HasId<UUID2<TDomain>>
 
         val result =
-            redisSyncCommand.jsonGet("$databaseRootName:${entity.id()}", "$")
+            redis.sync.jsonGet("$databaseRootName:${entity.id()}", "$")
             ?: return null
         addEntity(entity)
 
         return entity;
     }
 
-    suspend fun upsertEntity(entity: TEntity): TEntity? {
+    override suspend fun upsertEntity(entity: TEntity): TEntity? {
         @Suppress("UNCHECKED_CAST")
         entity as HasId<UUID2<TDomain>>
 
@@ -249,21 +240,21 @@ abstract class JsonRedisDatabase<TDomain : IUUID2, TEntity : Model> (  // <User,
         }
     }
 
-    suspend fun deleteEntity(entity: TEntity) {
-        redisSyncCommand.del("$databaseRootName:${entity.id()}")
+    override suspend fun deleteEntity(entity: TEntity) {
+        redis.sync.del("$databaseRootName:${entity.id()}")
     }
 
-    suspend fun deleteEntityById(id: UUID2<TDomain>) {
-        redisSyncCommand.del("$databaseRootName:$id")
+    override suspend fun deleteEntityById(id: UUID2<TDomain>) {
+        redis.sync.del("$databaseRootName:$id")
     }
 
-    public suspend fun deleteDatabase() {
+    public override suspend fun deleteDatabase() {
 
         // Delete all the keys
         do {
             var cursor = "0"
             val scanCursor = ScanCursor.of(cursor)
-            val deleteKeys = redisSyncCommand.scan(
+            val deleteKeys = redis.sync.scan(
                 scanCursor,
                     ScanArgs()
                         .match("$databaseRootName:*")
@@ -271,19 +262,33 @@ abstract class JsonRedisDatabase<TDomain : IUUID2, TEntity : Model> (  // <User,
                 )
 
             deleteKeys?.keys?.forEach {
-                redisSyncCommand.del(it)
+                redis.sync.del(it)
             }
             cursor = deleteKeys?.cursor ?: break
         } while (deleteKeys?.isFinished == false)
 
         // Delete the index
-        redisSearchCommand.ftDropindex(databaseRootName.searchIndexName())
+        redis.search.ftDropindex(databaseRootName.searchIndexName())
     }
 
     companion object {
         fun String.searchIndexName(): String {
             val databaseRootName = this
             return "${databaseRootName}_index"
+        }
+
+        fun String.escapeRedisSearchSpecialCharacters(): String {
+            val escapeChars =
+                """
+            ,.<>{}[]"':;!@#$%^&*()-+=~"
+            """.trimIndent()
+            var result = this
+
+            escapeChars.forEach {
+                result = result.replace(it.toString(), "\\$it")
+            }
+
+            return result
         }
     }
 
@@ -312,3 +317,14 @@ abstract class JsonRedisDatabase<TDomain : IUUID2, TEntity : Model> (  // <User,
     }
 
 }
+
+class RedisCommands(val redisConnection: StatefulRedisModulesConnection<String, String>) {
+    val sync: RedisModulesCommands<String, String> = redisConnection.sync()
+    @OptIn(ExperimentalLettuceCoroutinesApi::class)
+    val coroutine: RedisCoroutinesCommands<String, String> = redisConnection.coroutines()
+    val reactive: RedisModulesReactiveCommands<String, String> = redisConnection.reactive()
+    val search: JsonRedisDatabase.RedisSearchCommands =
+        RedisCommandFactory(redisConnection).getCommands(JsonRedisDatabase.RedisSearchCommands::class.java)
+}
+
+

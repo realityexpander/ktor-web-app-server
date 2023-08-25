@@ -46,7 +46,7 @@ class AuthenticationRepositoryTest {
     fun tearDown() {
         runBlocking {
             // Delete the test database file
-            userRepo.deleteDatabaseFile()
+            userRepo.deleteDatabase()
         }
     }
 

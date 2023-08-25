@@ -40,7 +40,8 @@ import util.JsonString
  * * Only interacts with its own repository, Context, and other Role Objects in the Domain layer.
  *
  * Note: Use of **@Nullable** for **sourceLibrary** indicates to *"use default value."*
- *       See at **`Book.pickSourceLibrary()`** for more information.
+ *
+ * See **`Book.pickSourceLibrary()`** for more information.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)
  * @since 0.12 Kotlin conversion

@@ -122,7 +122,7 @@ class InfoEntityRedisDatabase<TDomain : IUUID2, TEntityInfo : InfoEntity>(
 
     override suspend fun findEntityInfosByField(field: String, searchValue: String): Result<List<TEntityInfo>> {
         return try {
-            val entityInfoList = super.findAllEntitiesByField(field, searchValue)
+            val entityInfoList = super.findEntitiesByField(field, searchValue)
 
             Result.success(entityInfoList)
         } catch (e: Exception) {

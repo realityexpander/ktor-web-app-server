@@ -10,7 +10,7 @@ import kotlinx.serialization.Serializable
 import java.util.*
 
 /**
- * LibraryInfo is a DomainInfo class for the Library Role object.
+ * LibraryInfo is the Info class for the Library Role object.
  *
  * LibraryInfo is a mutable class that holds the information represented by the Library Role object.
  *

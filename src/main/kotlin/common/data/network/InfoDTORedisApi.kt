@@ -121,7 +121,7 @@ class InfoDTORedisApi<TDomain : IUUID2, TDTOInfo : InfoDTO>(
 
     override suspend fun findDTOInfosByField(field: String, searchValue: String): Result<List<TDTOInfo>> {
         return try {
-            val entityInfoList = super.findAllEntitiesByField(field, searchValue)
+            val entityInfoList = super.findEntitiesByField(field, searchValue)
 
             Result.success(entityInfoList)
         } catch (e: Exception) {

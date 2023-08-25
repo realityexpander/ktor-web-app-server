@@ -1,5 +1,7 @@
 package com.realityexpander
 
+import common.uuid2.UUID2
+import common.uuid2.UUID2.Companion.createFakeUUID2
 import common.uuid2.UUID2.Companion.fromUUID2StrToTypedUUID2
 import domain.book.Book
 import domain.book.data.BookInfo
@@ -16,6 +18,11 @@ import util.respondJson
 import util.testingUtils.TestingUtils
 
 fun Routing.libraryWebApp() {
+    val temporaryLibrary = Library(
+        UUID2.createFakeUUID2<Library>(1),
+        libraryAppContext
+    )
+
     route("/libraryWeb") {
 
         // more examples: https://photos.google.com/photo/AF1QipNkHSZiBPmtvSZWguN_BEaBmN7a5xansX3DSRHc
@@ -25,7 +32,7 @@ fun Routing.libraryWebApp() {
                 bootstrapHeader()
 
                 body {
-                    libraryStyle()
+                    libraryWebAppStyle()
 
                     h1 { +"Library App" }
                     p { +"Welcome to the Library App" }
@@ -54,8 +61,6 @@ fun Routing.libraryWebApp() {
                                     }
                                 }
                             }
-                            br
-
                             div("form-group row") {
                                 label("col-sm-2 col-form-label") {
                                     htmlFor = "title"
@@ -71,8 +76,6 @@ fun Routing.libraryWebApp() {
                                     }
                                 }
                             }
-                            br
-
                             div("form-group row") {
                                 label("col-sm-2 col-form-label") {
                                     htmlFor = "author"
@@ -88,8 +91,6 @@ fun Routing.libraryWebApp() {
                                     }
                                 }
                             }
-                            br
-
                             div("form-group row") {
                                 label("col-sm-2 col-form-label") {
                                     htmlFor = "description"
@@ -135,10 +136,14 @@ fun Routing.libraryWebApp() {
                         href = "populateBookInfo"
                         +"Populate BookInfo into Database/API"
                     }
+                    br
+                    a {
+                        href = "createFakeLibraryInfoInLibraryInfoRepo"
+                        +"Create Fake LibraryInfo In LibraryInfoRepo"
+                    }
                 }
             }
         }
-
 
         get("/listBooks/{libraryId}") {
             val libraryId = call.parameters["libraryId"]?.toString()
@@ -159,7 +164,7 @@ fun Routing.libraryWebApp() {
                 return@get
             }
             val bookInfo = bookInfoResult.getOrThrow()
-            val books = bookInfo.findAllKnownBookIds().map { Book(it, libraryAppContext) }
+            val books = bookInfo.findAllKnownBookIds().map { Book(it, library, libraryAppContext) }
             val bookInfos = books.mapNotNull { book ->
                 book.info()
             }
@@ -168,7 +173,7 @@ fun Routing.libraryWebApp() {
                 bootstrapHeader()
 
                 body {
-                    libraryStyle()
+                    libraryWebAppStyle()
 
                     h1 { +"List Books for Library" }
 
@@ -178,6 +183,7 @@ fun Routing.libraryWebApp() {
                         p { +"No results found" }
                     }
 
+                    // List of books
                     table("table") {
                         thead {
                             tr {
@@ -221,6 +227,12 @@ fun Routing.libraryWebApp() {
                         href = "../upsertBookToLibrary/$libraryId"
                         +"Upsert Book to Library"
                     }
+                    br
+                    // go to home
+                    a {
+                        href = "../"
+                        +"Home"
+                    }
 
                     viewAndDeleteJavascript()
                 }
@@ -235,7 +247,7 @@ fun Routing.libraryWebApp() {
             }
             // val userIdResult = call.getUserIdFromCookies()
 
-            val book = Book(bookId.fromUUID2StrToTypedUUID2<Book>(), libraryAppContext)
+            val book = Book(bookId.fromUUID2StrToTypedUUID2<Book>(), temporaryLibrary, libraryAppContext)
             val bookInfoResult = book.fetchInfoResult()
             if (bookInfoResult.isFailure) {
                 call.respondJson(
@@ -253,6 +265,7 @@ fun Routing.libraryWebApp() {
                 body {
                     h1 { +"Book" }
 
+                    // Book info
                     div("container-md") {
                         div("row") {
                             div("col-sm-2") { +"UUID2 id:" }
@@ -284,14 +297,14 @@ fun Routing.libraryWebApp() {
         }
 
         get("/upsertBookToLibrary/{libraryId}") {
-            val libraryIdFromParams = call.parameters["libraryId"]?.toString()
+            val libraryIdFromParams = call.parameters["libraryId"]
             val libraryId = libraryIdFromParams ?: "UUID2:Role.Library@00000000-0000-0000-0000-000000000001"
 
             call.respondHtml {
                 bootstrapHeader()
 
                 body {
-                    libraryStyle()
+                    libraryWebAppStyle()
 
                     h1 { +"Upsert Book to Library" }
                     br
@@ -311,10 +324,10 @@ fun Routing.libraryWebApp() {
                                 div("col-md-14") {
                                     input(InputType.text) {
                                         classes = setOf("form-control")
-                                        id = "id"
-                                        name = "id"
-                                        //+"UUID2:Book@"
+                                        id = "bookId"
+                                        name = "bookId"
                                         placeholder = "UUID2:Book@..."
+                                        //+"UUID2:Book@"
                                     }
                                 }
                             }
@@ -329,10 +342,10 @@ fun Routing.libraryWebApp() {
                                 div("col-md-14") {
                                     input(InputType.text) {
                                         classes = setOf("form-control")
-                                        id = "title"
-                                        name = "title"
+                                        id = "libraryId"
+                                        name = "libraryId"
                                         placeholder = "UUD2:Library@..."
-                                        value = "UUID2:Role.Library@00000000-0000-0000-0000-000000000001"
+                                        value = libraryId
                                         //+"UUID2:Library@"
                                     }
                                 }
@@ -359,14 +372,14 @@ fun Routing.libraryWebApp() {
             val body = call.receiveText().decodeURLPart(charset = Charsets.UTF_8)
             // val params = body.parseUrlEncodedParameters()
             val params = body.parseTextPlainEncodedFormParameters()
-            val bookId = params["UUID2:Book"]
+            val bookId = params["bookId"]
             val libraryId = params["libraryId"]
 
             if (bookId != null &&
                 libraryId != null
             ) {
                 val library = Library(libraryId.fromUUID2StrToTypedUUID2<Library>(), libraryAppContext)
-                val book = Book(bookId.fromUUID2StrToTypedUUID2<Book>(), libraryAppContext)
+                val book = Book(bookId.fromUUID2StrToTypedUUID2<Book>(), library, libraryAppContext)
                 val bookInfoResult = book.fetchInfoResult()
                 val bookInfoResultStatusJson = resultToStatusCodeJson<BookInfo>(bookInfoResult)
 
@@ -378,6 +391,8 @@ fun Routing.libraryWebApp() {
                     bootstrapHeader()
 
                     body {
+                        libraryWebAppStyle()
+
                         if (bookInfoResultStatusJson.statusCode != HttpStatusCode.OK) {
                             h1 { +"Error adding book to library" }
                             p { +bookInfoResultStatusJson.json }
@@ -385,18 +400,19 @@ fun Routing.libraryWebApp() {
                             h1 { +"Error adding book to library" }
                             p { +addBookToLibraryStatusJson.json }
                         } else {
-                            h1 { +"Book added:" }
-                        }
+                            val bookInfo = bookInfoResult.getOrThrow()
 
-                        p { +"Book Id: $bookId" }
-                        p { +"Title: ${book.info.get().title}" }
-                        p { +"Author: ${book.info.get().author}" }
-                        p { +"Description: ${book.info.get().description}" }
-                        p { +"Library Id: $libraryId" }
+                            h1 { +"Book added:" }
+                            p { +"Book Id: $bookId" }
+                            p { +"Title: ${bookInfo.title}" }
+                            p { +"Author: ${bookInfo.author}" }
+                            p { +"Description: ${bookInfo.description}" }
+                            p { +"Library Id: $libraryId" }
+                        }
 
                         // go to list books page
                         a {
-                            href = "../listBooks/$libraryId"
+                            href = "./listBooks/$libraryId"
                             +"List Books for Library: $libraryId"
                         }
                     }
@@ -706,6 +722,43 @@ fun Routing.libraryWebApp() {
                 }
             }
         }
+
+        get("/createFakeLibraryInfoInLibraryInfoRepo") {
+            val testingUtils = TestingUtils(libraryAppContext)
+            testingUtils.createFakeLibraryInfoInLibraryInfoRepo(1)
+            testingUtils.populateLibraryWithFakeBooks(createFakeUUID2<Library>(1), 10)
+
+            val libraryResult =
+                libraryAppContext
+                    .libraryInfoRepo
+                    .fetchAllLibraryInfo()
+            val libraryInfos = libraryResult.getOrThrow()
+
+            call.respondHtml {
+                bootstrapHeader()
+
+                body {
+                    libraryWebAppStyle()
+
+                    h1 { +"Populated Book Info" }
+                    libraryInfos.forEach { libraryInfo ->
+                        p { +"Name: ${libraryInfo.name}" }
+                        p { +"Id: ${libraryInfo.id}" }
+                        p { +"All Known Book Ids:"  }
+                        libraryInfo.findAllKnownBookIds().forEachIndexed { idx, bookId ->
+                            p { +"${idx + 1}: $bookId" }
+                        }
+                        br
+                    }
+
+                    // Go to home page
+                    a {
+                        href = "./"
+                        +"Home"
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -788,7 +841,7 @@ private fun HTML.bootstrapHeader() {
     }
 }
 
-private fun BODY.libraryStyle() {
+private fun BODY.libraryWebAppStyle() {
     style {
         unsafe {
             raw(

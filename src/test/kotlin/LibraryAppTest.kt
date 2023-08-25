@@ -1,5 +1,4 @@
 import com.realityexpander.domain.account.data.AccountInfoRepo
-import com.realityexpander.domain.book.data.local.BookInfoFileDatabase
 import com.realityexpander.domain.book.data.local.BookInfoRedisDatabase
 import common.uuid2.UUID2
 import domain.Context
@@ -15,7 +14,7 @@ import domain.book.data.local.BookInfoEntity
 import domain.common.Role
 import domain.library.PrivateLibrary
 import domain.library.data.LibraryInfo
-import domain.library.data.LibraryInfoRepo
+import domain.library.data.LibraryInfoFileRepo
 import domain.user.data.UserInfo
 import domain.user.data.UserInfoRepo
 import kotlinx.coroutines.*
@@ -62,7 +61,7 @@ class LibraryAppTest {
                 bookInfoDatabase = BookInfoRedisDatabase(tempDBName),
             ),
             UserInfoRepo(testLog, TestingUtils.createTempFileName("userInfoRepoDB")), // prodContext.userInfoRepo,
-            LibraryInfoRepo(testLog, TestingUtils.createTempFileName("libraryInfoRepoDB")), // prodContext.libraryInfoRepo,
+            LibraryInfoFileRepo(testLog, TestingUtils.createTempFileName("libraryInfoRepoDB")), // prodContext.libraryInfoRepo,
             AccountInfoRepo(testLog, TestingUtils.createTempFileName("accountInfoRepoDB")), // prodContext.accountInfoRepo,
             prodContext.gson,
             testLog    // <--- Using the `TestLog` logger

@@ -36,7 +36,7 @@ class InfoDTOFileApiTest {
     fun tearDown() {
         runBlocking {
             // Delete the test database file
-            testApi.deleteDatabaseFile()
+            testApi.deleteDatabase()
         }
     }
 

@@ -81,7 +81,7 @@ class InfoDTOFileApi<TDomain : IUUID2, TDTOInfo : InfoDTO>(
             if(super.findAllEntities().isEmpty())
                 return Result.success(Unit)
 
-            super.deleteDatabaseFile()
+            super.deleteDatabase()
 
             Result.success(Unit)
         } catch (e: Exception) {

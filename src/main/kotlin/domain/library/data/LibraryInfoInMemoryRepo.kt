@@ -7,7 +7,7 @@ import domain.library.Library
 import domain.library.PrivateLibrary
 
 /**
- * LibraryInfoRepo is a repository for LibraryInfo objects.
+ * LibraryInfoFileRepo is a repository for LibraryInfo objects.
  *
  * Holds Library info for all the libraries in the system (simple CRUD operations).
  *

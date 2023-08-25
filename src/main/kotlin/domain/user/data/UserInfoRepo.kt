@@ -87,7 +87,7 @@ class UserInfoRepo(
 
     override suspend fun deleteDatabase(): Result<Unit> {
         return try {
-            Result.success(database.deleteDatabaseFile())
+            Result.success(database.deleteDatabase())
         } catch (e: Exception) {
             return Result.failure(e)
         }

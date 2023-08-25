@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.realityexpander.domain.account.data.AccountInfoRepo
 import com.realityexpander.domain.book.data.local.BookInfoFileDatabase
+import com.realityexpander.domain.library.data.LibraryInfoRedisRepo
 import common.log.ILog
 import common.log.Log
 import common.uuid2.UUID2
@@ -15,7 +16,7 @@ import domain.book.data.IBookInfoRepo
 import domain.book.data.network.BookInfoFileApi
 import domain.library.data.ILibraryInfoRepo
 import domain.library.data.LibraryInfoInMemoryRepo
-import domain.library.data.LibraryInfoRepo
+import domain.library.data.LibraryInfoFileRepo
 import domain.user.data.IUserInfoRepo
 import domain.user.data.UserInfoInMemoryRepo
 import domain.user.data.UserInfoRepo
@@ -54,7 +55,7 @@ class Context(
             return Context(
                 BookInfoRepo(log),      // BookInfoInMemoryRepo(log)
                 UserInfoRepo(log),      // UserInfoInMemoryRepo(log)
-                LibraryInfoRepo(log),   // LibraryInfoInMemoryRepo(log)
+                LibraryInfoRedisRepo(log),   // LibraryInfoInMemoryRepo(log), LibraryInfoFileRepo(log),
                 AccountInfoRepo(log),   // AccountInfoInMemoryRepo(log),
                 gsonConfig,
                 log
@@ -92,7 +93,7 @@ class Context(
                 ),
                 UserInfoRepo(log,
                     userRepoDatabaseFilename ="test-userInfoRepoDatabase.json"),
-                LibraryInfoRepo(log,
+                LibraryInfoFileRepo(log,
                     libraryInfoRepoDatabaseFilename ="test-libraryInfoRepoDatabase.json"),
                 AccountInfoRepo(log,
                     accountInfoRepoDatabaseFilename ="test-accountInfoRepoDatabase.json"),

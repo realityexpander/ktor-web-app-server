@@ -95,3 +95,6 @@ https://github.com/traxterz/ktor-plugin-event-store-db
  
   - Search in Redis : https://developer.redis.com/develop/java/redis-and-spring-course/lesson_7/?s=payload
   - Jedi Client for Redis: https://developer.redis.com/develop/java/redis-and-spring-course/lesson_7/?s=payload
+
+  - Delete all keys matching a pattern: (Redis Console)
+  - EVAL 'for i, name in ipairs(redis.call("KEYS", "<KEYS_TO_DELETE>:*")) do redis.call("EXPIRE", name, 1); end' 0

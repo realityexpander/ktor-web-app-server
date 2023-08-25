@@ -72,7 +72,7 @@ class InfoEntityFileDatabase<TDomain : IUUID2, TEntityInfo : InfoEntity>(
 
     override suspend fun deleteAllEntityInfos(): Result<Unit> {
         return try {
-            super.deleteDatabaseFile()
+            super.deleteDatabase()
 
             Result.success(Unit)
         } catch (e: Exception) {
