@@ -29,7 +29,6 @@ interface ILibraryInfoRepo : IRepo {
 
 abstract class LibraryInfoRepo(
     log: ILog,
-    libraryInfoRepoDatabaseName: String = DEFAULT_LIBRARYINFO_REPO_DATABASE_NAME,
     private val database: IJsonDatabase<Library, LibraryInfo>
 ) : Repo(log), ILibraryInfoRepo {
 

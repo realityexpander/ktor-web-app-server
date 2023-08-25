@@ -1,6 +1,6 @@
 package com.realityexpander.domain.book.data.local
 
-import common.data.local.IDatabase
+import common.data.local.IInfoEntityDatabase
 import common.uuid2.UUID2
 import domain.book.Book
 import domain.book.data.local.BookInfoEntity
@@ -19,7 +19,7 @@ interface IBookInfoDatabase {
 }
 
 abstract class BookInfoDatabase(
-    val database: IDatabase<Book, BookInfoEntity>
+    val database: IInfoEntityDatabase<Book, BookInfoEntity>
 ) : IBookInfoDatabase {
     override suspend fun fetchBookInfo(id: UUID2<Book>): Result<BookInfoEntity> {
         return database.fetchEntityInfo(id)

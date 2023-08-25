@@ -1,7 +1,7 @@
 package com.realityexpander.common.data.local
 
 import com.redis.lettucemod.RedisModulesClient
-import common.data.local.IDatabase
+import common.data.local.IInfoEntityDatabase
 import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.common.data.HasId
@@ -12,7 +12,7 @@ import okhttp3.internal.toImmutableList
 /**
  * **InfoEntityRedisDatabase**
  *
- * An implementation of a Redis database client that uses the IDatabase interface to persistently store InfoEntity.
+ * An implementation of a Redis database client that uses the IInfoEntityDatabase interface to persistently store InfoEntity.
  *
  * Entities are stored as JSON strings in a Redis database.
  *
@@ -38,7 +38,7 @@ class InfoEntityRedisDatabase<TDomain : IUUID2, TEntityInfo : InfoEntity>(
         redisUrl,
         redisClient
     ),
-    IDatabase<TDomain, TEntityInfo>
+    IInfoEntityDatabase<TDomain, TEntityInfo>
 {
     override suspend fun fetchEntityInfo(id: UUID2<TDomain>): Result<TEntityInfo> {
         return try {

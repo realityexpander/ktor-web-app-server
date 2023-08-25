@@ -6,7 +6,7 @@ import common.data.network.FakeURL
 import domain.common.data.info.local.InfoEntity
 
 /**
- * InfoEntityInMemoryDatabase is an implementation of the IDatabase interface for the InfoEntity class.
+ * InfoEntityInMemoryDatabase is an implementation of the IInfoEntityDatabase interface for the InfoEntity class.
  *
  * This class is a stub for a real database implementation.
  *
@@ -22,7 +22,7 @@ class InfoEntityInMemoryDatabase<TUUID2 : IUUID2, TEntityInfo : InfoEntity> (
     user: String = "admin",
     password: String = "password",
     private val database: MutableMap<UUID2<TUUID2>, TEntityInfo> = mutableMapOf()
-) : IDatabase<TUUID2, TEntityInfo> {
+) : IInfoEntityDatabase<TUUID2, TEntityInfo> {
 
     override suspend fun fetchEntityInfo(id: UUID2<TUUID2>): Result<TEntityInfo> {
         // Simulate the request

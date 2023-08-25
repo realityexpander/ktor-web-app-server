@@ -4,8 +4,6 @@ import com.realityexpander.common.data.local.JsonFileDatabase
 import com.realityexpander.domain.account.data.AccountInfoRepo.Companion.DEFAULT_LIBRARYINFO_REPO_DATABASE_FILENAME
 import common.data.local.IJsonDatabase
 import common.log.ILog
-import common.uuid2.UUID2
-import domain.common.data.repo.Repo
 import domain.library.Library
 import kotlinx.coroutines.runBlocking
 
@@ -39,4 +37,4 @@ class LibraryInfoFileRepo(
         override suspend fun updateLookupTables() { /* no-op */ }
     }
 
-) : LibraryInfoRepo(log, libraryInfoRepoDatabaseFilename, database)
+) : LibraryInfoRepo(log, database)

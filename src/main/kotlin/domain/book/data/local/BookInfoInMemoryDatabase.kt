@@ -10,7 +10,7 @@ import domain.book.Book
  *
  * Simulates an In-Memory local non-persisted database for BookInfoEntity.
  *
- * This class uses domain-specific language and wraps an implementation of the IDatabase interface
+ * This class uses domain-specific language and wraps an implementation of the IInfoEntityDatabase interface
  * for BookInfoEntity.
  *
  * @author Chris Athanas (realityexpanderdev@gmail.com)

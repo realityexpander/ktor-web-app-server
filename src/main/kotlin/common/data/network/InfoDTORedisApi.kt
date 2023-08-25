@@ -13,7 +13,7 @@ import okhttp3.internal.toImmutableList
 /**
  * **InfoDTORedisApi**
  *
- * An implementation of a Redis database client that uses the IDatabase interface to persistently store InfoDTO.
+ * An implementation of a Redis database client that uses the IInfoEntityDatabase interface to persistently store InfoDTO.
  *
  * Entities are stored as JSON strings in a Redis database.
  * Data is persisted, so the database is not reset on each run.

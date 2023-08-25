@@ -2,9 +2,8 @@ package com.realityexpander
 
 import com.github.slugify.Slugify
 import com.realityexpander.Constants.APPLICATION_PROPERTIES_FILE
-import com.realityexpander.common.data.local.JsonRedisDatabase
 import com.realityexpander.common.data.local.JsonRedisDatabase.Companion.escapeRedisSearchSpecialCharacters
-import com.realityexpander.common.data.local.RedisCommands
+import com.realityexpander.common.data.local.JsonRedisDatabase.RedisCommands
 import com.realityexpander.common.data.network.AnySerializer
 import com.realityexpander.common.data.network.PairSerializer
 import com.realityexpander.common.data.network.ResultSerializer
@@ -18,8 +17,6 @@ import com.realityexpander.domain.todo.TodoResponse
 import com.realityexpander.domain.todo.UserInTodo
 import com.redis.lettucemod.RedisModulesClient
 import com.redis.lettucemod.api.StatefulRedisModulesConnection
-import com.redis.lettucemod.api.reactive.RedisModulesReactiveCommands
-import com.redis.lettucemod.api.sync.RedisModulesCommands
 import com.redis.lettucemod.search.CreateOptions
 import com.redis.lettucemod.search.Field
 import com.redis.lettucemod.search.SearchOptions
@@ -56,9 +53,6 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.lettuce.core.ExperimentalLettuceCoroutinesApi
-import io.lettuce.core.api.coroutines
-import io.lettuce.core.api.coroutines.RedisCoroutinesCommands
-import io.lettuce.core.dynamic.RedisCommandFactory
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -66,7 +60,10 @@ import kotlinx.serialization.json.Json
 import net.iharder.Base64
 import org.example.SubModule2
 import org.slf4j.LoggerFactory
-import util.*
+import util.JsonString
+import util.JwtTokenStr
+import util.getClientIpAddressFromRequest
+import util.respondJson
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -163,6 +160,7 @@ fun Application.module() {
     // test sub-module-2
     SubModule2.output("hello from application module")
     val x = Base64.encodeObject("hello")
+    println("x: $x") // using net.iharder.Base64 library - its a transitive dependency of subModule2
 
     /////////////////////
     // SERVER SETUP    //
@@ -238,9 +236,6 @@ fun Application.module() {
     )
 
     // Setup Redis LettuceMod client
-//    val (redisCoroutineCommand,
-//         redisReactiveCommand) =
-//        setupRedisClient()
     val redis = setupRedisClient()
 
     // Setup JWT & bearer authentication
@@ -1205,7 +1200,7 @@ fun Application.module() {
                     call.respond(statusJson.statusCode, statusJson.json)
                 }
 
-                // 404 catch-all route for library app
+                // catch-all 404 route for library app
                 get("/{...}") {
                     val route = call.request.path()
                     call.respondJson(mapOf("error" to "Invalid route for Library: $route"), HttpStatusCode.NotFound)
@@ -1259,11 +1254,17 @@ private fun setupRedisClient(): RedisCommands
     val redisConnection: StatefulRedisModulesConnection<String, String> = redisClient.connect()
     val redis = RedisCommands(redisConnection)
 
+    // miniTestRedisClient(redis)
+
+    return redis
+}
+
+private fun redisClientMiniTest(redis: RedisCommands) {
     // MINI-TEST-REDIS-SEARCH
     redis.search.ftConfigSet("MINPREFIX", "1") // allow one character prefix for FT.SEARCH
     try {
         // check if index exists
-        val result = redis.sync.ftInfo("users_index")
+        redis.sync.ftInfo("users_index")
     } catch (e: Exception) {
         // setup search index
         val result = redis.sync.ftCreate(
@@ -1350,8 +1351,6 @@ private fun setupRedisClient(): RedisCommands
         jsonConfig.decodeFromString<UserSearchResult>(resultValue)
     }
     println("resultArray: $resultArray")
-
-    return redis
 }
 
 data class StatusCodeAndJson(

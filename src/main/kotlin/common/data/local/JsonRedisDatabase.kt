@@ -60,13 +60,6 @@ abstract class JsonRedisDatabase<TDomain : IUUID2, TEntity : Model> (  // <User,
     private val redisConnection: StatefulRedisModulesConnection<String, String> = redisClient.connect()
     private val redis = RedisCommands(redisConnection)
 
-//    private val redisSyncCommand: RedisModulesCommands<String, String> = redisConnection.sync()
-//    @OptIn(ExperimentalLettuceCoroutinesApi::class)
-//    private val redisCoroutineCommand = redisConnection.coroutines()
-//    private val redisReactiveCommand = redisConnection.reactive()
-//    private val redisSearchCommand: RedisSearchCommands =
-//        RedisCommandFactory(redisConnection).getCommands(RedisSearchCommands::class.java)
-
     init {
         redis.search.ftConfigSet("MINPREFIX", "1") // set the minimum searchable text length to one character (default is 2)
     }
@@ -174,8 +167,6 @@ abstract class JsonRedisDatabase<TDomain : IUUID2, TEntity : Model> (  // <User,
 
         return jsonConfig.decodeFromString(ListSerializer(entityKSerializer), result)[0]
     }
-
-
 
     override suspend fun findEntitiesByField(field: String, rawSearchValue: String): List<TEntity> {
         val searchQuery =
@@ -316,15 +307,13 @@ abstract class JsonRedisDatabase<TDomain : IUUID2, TEntity : Model> (  // <User,
         fun ftDropindex(index: String): String
     }
 
+    // Define the Redis Commands
+    class RedisCommands(private val redisConnection: StatefulRedisModulesConnection<String, String>) {
+        val sync: RedisModulesCommands<String, String> = redisConnection.sync()
+        @OptIn(ExperimentalLettuceCoroutinesApi::class)
+        val coroutine: RedisCoroutinesCommands<String, String> = redisConnection.coroutines()
+        val reactive: RedisModulesReactiveCommands<String, String> = redisConnection.reactive()
+        val search: JsonRedisDatabase.RedisSearchCommands =
+            RedisCommandFactory(redisConnection).getCommands(JsonRedisDatabase.RedisSearchCommands::class.java)
+    }
 }
-
-class RedisCommands(val redisConnection: StatefulRedisModulesConnection<String, String>) {
-    val sync: RedisModulesCommands<String, String> = redisConnection.sync()
-    @OptIn(ExperimentalLettuceCoroutinesApi::class)
-    val coroutine: RedisCoroutinesCommands<String, String> = redisConnection.coroutines()
-    val reactive: RedisModulesReactiveCommands<String, String> = redisConnection.reactive()
-    val search: JsonRedisDatabase.RedisSearchCommands =
-        RedisCommandFactory(redisConnection).getCommands(JsonRedisDatabase.RedisSearchCommands::class.java)
-}
-
-

@@ -1,6 +1,6 @@
 package com.realityexpander.common.data.local
 
-import common.data.local.IDatabase
+import common.data.local.IInfoEntityDatabase
 import common.data.network.FakeHttpClient
 import common.data.network.FakeURL
 import common.uuid2.IUUID2
@@ -14,7 +14,7 @@ import okhttp3.internal.toImmutableList
 /**
  * **InfoEntityFileDatabase**
  *
- * An implementation of a JsonFileDatabase that uses the IDatabase interface to persistently store InfoEntity.
+ * An implementation of a JsonFileDatabase that uses the IInfoEntityDatabase interface to persistently store InfoEntity.
  *
  * Simulates a Database API that is backed by a json file.
  * Data is persisted, so the database is not reset on each run.
@@ -33,7 +33,7 @@ class InfoEntityFileDatabase<TDomain : IUUID2, TEntityInfo : InfoEntity>(
     private val fakeUrl: FakeURL = FakeURL("fakeHttp://fakeDatabaseHost:44444"),
     private val fakeClient: FakeHttpClient = FakeHttpClient()
 ) : JsonFileDatabase<TDomain, TEntityInfo>(databaseFilename, entityKSerializer),  // -> <UUID2<User>, UserAuthEntity>
-    IDatabase<TDomain, TEntityInfo>
+    IInfoEntityDatabase<TDomain, TEntityInfo>
 {
     init {
         runBlocking {

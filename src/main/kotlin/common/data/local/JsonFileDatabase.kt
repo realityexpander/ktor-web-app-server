@@ -1,6 +1,5 @@
 package com.realityexpander.common.data.local
 
-import com.realityexpander.common.data.local.JsonFileDatabase.Companion.MAX_POLLING_ATTEMPTS
 import com.realityexpander.jsonConfig
 import com.realityexpander.ktorLogger
 import common.data.local.IJsonDatabase
@@ -8,16 +7,15 @@ import common.uuid2.IUUID2
 import common.uuid2.UUID2
 import domain.common.data.HasId
 import domain.common.data.Model
-import kotlinx.coroutines.*
-import kotlinx.serialization.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.yield
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
 import okhttp3.internal.toImmutableMap
 import java.io.File
 import java.util.*
 
-
-
-abstract class JsonFileDatabase<TDomain : IUUID2, TEntity : Model> (  // <User, UserInfo> -> in database:<UUID2<User>, UserInfo>
+open class JsonFileDatabase<TDomain : IUUID2, TEntity : Model> (  // <User, UserInfo> -> in database:<UUID2<User>, UserInfo>
     private val databaseFilename: String = generateDefaultDatabaseFilename(),
     private val entityKSerializer: KSerializer<TEntity>,
     private val database: MutableMap<UUID2<TDomain>, TEntity> = mutableMapOf(),
@@ -50,6 +48,10 @@ abstract class JsonFileDatabase<TDomain : IUUID2, TEntity : Model> (  // <User, 
             e.printStackTrace()
         }
     }
+
+    // *IMPORTANT*: Be sure to override this method in your subclass to make sure subclass's your
+    //              lookup tables are updated when items are added/removed from the database.
+    open suspend fun updateLookupTables() {}
 
     companion object {
         const val MAX_POLLING_ATTEMPTS = 50
@@ -129,9 +131,6 @@ abstract class JsonFileDatabase<TDomain : IUUID2, TEntity : Model> (  // <User, 
         database.remove(id)
         saveJsonDatabaseFileToDisk()
     }
-
-    // Note: Be sure to override this method in your subclass to make sure subclass's your lookup tables are updated.
-    abstract suspend fun updateLookupTables()
 
     public override suspend fun deleteDatabase() {
         File(databaseFile).delete()

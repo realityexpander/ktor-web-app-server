@@ -1,7 +1,6 @@
 package com.realityexpander.domain.library.data
 
 import com.realityexpander.common.data.local.JsonRedisDatabase
-import com.realityexpander.domain.account.data.AccountInfoRepo.Companion.DEFAULT_LIBRARYINFO_REPO_DATABASE_FILENAME
 import common.data.local.IJsonDatabase
 import common.log.ILog
 import domain.library.Library
@@ -31,7 +30,7 @@ class LibraryInfoRedisRepo(
         ) {}
 
 
-) : LibraryInfoRepo(log, libraryInfoRepoDatabaseName, database) {
+) : LibraryInfoRepo(log, database) {
 
     companion object {
         const val DEFAULT_LIBRARYINFO_REPO_DATABASE_NAME = "libraryInfoRepoDB"
