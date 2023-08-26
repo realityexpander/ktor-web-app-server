@@ -126,9 +126,12 @@ dependencies {
     implementation("io.lettuce:lettuce-core:6.2.6.RELEASE")
     implementation("com.redis:lettucemod:3.6.3") // Extension library
 
-    // For coroutines & lettuce reactivity
+    // For coroutines & lettuce coroutine support
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinx_coroutines_version")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactive:$kotlinx_coroutines_version")
+
+    // Websockets
+    implementation("io.ktor:ktor-server-websockets:$ktor_version")
 
 
     // Testing

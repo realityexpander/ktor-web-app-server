@@ -52,7 +52,13 @@ import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.server.websocket.*
+import io.ktor.server.websocket.WebSockets
+import io.ktor.websocket.*
 import io.lettuce.core.ExperimentalLettuceCoroutinesApi
+import io.lettuce.core.XGroupCreateArgs
+import io.lettuce.core.XReadArgs
+import kotlinx.coroutines.*
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -70,6 +76,7 @@ import java.io.InputStreamReader
 import java.io.PrintWriter
 import java.net.Socket
 import java.text.SimpleDateFormat
+import java.time.Duration
 import java.util.*
 import java.util.concurrent.TimeUnit
 import javax.naming.AuthenticationException
@@ -191,6 +198,12 @@ fun Application.module() {
         exception<Throwable> { call, cause ->
             call.respondText(text = "500: $cause" , status = HttpStatusCode.InternalServerError)
         }
+    }
+    installServer(WebSockets) {
+        pingPeriod = Duration.ofSeconds(60)
+        timeout = Duration.ofSeconds(15)
+        maxFrameSize = Long.MAX_VALUE
+        masking = false
     }
 
     // Setup Ktor client
@@ -326,6 +339,7 @@ fun Application.module() {
             }
         }
     }
+
 
     //////////////
     // ROUTING  //
@@ -771,6 +785,82 @@ fun Application.module() {
                 println(searchResults)
                 call.respondJson(mapOf("success" to Json.encodeToString(searchResults)))
             }
+
+            get("/sendStreamMessages") {
+                val key = call.request.queryParameters["key"] ?: run {
+                    call.respondJson(mapOf("error" to "Missing key"), HttpStatusCode.BadRequest)
+                    return@get
+                }
+                val value = call.request.queryParameters["value"] ?: run {
+                    call.respondJson(mapOf("error" to "Missing value"), HttpStatusCode.BadRequest)
+                    return@get
+                }
+
+                val result = redis.sync.xadd("mystream", key, value) ?: run {
+                    call.respondJson(mapOf("error" to "Failed to set key"), HttpStatusCode.InternalServerError)
+                    return@get
+                }
+                call.respondJson(mapOf("success" to Json.encodeToString(result)))
+            }
+
+            var lastOffset = "0-0"
+            get("/readStreamMessages") {
+                val result =
+                    redis.sync.xread(
+                        XReadArgs.Builder. block(1000),
+                        XReadArgs.StreamOffset.from("mystream", lastOffset))
+                        ?: run {
+                            call.respondJson(mapOf("error" to "Failed to read stream"), HttpStatusCode.InternalServerError)
+                            return@get
+                        }
+                if(result.isEmpty()) {
+                    call.respondJson(mapOf("success" to "No new messages"))
+                    return@get
+                }
+
+                lastOffset = result.last().id
+                val resultStringMap = result.map { entry ->
+                    entry.id to entry.body.map { message ->
+                        message.key to message.value
+                    }.toMap()
+                }.toMap()
+
+                call.respondJson(mapOf("success" to Json.encodeToString(resultStringMap)))
+            }
+
+            // Used by "/server-push" route in webApp
+            webSocket("/getMessages") {
+                send("""{"status":"Channel opened"}""")
+                var lastMessageOffset = "0-0"
+
+                // DEL mystream
+
+                while (true) {
+                    yield()
+                    val result =
+                        redis.sync.xread(
+                            XReadArgs.Builder. block(1000),
+                            XReadArgs.StreamOffset.from("mystream", lastMessageOffset))
+                            ?: run {
+                                send(Json.encodeToString(mapOf("error" to "Failed to read stream")))
+                                return@webSocket
+                            }
+                    if(result.isEmpty()) {
+                        send("No new messages")
+                        continue
+                    }
+
+                    lastMessageOffset = result.last().id
+                    val resultStringMap = result.map { entry ->
+                        entry.id to entry.body.map { message ->
+                            message.key to message.value
+                        }.toMap()
+                    }.toMap()
+
+                    send(Json.encodeToString(resultStringMap))
+                }
+            }
+
 
         }
 
@@ -1255,8 +1345,36 @@ private fun setupRedisClient(): RedisCommands
     val redis = RedisCommands(redisConnection)
 
     // miniTestRedisClient(redis)
+    redisStreamsTest(redis)
 
     return redis
+}
+
+data class StatusCodeAndJson(
+    val json: JsonString,
+    val statusCode: HttpStatusCode,
+)
+
+inline fun <reified T> resultToStatusCodeJson(
+    result: Result<T>,
+) : StatusCodeAndJson {
+
+    if (result.isSuccess) {
+        return StatusCodeAndJson(
+            com.realityexpander.jsonConfig.encodeToString(result.getOrThrow()),
+            HttpStatusCode.OK
+        )
+    } else {
+        return StatusCodeAndJson(
+            com.realityexpander.jsonConfig.encodeToString(
+                mapOf(
+                    "error" to (result.exceptionOrNull()?.localizedMessage
+                        ?: result.exceptionOrNull()?.message
+                        ?: "Unknown error")
+                )),
+            HttpStatusCode.BadRequest
+        )
+    }
 }
 
 private fun redisClientMiniTest(redis: RedisCommands) {
@@ -1353,33 +1471,75 @@ private fun redisClientMiniTest(redis: RedisCommands) {
     println("resultArray: $resultArray")
 }
 
-data class StatusCodeAndJson(
-    val json: JsonString,
-    val statusCode: HttpStatusCode,
-)
+private fun redisStreamsTest(redis: RedisCommands) {
 
-inline fun <reified T> resultToStatusCodeJson(
-    result: Result<T>,
-) : StatusCodeAndJson {
+    val streamName = "mystream"
+    val consumerGroupName = "mygroup"
+    val consumerName = "myconsumer"
 
-    if (result.isSuccess) {
-        return StatusCodeAndJson(
-            com.realityexpander.jsonConfig.encodeToString(result.getOrThrow()),
-            HttpStatusCode.OK
+    // add messages to stream
+    // XADD mystream * command start
+    redis.sync.xadd(streamName, mapOf("command" to "start"))
+    redis.sync.xadd(streamName, mapOf("command" to "print", "data" to "hello, world"))
+//    redis.sync.xadd(streamName, mapOf("command" to "quit"))
+
+    // Check if consumer group exists
+    // XINFO GROUPS mystream
+    // XGROUP DESTROY mystream mygroup
+    val consumerGroupInfo = redis.sync.xinfoGroups(streamName)
+    val NAME_FIELD_IDX = 1
+    if (consumerGroupInfo.none { element -> (element as ArrayList<*>)[NAME_FIELD_IDX] == consumerGroupName })
+        // create the consumer group
+        // XGROUP CREATE mystream mygroup $
+        redis.sync.xgroupCreate(
+            XReadArgs.StreamOffset.from(streamName, "0"),
+            consumerGroupName,
+            XGroupCreateArgs()
+                .mkstream(true)
         )
-    } else {
-        return StatusCodeAndJson(
-            com.realityexpander.jsonConfig.encodeToString(
-                mapOf(
-                    "error" to (result.exceptionOrNull()?.localizedMessage
-                        ?: result.exceptionOrNull()?.message
-                        ?: "Unknown error")
-                )),
-            HttpStatusCode.BadRequest
-        )
+
+    CoroutineScope(Dispatchers.IO).launch {
+        do {
+            var quit = false
+            yield()
+
+            // XREADGROUP GROUP mygroup myconsumer BLOCK 0 STREAMS mystream >
+            val streamMessages = redis.sync.xreadgroup(
+                io.lettuce.core.Consumer.from(consumerGroupName, consumerName),
+                XReadArgs.StreamOffset.lastConsumed(streamName)
+            )
+
+            for (message in streamMessages) {
+                val messageId = message.id
+                val messageData = message.body.entries.joinToString(", ") { "${it.key}=${it.value}" }
+
+                println("Received message with ID: $messageId")
+                println("Message data: $messageData")
+
+                message.body.entries.forEach { entry ->
+                    println("entry: [${entry.key}] = ${entry.value}")
+
+                    when(entry.key.toString()) {
+                        "command" -> {
+                            when(entry.value.toString()) {
+                                "start" -> {
+                                    println("starting...")
+                                }
+                                "print" -> {
+                                    println("printing... ${message.body["data"]}")
+                                }
+                                "quit" -> {
+                                    println("quitting...")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } while (quit == false)
     }
-}
 
+}
 
 // Simple client to test server
 // https://www.youtube.com/watch?v=2bD2lq_ezVQ

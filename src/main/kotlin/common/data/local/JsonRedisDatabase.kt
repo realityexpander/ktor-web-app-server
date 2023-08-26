@@ -55,7 +55,7 @@ abstract class JsonRedisDatabase<TDomain : IUUID2, TEntity : Model> (  // <User,
     private val databaseRootName: String = "jsonDB",
     private val entityKSerializer: KSerializer<TEntity>,
     private val redisUrl: String = "redis://localhost:6379",
-    private val redisClient: RedisModulesClient = RedisModulesClient.create(redisUrl),
+    redisClient: RedisModulesClient = RedisModulesClient.create(redisUrl),
 ): IJsonDatabase<TDomain, TEntity> {
     private val redisConnection: StatefulRedisModulesConnection<String, String> = redisClient.connect()
     private val redis = RedisCommands(redisConnection)
@@ -313,7 +313,7 @@ abstract class JsonRedisDatabase<TDomain : IUUID2, TEntity : Model> (  // <User,
         @OptIn(ExperimentalLettuceCoroutinesApi::class)
         val coroutine: RedisCoroutinesCommands<String, String> = redisConnection.coroutines()
         val reactive: RedisModulesReactiveCommands<String, String> = redisConnection.reactive()
-        val search: JsonRedisDatabase.RedisSearchCommands =
-            RedisCommandFactory(redisConnection).getCommands(JsonRedisDatabase.RedisSearchCommands::class.java)
+        val search: RedisSearchCommands =
+            RedisCommandFactory(redisConnection).getCommands(RedisSearchCommands::class.java)
     }
 }

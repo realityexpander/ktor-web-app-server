@@ -1,6 +1,11 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="LibraryAppTest" type="GradleRunConfiguration" factoryName="Gradle">
     <ExternalSystemSettings>
+      <option name="env">
+        <map>
+          <entry key="JAVA_TOOL_OPTIONS" value=" -javaagent:/var/folders/6q/rbsnc4992snczh09s1q22x400000gn/T/digma-otel-jars/opentelemetry-javaagent.jar -Dotel.javaagent.extensions=/var/folders/6q/rbsnc4992snczh09s1q22x400000gn/T/digma-otel-jars/digma-otel-agent-extension.jar -Dotel.exporter.otlp.traces.endpoint=http://localhost:5050 -Dotel.resource.attributes=&quot;digma.environment=ChrisWork.local[LOCAL-TESTS]&quot; -Dotel.traces.exporter=otlp -Dotel.metrics.exporter=none -Dotel.service.name=ktor-library-web-app-server " />
+        </map>
+      </option>
       <option name="executionName" />
       <option name="externalProjectPath" value="$PROJECT_DIR$" />
       <option name="externalSystemIdString" value="GRADLE" />
@@ -32,7 +37,7 @@
       </extension>
     </EXTENSION>
     <DebugAllEnabled>false</DebugAllEnabled>
-    <ForceTestExec>true</ForceTestExec>
+    <RunAsTest>true</RunAsTest>
     <method v="2" />
   </configuration>
 </component>

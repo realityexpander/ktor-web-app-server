@@ -3,7 +3,9 @@
     <ExternalSystemSettings>
       <option name="env">
         <map>
+          <entry key="DIGMA_OBSERVABILITY" value="false" />
           <entry key="JWT_SECRET" value="hello_chaps" />
+          <entry key="_JAVA_TOOL_OPTIONS" value=" -javaagent:/var/folders/6q/rbsnc4992snczh09s1q22x400000gn/T/digma-otel-jars/opentelemetry-javaagent.jar -Dotel.javaagent.extensions=/var/folders/6q/rbsnc4992snczh09s1q22x400000gn/T/digma-otel-jars/digma-otel-agent-extension.jar -Dotel.exporter.otlp.traces.endpoint=http://localhost:5050 -Dotel.traces.exporter=otlp -Dotel.metrics.exporter=none -Dotel.service.name=ktor-library-web-app-server " />
         </map>
       </option>
       <option name="executionName" />
@@ -35,6 +37,7 @@
       </extension>
     </EXTENSION>
     <DebugAllEnabled>false</DebugAllEnabled>
+    <RunAsTest>false</RunAsTest>
     <method v="2" />
   </configuration>
 </component>
