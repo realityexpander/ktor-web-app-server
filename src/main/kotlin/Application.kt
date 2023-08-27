@@ -838,7 +838,6 @@ fun Application.module() {
                 // XREAD BLOCK 0 STREAMS mystream 0-0 // get all messages
 
                 while (true) {
-                    yield()
                     val result =
                         redis.sync.xread(
                             XReadArgs.Builder. block(50),
@@ -861,8 +860,14 @@ fun Application.module() {
                     resultStringMap["status"] = mapOf("status" to "New messages")
                     resultStringMap["session"] = mapOf("id" to this.call.request.header("Sec-WebSocket-Key").toString())
 
-
                     send(Json.encodeToString(resultStringMap))
+
+                    if(this.isActive) {
+//                        delay(10)
+                         yield()
+                    } else {
+                        break
+                    }
                 }
             }
 
