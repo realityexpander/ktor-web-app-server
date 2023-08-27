@@ -98,3 +98,6 @@ https://github.com/traxterz/ktor-plugin-event-store-db
 
   - Delete all keys matching a pattern: (Redis Console)
   - EVAL 'for i, name in ipairs(redis.call("KEYS", "<KEYS_TO_DELETE>:*")) do redis.call("EXPIRE", name, 1); end' 0
+
+  - Kotlin redis library - https://github.com/crackthecodeabhi/kreds
+  - 
