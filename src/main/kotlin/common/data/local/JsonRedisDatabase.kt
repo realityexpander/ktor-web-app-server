@@ -200,7 +200,8 @@ abstract class JsonRedisDatabase<TDomain : IUUID2, TEntity : Model> (  // <User,
         entity as HasId<UUID2<TDomain>>
 
         redis.sync.jsonSet(
-            "$databaseRootName:${entity.id()}", "$",
+            "$databaseRootName:${entity.id()}",  // todo use :{id} instead of :id
+            "$",
             jsonConfig.encodeToString(entityKSerializer, entity)
         )
 

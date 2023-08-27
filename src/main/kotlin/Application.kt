@@ -298,12 +298,12 @@ fun Application.module() {
         // - NOT JWT
         bearer("auth-bearer") {
             realm = "Access to the 'auth-bearer' routes"
-            authenticate { tokenCredential ->
+            authenticate { tokenCredential -> // tokenCredential comes from the Authorization header
 
                 // Check the client IP address is in the whitelist for this user
                 val clientIpAddress = request.call.getClientIpAddressFromRequest()
 
-                // Auth Token can be passed in the header or in a cookie
+                // Auth Token can be passed in the HEADER or in a COOKIE
                 if (tokenCredential.token.isEmpty() && this.request.cookies.rawCookies["authenticationToken"] == null) {
                     this.response.status(HttpStatusCode.Unauthorized)
                     this.response.header("Location", "/login")
@@ -311,9 +311,9 @@ fun Application.module() {
                 }
                 val authenticationToken =
                     if (tokenCredential.token.isNotBlank())
-                        tokenCredential.token
+                        tokenCredential.token  // from the Authorization header
                     else
-                        this.request.cookies["authenticationToken"]
+                        this.request.cookies.rawCookies["authenticationToken"]
 
                 // Look up the user by the authentication token
                 val user = authRepo.findUserByAuthToken(authenticationToken)
@@ -833,13 +833,15 @@ fun Application.module() {
                 send("""{"status":"Channel opened"}""")
                 var lastMessageOffset = "0-0"
 
-                // DEL mystream
+                // DEL mystream  // delete stream
+                // XRANGE mystream - + COUNT 0 // get all messages
+                // XREAD BLOCK 0 STREAMS mystream 0-0 // get all messages
 
                 while (true) {
                     yield()
                     val result =
                         redis.sync.xread(
-                            XReadArgs.Builder. block(1000),
+                            XReadArgs.Builder. block(50),
                             XReadArgs.StreamOffset.from("mystream", lastMessageOffset))
                             ?: run {
                                 send(Json.encodeToString(mapOf("error" to "Failed to read stream")))
@@ -851,11 +853,14 @@ fun Application.module() {
                     }
 
                     lastMessageOffset = result.last().id
-                    val resultStringMap = result.map { entry ->
+                    val resultStringMap: MutableMap<String, Map<String, String>> = result.map { entry ->
                         entry.id to entry.body.map { message ->
                             message.key to message.value
                         }.toMap()
-                    }.toMap()
+                    }.toMap().toMutableMap()
+                    resultStringMap["status"] = mapOf("status" to "New messages")
+                    resultStringMap["session"] = mapOf("id" to this.call.request.header("Sec-WebSocket-Key").toString())
+
 
                     send(Json.encodeToString(resultStringMap))
                 }
@@ -1256,6 +1261,24 @@ fun Application.module() {
                 // • BOOK     //
                 ////////////////
 
+                get("findBook/{field}/{searchTerm}") {
+                    val field = call.parameters["field"]?.toString()
+                    val searchTerm = call.parameters["searchTerm"]?.toString()
+                    field ?: run {
+                        call.respondJson(mapOf("error" to "Missing field"), HttpStatusCode.BadRequest)
+                        return@get
+                    }
+                    searchTerm ?: run {
+                        call.respondJson(mapOf("error" to "Missing searchTerm"), HttpStatusCode.BadRequest)
+                        return@get
+                    }
+
+                    val bookInfoResult = libraryAppContext.bookInfoRepo.findBookInfosByField(field, searchTerm)
+
+                    val statusJson = resultToStatusCodeJson<List<BookInfo>>(bookInfoResult)
+                    call.respond(statusJson.statusCode, statusJson.json)
+                }
+
                 get("/fetchBookInfo/{bookId}") {
                     val bookId = call.parameters["bookId"]?.toString()
                     bookId ?: run {
@@ -1503,38 +1526,43 @@ private fun redisStreamsTest(redis: RedisCommands) {
             var quit = false
             yield()
 
-            // XREADGROUP GROUP mygroup myconsumer BLOCK 0 STREAMS mystream >
-            val streamMessages = redis.sync.xreadgroup(
-                io.lettuce.core.Consumer.from(consumerGroupName, consumerName),
-                XReadArgs.StreamOffset.lastConsumed(streamName)
-            )
+            try {
+                // XREADGROUP GROUP mygroup myconsumer BLOCK 0 STREAMS mystream >
+                val streamMessages = redis.sync.xreadgroup(
+                    io.lettuce.core.Consumer.from(consumerGroupName, consumerName),
+                    XReadArgs.StreamOffset.lastConsumed(streamName)
+                )
 
-            for (message in streamMessages) {
-                val messageId = message.id
-                val messageData = message.body.entries.joinToString(", ") { "${it.key}=${it.value}" }
+                for (message in streamMessages) {
+                    val messageId = message.id
+                    val messageData = message.body.entries.joinToString(", ") { "${it.key}=${it.value}" }
 
-                println("Received message with ID: $messageId")
-                println("Message data: $messageData")
+                    println("Received message with ID: $messageId")
+                    println("Message data: $messageData")
 
-                message.body.entries.forEach { entry ->
-                    println("entry: [${entry.key}] = ${entry.value}")
+                    message.body.entries.forEach { entry ->
+                        println("entry: [${entry.key}] = ${entry.value}")
 
-                    when(entry.key.toString()) {
-                        "command" -> {
-                            when(entry.value.toString()) {
-                                "start" -> {
-                                    println("starting...")
-                                }
-                                "print" -> {
-                                    println("printing... ${message.body["data"]}")
-                                }
-                                "quit" -> {
-                                    println("quitting...")
+                        when(entry.key.toString()) {
+                            "command" -> {
+                                when(entry.value.toString()) {
+                                    "start" -> {
+                                        println("starting...")
+                                    }
+                                    "print" -> {
+                                        println("printing... ${message.body["data"]}")
+                                    }
+                                    "quit" -> {
+                                        println("quitting...")
+                                    }
                                 }
                             }
                         }
                     }
                 }
+            } catch (e: Exception) {
+                println("Exception: ${e.localizedMessage}")
+                // quit = true
             }
         } while (quit == false)
     }
