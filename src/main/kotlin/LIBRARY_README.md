@@ -327,6 +327,8 @@ advantages and disadvantages.
 ### Encourage Explicit Boolean Naming
 
 - Boolean variables and methods are named explicitly
+  - Use of `is{something}` or `has{something}` is preferred over `!` operator
+  - Always name the variable for the positive case
   - `is{something}`
   - `has{something}`
   - `should{something}` - use sparingly for parameters, consider using `enum` instead.

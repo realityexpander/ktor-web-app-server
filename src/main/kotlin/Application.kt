@@ -636,7 +636,6 @@ fun Application.module() {
                         )
                         return@post
                     }
-//                    if (passwordResetTokenClaims.claims["id"]?.asString() != user.id) {
                     if (passwordResetTokenClaims.claims["id"]?.asString() != user.id.toString()) {
                         call.respondJson(
                             mapOf("error" to "Invalid user id in password reset token"),
@@ -665,7 +664,7 @@ fun Application.module() {
 
         }
 
-        libraryWebApp()
+        libraryWebAppRoute()
 
         route("/redis") {
 

@@ -17,7 +17,7 @@ import util.parseTextPlainEncodedFormParameters
 import util.respondJson
 import util.testingUtils.TestingUtils
 
-fun Routing.libraryWebApp() {
+fun Routing.libraryWebAppRoute() {
     val temporaryLibrary = Library(
         UUID2.createFakeUUID2<Library>(1),
         libraryAppContext
